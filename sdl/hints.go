@@ -27,12 +27,20 @@ const (
 	HINT_ALLOW_TOPMOST                   = C.SDL_HINT_ALLOW_TOPMOST
 )
 
-func SetHint(name, value string, prio HintPriority) bool {
+func SetHintWithPriority(name, value string, prio HintPriority) bool {
 	cname := C.CString(name)
 	cvalue := C.CString(value)
 	defer C.free(unsafe.Pointer(cname))
 	defer C.free(unsafe.Pointer(cvalue))
 	return C.SDL_SetHintWithPriority(cname, cvalue, C.SDL_HintPriority(prio)) != 0
+}
+
+func SetHint(name, value string) bool {
+	cname := C.CString(name)
+	cvalue := C.CString(value)
+	defer C.free(unsafe.Pointer(cname))
+	defer C.free(unsafe.Pointer(cvalue))
+	return C.SDL_SetHint(cname, cvalue) != 0
 }
 
 func GetHint(name string) string {
