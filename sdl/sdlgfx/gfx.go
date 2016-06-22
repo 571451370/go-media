@@ -8,8 +8,9 @@ import "C"
 
 import (
 	"errors"
-	"sdl"
 	"unsafe"
+
+	"github.com/qeedquan/go-sdl/sdl"
 )
 
 func Pixel(re *sdl.Renderer, x, y int, r, g, b, a uint8) error {

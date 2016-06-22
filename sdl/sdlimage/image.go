@@ -16,7 +16,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"sdl"
+	"github.com/qeedquan/go-sdl/sdl"
 )
 
 func LoadTextureFile(re *sdl.Renderer, name string) (*sdl.Texture, error) {
