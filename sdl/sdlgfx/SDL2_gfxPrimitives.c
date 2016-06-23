@@ -2179,7 +2179,7 @@ int _pieRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y, Sint16 rad, Sint16 sta
 	double deltaAngle;
 	double dr;
 	int numpoints, i;
-	Sint16 *vx, *vy;
+	SDL_Point *pts;
 
 	/*
 	* Sanity check radii 
@@ -2223,26 +2223,23 @@ int _pieRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y, Sint16 rad, Sint16 sta
 	}
 
 	/* Allocate combined vertex array */
-	vx = vy = (Sint16 *) malloc(2 * sizeof(Uint16) * numpoints);
-	if (vx == NULL) {
+	pts = malloc(sizeof(SDL_Point) * numpoints);
+	if (pts == NULL) {
 		return (-1);
 	}
 
-	/* Update point to start of vy */
-	vy += numpoints;
-
 	/* Center */
-	vx[0] = x;
-	vy[0] = y;
+	pts[0].x = x;
+	pts[0].y = y;
 
 	/* First vertex */
 	angle = start_angle;
-	vx[1] = x + (int) (dr * cos(angle));
-	vy[1] = y + (int) (dr * sin(angle));
+	pts[1].x = x + (int) (dr * cos(angle));
+	pts[1].y = y + (int) (dr * sin(angle));
 
 	if (numpoints<3)
 	{
-		result = lineRGBA(renderer, vx[0], vy[0], vx[1], vy[1], r, g, b, a);
+		result = lineRGBA(renderer, pts[0].x, pts[0].y, pts[1].x, pts[1].y, r, g, b, a);
 	}
 	else
 	{
@@ -2255,21 +2252,21 @@ int _pieRGBA(SDL_Renderer * renderer, Sint16 x, Sint16 y, Sint16 rad, Sint16 sta
 			{
 				angle = end_angle;
 			}
-			vx[i] = x + (int) (dr * cos(angle));
-			vy[i] = y + (int) (dr * sin(angle));
+			pts[i].x = x + (int) (dr * cos(angle));
+			pts[i].y = y + (int) (dr * sin(angle));
 			i++;
 		}
 
 		/* Draw */
 		if (filled) {
-			result = filledPolygonRGBA(renderer, vx, vy, numpoints, r, g, b, a);
+			result = filledPolygonRGBA(renderer, pts, numpoints, r, g, b, a);
 		} else {
-			result = polygonRGBA(renderer, vx, vy, numpoints, r, g, b, a);
+			result = polygonRGBA(renderer, pts, numpoints, r, g, b, a);
 		}
 	}
 
 	/* Free combined vertex array */
-	free(vx);
+	free(pts);
 
 	return (result);
 }
@@ -2377,17 +2374,8 @@ Note: Creates vertex array and uses polygon routine to render.
 */
 int trigonColor(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3, Uint32 color)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(polygonColor(renderer,vx,vy,3,color));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(polygonColor(renderer,pts,3,color));
 }
 
 /*!
@@ -2410,17 +2398,8 @@ int trigonColor(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16
 int trigonRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3,
 	Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(polygonRGBA(renderer,vx,vy,3,r,g,b,a));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(polygonRGBA(renderer,pts,3,r,g,b,a));
 }				 
 
 /* ------ AA-Trigon */
@@ -2443,17 +2422,8 @@ Note: Creates vertex array and uses aapolygon routine to render.
 */
 int aatrigonColor(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3, Uint32 color)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(aapolygonColor(renderer,vx,vy,3,color));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(aapolygonColor(renderer,pts,3,color));
 }
 
 /*!
@@ -2476,17 +2446,8 @@ int aatrigonColor(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint
 int aatrigonRGBA(SDL_Renderer * renderer,  Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3,
 	Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(aapolygonRGBA(renderer,vx,vy,3,r,g,b,a));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(aapolygonRGBA(renderer,pts,3,r,g,b,a));
 }				   
 
 /* ------ Filled Trigon */
@@ -2509,17 +2470,8 @@ Note: Creates vertex array and uses aapolygon routine to render.
 */
 int filledTrigonColor(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3, Uint32 color)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(filledPolygonColor(renderer,vx,vy,3,color));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(filledPolygonColor(renderer,pts,3,color));
 }
 
 /*!
@@ -2544,17 +2496,8 @@ Note: Creates vertex array and uses aapolygon routine to render.
 int filledTrigonRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2, Sint16 x3, Sint16 y3,
 	Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	Sint16 vx[3]; 
-	Sint16 vy[3];
-
-	vx[0]=x1;
-	vx[1]=x2;
-	vx[2]=x3;
-	vy[0]=y1;
-	vy[1]=y2;
-	vy[2]=y3;
-
-	return(filledPolygonRGBA(renderer,vx,vy,3,r,g,b,a));
+	SDL_Point pts[] = {{x1, y1}, {x2, y2}, {x3, y3}};
+	return(filledPolygonRGBA(renderer,pts,3,r,g,b,a));
 }
 
 /* ---- Polygon */
@@ -2570,10 +2513,10 @@ int filledTrigonRGBA(SDL_Renderer * renderer, Sint16 x1, Sint16 y1, Sint16 x2, S
 
 \returns Returns 0 on success, -1 on failure.
 */
-int polygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color)
+int polygonColor(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint32 color)
 {
 	Uint8 *c = (Uint8 *)&color; 
-	return polygonRGBA(renderer, vx, vy, n, c[0], c[1], c[2], c[3]);
+	return polygonRGBA(renderer, pts, n, c[0], c[1], c[2], c[3]);
 }
 
 /*!
@@ -2586,7 +2529,7 @@ int polygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, 
 
 \returns Returns 0 on success, -1 on failure.
 */
-int polygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n)
+int polygon(SDL_Renderer * renderer, const SDL_Point *pts, int n)
 {
 	/*
 	* Draw 
@@ -2598,10 +2541,7 @@ int polygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n
 	/*
 	* Vertex array NULL check 
 	*/
-	if (vx == NULL) {
-		return (-1);
-	}
-	if (vy == NULL) {
+	if (pts == NULL) {
 		return (-1);
 	}
 
@@ -2623,11 +2563,11 @@ int polygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n
 	}
 	for (i=0; i<n; i++)
 	{
-		points[i].x = vx[i];
-		points[i].y = vy[i];
+		points[i].x = pts[i].x;
+		points[i].y = pts[i].y;
 	}
-	points[n].x = vx[0];
-	points[n].y = vy[0];
+	points[n].x = pts[0].x;
+	points[n].y = pts[0].y;
 
 	/*
 	* Draw 
@@ -2652,21 +2592,17 @@ int polygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n
 
 \returns Returns 0 on success, -1 on failure.
 */
-int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+int polygonRGBA(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	/*
 	* Draw 
 	*/
 	int result;
-	const Sint16 *x1, *y1, *x2, *y2;
 
 	/*
 	* Vertex array NULL check 
 	*/
-	if (vx == NULL) {
-		return (-1);
-	}
-	if (vy == NULL) {
+	if (pts == NULL) {
 		return (-1);
 	}
 
@@ -2678,14 +2614,6 @@ int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, i
 	}
 
 	/*
-	* Pointer setup 
-	*/
-	x1 = x2 = vx;
-	y1 = y2 = vy;
-	x2++;
-	y2++;
-
-	/*
 	* Set color 
 	*/
 	result = 0;
@@ -2695,7 +2623,7 @@ int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, i
 	/*
 	* Draw 
 	*/
-	result |= polygon(renderer, vx, vy, n);
+	result |= polygon(renderer, pts, n);
 
 	return (result);
 }
@@ -2713,10 +2641,10 @@ int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, i
 
 \returns Returns 0 on success, -1 on failure.
 */
-int aapolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color)
+int aapolygonColor(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint32 color)
 {
 	Uint8 *c = (Uint8 *)&color; 
-	return aapolygonRGBA(renderer, vx, vy, n, c[0], c[1], c[2], c[3]);
+	return aapolygonRGBA(renderer, pts, n, c[0], c[1], c[2], c[3]);
 }
 
 /*!
@@ -2733,19 +2661,17 @@ int aapolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy
 
 \returns Returns 0 on success, -1 on failure.
 */
-int aapolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+int aapolygonRGBA(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	int result;
 	int i;
+	const SDL_Point *p, *q;
 	const Sint16 *x1, *y1, *x2, *y2;
 
 	/*
 	* Vertex array NULL check 
 	*/
-	if (vx == NULL) {
-		return (-1);
-	}
-	if (vy == NULL) {
+	if (pts == NULL) {
 		return (-1);
 	}
 
@@ -2759,24 +2685,20 @@ int aapolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
 	/*
 	* Pointer setup 
 	*/
-	x1 = x2 = vx;
-	y1 = y2 = vy;
-	x2++;
-	y2++;
+	p = pts;
+	q = pts + 1;
 
 	/*
 	* Draw 
 	*/
 	result = 0;
 	for (i = 1; i < n; i++) {
-		result |= _aalineRGBA(renderer, *x1, *y1, *x2, *y2, r, g, b, a, 0);
-		x1 = x2;
-		y1 = y2;
-		x2++;
-		y2++;
+		result |= _aalineRGBA(renderer, p->x, p->y, q->x, q->y, r, g, b, a, 0);
+		p = q;
+		q++;
 	}
 
-	result |= _aalineRGBA(renderer, *x1, *y1, *vx, *vy, r, g, b, a, 0);
+	result |= _aalineRGBA(renderer, p->x, p->y, pts->x, pts->y, r, g, b, a, 0);
 
 	return (result);
 }
@@ -2828,7 +2750,7 @@ Note: The last two parameters are optional; but are required for multithreaded o
 
 \returns Returns 0 on success, -1 on failure.
 */
-int filledPolygonRGBAMT(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a, int **polyInts, int *polyAllocated)
+int filledPolygonRGBAMT(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a, int **polyInts, int *polyAllocated)
 {
 	int result;
 	int i;
@@ -2845,10 +2767,7 @@ int filledPolygonRGBAMT(SDL_Renderer * renderer, const Sint16 * vx, const Sint16
 	/*
 	* Vertex array NULL check 
 	*/
-	if (vx == NULL) {
-		return (-1);
-	}
-	if (vy == NULL) {
+	if (pts == NULL) {
 		return (-1);
 	}
 
@@ -2922,13 +2841,13 @@ int filledPolygonRGBAMT(SDL_Renderer * renderer, const Sint16 * vx, const Sint16
 	/*
 	* Determine Y maxima 
 	*/
-	miny = vy[0];
-	maxy = vy[0];
+	miny = pts[0].x;
+	maxy = pts[0].y;
 	for (i = 1; (i < n); i++) {
-		if (vy[i] < miny) {
-			miny = vy[i];
-		} else if (vy[i] > maxy) {
-			maxy = vy[i];
+		if (pts[i].y < miny) {
+			miny = pts[i].y;
+		} else if (pts[i].y > maxy) {
+			maxy = pts[i].y;
 		}
 	}
 
@@ -2946,16 +2865,16 @@ int filledPolygonRGBAMT(SDL_Renderer * renderer, const Sint16 * vx, const Sint16
 				ind1 = i - 1;
 				ind2 = i;
 			}
-			y1 = vy[ind1];
-			y2 = vy[ind2];
+			y1 = pts[ind1].y;
+			y2 = pts[ind2].y;
 			if (y1 < y2) {
-				x1 = vx[ind1];
-				x2 = vx[ind2];
+				x1 = pts[ind1].x;
+				x2 = pts[ind2].x;
 			} else if (y1 > y2) {
-				y2 = vy[ind1];
-				y1 = vy[ind2];
-				x2 = vx[ind1];
-				x1 = vx[ind2];
+				y2 = pts[ind1].y;
+				y1 = pts[ind2].y;
+				x2 = pts[ind1].x;
+				x1 = pts[ind2].x;
 			} else {
 				continue;
 			}
@@ -2996,10 +2915,10 @@ int filledPolygonRGBAMT(SDL_Renderer * renderer, const Sint16 * vx, const Sint16
 
 \returns Returns 0 on success, -1 on failure.
 */
-int filledPolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color)
+int filledPolygonColor(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint32 color)
 {
 	Uint8 *c = (Uint8 *)&color; 
-	return filledPolygonRGBAMT(renderer, vx, vy, n, c[0], c[1], c[2], c[3], NULL, NULL);
+	return filledPolygonRGBAMT(renderer, pts, n, c[0], c[1], c[2], c[3], NULL, NULL);
 }
 
 /*!
@@ -3016,9 +2935,9 @@ int filledPolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 
 
 \returns Returns 0 on success, -1 on failure.
 */
-int filledPolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+int filledPolygonRGBA(SDL_Renderer * renderer, const SDL_Point *pts, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	return filledPolygonRGBAMT(renderer, vx, vy, n, r, g, b, a, NULL, NULL);
+	return filledPolygonRGBAMT(renderer, pts, n, r, g, b, a, NULL, NULL);
 }
 
 /* ---- Textured Polygon */
@@ -3137,7 +3056,7 @@ to the left and want the texture to apear the same you need to increase the text
 
 \returns Returns 0 on success, -1 on failure.
 */
-int texturedPolygonMT(SDL_Renderer *renderer, const Sint16 * vx, const Sint16 * vy, int n, 
+int texturedPolygonMT(SDL_Renderer *renderer, const SDL_Point *pts, int n, 
 	SDL_Surface * texture, int texture_dx, int texture_dy, int **polyInts, int *polyAllocated)
 {
 	int result;
@@ -3213,20 +3132,20 @@ int texturedPolygonMT(SDL_Renderer *renderer, const Sint16 * vx, const Sint16 * 
 	/*
 	* Determine X,Y minima,maxima 
 	*/
-	miny = vy[0];
-	maxy = vy[0];
-	minx = vx[0];
-	maxx = vx[0];
+	miny = pts[0].y;
+	maxy = pts[0].y;
+	minx = pts[0].x;
+	maxx = pts[0].x;
 	for (i = 1; (i < n); i++) {
-		if (vy[i] < miny) {
-			miny = vy[i];
-		} else if (vy[i] > maxy) {
-			maxy = vy[i];
+		if (pts[i].y < miny) {
+			miny = pts[i].y;
+		} else if (pts[i].y > maxy) {
+			maxy = pts[i].y;
 		}
-		if (vx[i] < minx) {
-			minx = vx[i];
-		} else if (vx[i] > maxx) {
-			maxx = vx[i];
+		if (pts[i].x < minx) {
+			minx = pts[i].x;
+		} else if (pts[i].x > maxx) {
+			maxx = pts[i].x;
 		}
 	}
 
@@ -3252,16 +3171,16 @@ int texturedPolygonMT(SDL_Renderer *renderer, const Sint16 * vx, const Sint16 * 
 				ind1 = i - 1;
 				ind2 = i;
 			}
-			y1 = vy[ind1];
-			y2 = vy[ind2];
+			y1 = pts[ind1].y;
+			y2 = pts[ind2].y;
 			if (y1 < y2) {
-				x1 = vx[ind1];
-				x2 = vx[ind2];
+				x1 = pts[ind1].x;
+				x2 = pts[ind2].x;
 			} else if (y1 > y2) {
-				y2 = vy[ind1];
-				y1 = vy[ind2];
-				x2 = vx[ind1];
-				x1 = vx[ind2];
+				y2 = pts[ind1].y;
+				y1 = pts[ind2].y;
+				x2 = pts[ind1].x;
+				x1 = pts[ind2].x;
 			} else {
 				continue;
 			}
@@ -3303,12 +3222,12 @@ to the left and want the texture to apear the same you need to increase the text
 
 \returns Returns 0 on success, -1 on failure.
 */
-int texturedPolygon(SDL_Renderer *renderer, const Sint16 * vx, const Sint16 * vy, int n, SDL_Surface *texture, int texture_dx, int texture_dy)
+int texturedPolygon(SDL_Renderer *renderer, const SDL_Point *pts, int n, SDL_Surface *texture, int texture_dx, int texture_dy)
 {
 	/*
 	* Draw
 	*/
-	return (texturedPolygonMT(renderer, vx, vy, n, texture, texture_dx, texture_dy, NULL, NULL));
+	return (texturedPolygonMT(renderer, pts, n, texture, texture_dx, texture_dy, NULL, NULL));
 }
 
 /* ---- Character */
@@ -3726,10 +3645,10 @@ double _evaluateBezier (double *data, int ndata, double t)
 
 \returns Returns 0 on success, -1 on failure.
 */
-int bezierColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, int s, Uint32 color)
+int bezierColor(SDL_Renderer * renderer, const SDL_Point *pts, int n, int s, Uint32 color)
 {
 	Uint8 *c = (Uint8 *)&color; 
-	return bezierRGBA(renderer, vx, vy, n, s, c[0], c[1], c[2], c[3]);
+	return bezierRGBA(renderer, pts, n, s, c[0], c[1], c[2], c[3]);
 }
 
 /*!
@@ -3747,7 +3666,7 @@ int bezierColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, i
 
 \returns Returns 0 on success, -1 on failure.
 */
-int bezierRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, int s, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+int bezierRGBA(SDL_Renderer * renderer, const SDL_Point *pts, int n, int s, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	int result;
 	int i;
@@ -3778,11 +3697,11 @@ int bezierRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, in
 		return(-1);
 	}    
 	for (i=0; i<n; i++) {
-		x[i]=(double)vx[i];
-		y[i]=(double)vy[i];
+		x[i]=(double)pts[i].x;
+		y[i]=(double)pts[i].y;
 	}      
-	x[n]=(double)vx[0];
-	y[n]=(double)vy[0];
+	x[n]=(double)pts[0].x;
+	y[n]=(double)pts[0].y;
 
 	/*
 	* Set color 
@@ -3997,7 +3916,7 @@ void _murphyIteration(SDL2_gfxMurphyIterator *m, Uint8 miter,
 	int ftmp1, ftmp2;
 	Uint16 m1x, m1y, m2x, m2y;	
 	Uint16 fix, fiy, lax, lay, curx, cury;
-	Sint16 px[4], py[4];
+	SDL_Point pp[4];
 	SDL2_gfxBresenhamIterator b;
 
 	if (miter > 1) {
@@ -4073,15 +3992,15 @@ void _murphyIteration(SDL2_gfxMurphyIterator *m, Uint8 miter,
 				pixel(m->renderer, b.x, b.y);
 			} while (_bresenhamIterate(&b)==0);
 
-			px[0] = m1x;
-			px[1] = m2x;
-			px[2] = ml1bx;
-			px[3] = ml2bx;
-			py[0] = m1y;
-			py[1] = m2y;
-			py[2] = ml1by;
-			py[3] = ml2by;			
-			polygon(m->renderer, px, py, 4);						
+			pp[0].x = m1x;
+			pp[0].y = m1y;
+			pp[1].x = m2x;
+			pp[1].y = m2y;
+			pp[2].x = ml1bx;
+			pp[2].y = ml1by;
+			pp[3].x = ml2bx;
+			pp[3].y = ml2by;
+			polygon(m->renderer, pp, 4);	
 		}
 	}
 

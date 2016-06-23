@@ -198,30 +198,29 @@ extern "C" {
 
 	/* Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int polygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
+	SDL2_GFXPRIMITIVES_SCOPE int polygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int polygonRGBA(SDL_Renderer * renderer, const SDL_Point *,
 		int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* AA-Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int aapolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int aapolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
+	SDL2_GFXPRIMITIVES_SCOPE int aapolygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int aapolygonRGBA(SDL_Renderer * renderer, const SDL_Point *,
 		int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Filled Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx,
-		const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonRGBA(SDL_Renderer * renderer, const SDL_Point *, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Textured Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int texturedPolygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, SDL_Surface * texture,int texture_dx,int texture_dy);
+	SDL2_GFXPRIMITIVES_SCOPE int texturedPolygon(SDL_Renderer * renderer, const SDL_Point *, int n, SDL_Surface * texture,int texture_dx,int texture_dy);
 
 	/* Bezier */
 
-	SDL2_GFXPRIMITIVES_SCOPE int bezierColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, int s, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int bezierRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
+	SDL2_GFXPRIMITIVES_SCOPE int bezierColor(SDL_Renderer * renderer, const SDL_Point *, int n, int s, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int bezierRGBA(SDL_Renderer * renderer, const SDL_Point *,
 		int n, int s, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Characters/Strings */

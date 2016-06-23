@@ -141,14 +141,14 @@ func (t *Texture) Query() (format uint32, access TextureAccess, width, height in
 	return uint32(cformat), TextureAccess(caccess), int(cw), int(ch), ek(rc)
 }
 
-func (t *Texture) SetColorMod(r, g, b uint8) error {
-	return ek(C.SDL_SetTextureColorMod(t, C.Uint8(r), C.Uint8(g), C.Uint8(b)))
+func (t *Texture) SetColorMod(c Color) error {
+	return ek(C.SDL_SetTextureColorMod(t, C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B)))
 }
 
-func (t *Texture) ColorMod() (r, g, b uint8, err error) {
+func (t *Texture) ColorMod() (Color, error) {
 	var cr, cg, cb C.Uint8
 	rc := C.SDL_GetTextureColorMod(t, &cr, &cg, &cb)
-	return uint8(cr), uint8(cg), uint8(cb), ek(rc)
+	return Color{uint8(cr), uint8(cg), uint8(cb), 255}, ek(rc)
 }
 
 func (t *Texture) SetAlphaMod(alpha uint8) error {
@@ -190,14 +190,14 @@ func (t *Texture) Unlock() {
 	C.SDL_UnlockTexture(t)
 }
 
-func (re *Renderer) SetDrawColor(r, g, b, a uint8) error {
-	return ek(C.SDL_SetRenderDrawColor(re, C.Uint8(r), C.Uint8(g), C.Uint8(b), C.Uint8(a)))
+func (re *Renderer) SetDrawColor(c Color) error {
+	return ek(C.SDL_SetRenderDrawColor(re, C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
-func (re *Renderer) DrawColor() (r, g, b, a uint8, err error) {
+func (re *Renderer) DrawColor() (Color, error) {
 	var cr, cg, cb, ca C.Uint8
 	rc := C.SDL_GetRenderDrawColor(re, &cr, &cg, &cb, &ca)
-	return uint8(cr), uint8(cg), uint8(cb), uint8(ca), ek(rc)
+	return Color{uint8(cr), uint8(cg), uint8(cb), uint8(ca)}, ek(rc)
 }
 
 func (re *Renderer) DrawPoint(x, y int) {
@@ -235,6 +235,10 @@ func (re *Renderer) Copy(texture *Texture, src, dst *Rect) {
 
 func (re *Renderer) ReadPixels(rect *Rect, format uint32, pixels []byte, pitch int) error {
 	return ek(C.SDL_RenderReadPixels(re, (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(format), unsafe.Pointer(&pixels[0]), C.int(pitch)))
+}
+
+func (re *Renderer) SetTarget(texture *Texture) error {
+	return ek(C.SDL_SetRenderTarget(re, (*C.SDL_Texture)(texture)))
 }
 
 func (re *Renderer) Present() {
