@@ -200,37 +200,45 @@ func (re *Renderer) DrawColor() (Color, error) {
 	return Color{uint8(cr), uint8(cg), uint8(cb), uint8(ca)}, ek(rc)
 }
 
-func (re *Renderer) DrawPoint(x, y int) {
-	C.SDL_RenderDrawPoint(re, C.int(x), C.int(y))
+func (re *Renderer) DrawPoint(x, y int) error {
+	return ek(C.SDL_RenderDrawPoint(re, C.int(x), C.int(y)))
 }
 
-func (re *Renderer) DrawPoints(pts []Point) {
-	C.SDL_RenderDrawPoints(re, (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)))
+func (re *Renderer) DrawPoints(pts []Point) error {
+	return ek(C.SDL_RenderDrawPoints(re, (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts))))
 }
 
-func (re *Renderer) DrawRect(rect *Rect) {
-	C.SDL_RenderDrawRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect)))
+func (re *Renderer) DrawLine(x1, y1, x2, y2 int) error {
+	return ek(C.SDL_RenderDrawLine(re, C.int(x1), C.int(y1), C.int(x2), C.int(y2)))
 }
 
-func (re *Renderer) DrawRects(rects []Rect) {
-	C.SDL_RenderDrawRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects)))
+func (re *Renderer) DrawLines(points []Point) error {
+	return ek(C.SDL_RenderDrawLines(re, (*C.SDL_Point)(unsafe.Pointer(&points[0])), C.int(len(points))))
 }
 
-func (re *Renderer) FillRect(rect *Rect) {
-	C.SDL_RenderFillRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect)))
+func (re *Renderer) DrawRect(rect *Rect) error {
+	return ek(C.SDL_RenderDrawRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }
 
-func (re *Renderer) FillRects(rects []Rect) {
-	C.SDL_RenderFillRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects)))
+func (re *Renderer) DrawRects(rects []Rect) error {
+	return ek(C.SDL_RenderDrawRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
 }
 
-func (re *Renderer) CopyEx(texture *Texture, src, dst *Rect, angle float64, center *Point, flip RendererFlip) {
-	C.SDL_RenderCopyEx(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst)),
-		C.double(angle), (*C.SDL_Point)(unsafe.Pointer(center)), C.SDL_RendererFlip(flip))
+func (re *Renderer) FillRect(rect *Rect) error {
+	return ek(C.SDL_RenderFillRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }
 
-func (re *Renderer) Copy(texture *Texture, src, dst *Rect) {
-	C.SDL_RenderCopy(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst)))
+func (re *Renderer) FillRects(rects []Rect) error {
+	return ek(C.SDL_RenderFillRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
+}
+
+func (re *Renderer) CopyEx(texture *Texture, src, dst *Rect, angle float64, center *Point, flip RendererFlip) error {
+	return ek(C.SDL_RenderCopyEx(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst)),
+		C.double(angle), (*C.SDL_Point)(unsafe.Pointer(center)), C.SDL_RendererFlip(flip)))
+}
+
+func (re *Renderer) Copy(texture *Texture, src, dst *Rect) error {
+	return ek(C.SDL_RenderCopy(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst))))
 }
 
 func (re *Renderer) ReadPixels(rect *Rect, format uint32, pixels []byte, pitch int) error {
