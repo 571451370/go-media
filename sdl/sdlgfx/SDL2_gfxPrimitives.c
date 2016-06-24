@@ -2841,7 +2841,7 @@ int filledPolygonRGBAMT(SDL_Renderer * renderer, const SDL_Point *pts, int n, Ui
 	/*
 	* Determine Y maxima 
 	*/
-	miny = pts[0].x;
+	miny = pts[0].y;
 	maxy = pts[0].y;
 	for (i = 1; (i < n); i++) {
 		if (pts[i].y < miny) {
