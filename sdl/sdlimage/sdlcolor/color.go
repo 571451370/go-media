@@ -1,6 +1,6 @@
 package sdlcolor
 
-import "github.com/qeedquan/go-sdl/sdl"
+import "github.com/qeedquan/go-gfx/sdl"
 
 var (
 	White       = sdl.Color{255, 255, 255, 255}

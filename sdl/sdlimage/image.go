@@ -16,8 +16,8 @@ import (
 	"reflect"
 	"unsafe"
 
-	_ "github.com/qeedquan/go-sdl/image/tga"
-	"github.com/qeedquan/go-sdl/sdl"
+	_ "github.com/qeedquan/go-gfx/image/tga"
+	"github.com/qeedquan/go-gfx/sdl"
 )
 
 func LoadTextureFile(re *sdl.Renderer, name string) (*sdl.Texture, error) {

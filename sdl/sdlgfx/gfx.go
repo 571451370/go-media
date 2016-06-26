@@ -10,7 +10,7 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/qeedquan/go-sdl/sdl"
+	"github.com/qeedquan/go-gfx/sdl"
 )
 
 func Pixel(re *sdl.Renderer, x, y int, c sdl.Color) error {

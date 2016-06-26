@@ -30,6 +30,17 @@ func (p Vec2) Normalize() Vec2 {
 	return Vec2{p.X / l, p.Y / l}
 }
 
+func (p Vec2) Scale(kx, ky float64) Vec2 {
+	return Vec2{p.X * kx, p.Y * ky}
+}
+
+func (p Vec2) Lerp(q Vec2, t float64) Vec2 {
+	return Vec2{
+		Lerp(p.X, q.X, t),
+		Lerp(p.Y, q.Y, t),
+	}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -58,12 +69,24 @@ func (p Vec3) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
+func (p Vec3) Scale(kx, ky, kz float64) Vec3 {
+	return Vec3{p.X * kx, p.Y * ky, p.Z * kz}
+}
+
 func (p Vec3) Normalize() Vec3 {
 	l := p.Len()
 	if l == 0 {
 		return Vec3{}
 	}
 	return Vec3{p.X / l, p.Y / l, p.Z / l}
+}
+
+func (p Vec3) Lerp(q Vec3, t float64) Vec3 {
+	return Vec3{
+		Lerp(p.X, q.X, t),
+		Lerp(p.Y, q.Y, t),
+		Lerp(p.Z, q.Z, t),
+	}
 }
 
 type Vec4 struct {
@@ -75,3 +98,9 @@ func (p Vec4) Dot(q Vec4) float64 {
 }
 
 type Mat4 [4][4]float64
+
+type Quat [4]float64
+
+func Lerp(a, b, t float64) float64 {
+	return a*t + (1-t)*b
+}
