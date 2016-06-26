@@ -114,3 +114,18 @@ type Quat struct {
 func Lerp(a, b, t float64) float64 {
 	return a*t + (1-t)*b
 }
+
+func Smoothstep(a, b, x float64) float64 {
+	t := Clamp((x-a)/(b-a), 0, 1)
+	return t * t * (3 - 2*t)
+}
+
+func Clamp(x, s, e float64) float64 {
+	if x < s {
+		x = s
+	}
+	if x > e {
+		x = e
+	}
+	return x
+}
