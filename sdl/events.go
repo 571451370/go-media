@@ -91,7 +91,7 @@ type CommonEvent struct {
 type WindowEvent struct {
 	CommonEvent
 	WindowID uint32
-	Event    uint8
+	Event    WindowEventID
 	Data     [2]int32
 }
 
@@ -322,7 +322,7 @@ func PollEvent() Event {
 		return WindowEvent{
 			CommonEvent{EventType(pev._type), uint32(pev.timestamp)},
 			uint32(pev.windowID),
-			uint8(pev.event),
+			WindowEventID(pev.event),
 			[2]int32{int32(pev.data1), int32(pev.data2)},
 		}
 
