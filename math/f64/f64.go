@@ -41,6 +41,10 @@ func (p Vec2) Lerp(q Vec2, t float64) Vec2 {
 	}
 }
 
+func (p Vec2) Distance(q Vec2) float64 {
+	return p.Sub(q).Len()
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -79,6 +83,10 @@ func (p Vec3) Normalize() Vec3 {
 		return Vec3{}
 	}
 	return Vec3{p.X / l, p.Y / l, p.Z / l}
+}
+
+func (p Vec3) Distance(q Vec3) float64 {
+	return p.Sub(q).Len()
 }
 
 func (p Vec3) Lerp(q Vec3, t float64) Vec3 {
