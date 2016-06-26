@@ -20,6 +20,10 @@ var (
 	ColorModel = color.NRGBAModel
 )
 
+func (c Color) RGBA() (r, g, b, a uint32) {
+	return color.NRGBA(c).RGBA()
+}
+
 func (p *PixelFormat) Format() uint32       { return uint32(p.fmt.format) }
 func (p *PixelFormat) Palette() *Palette    { return (*Palette)(p.fmt.palette) }
 func (p *PixelFormat) BitsPerPixel() uint8  { return uint8(p.fmt.BitsPerPixel) }
