@@ -1,6 +1,9 @@
 package f64
 
-import "math"
+import (
+	"image/color"
+	"math"
+)
 
 type Vec2 struct {
 	X, Y float64
@@ -97,12 +100,32 @@ func (p Vec3) Lerp(q Vec3, t float64) Vec3 {
 	}
 }
 
+func (p Vec3) RGBA() (r, g, b, a uint32) {
+	c := color.RGBA{
+		uint8(Clamp(p.X*255, 0, 255)),
+		uint8(Clamp(p.Y*255, 0, 255)),
+		uint8(Clamp(p.Z*255, 0, 255)),
+		255,
+	}
+	return c.RGBA()
+}
+
 type Vec4 struct {
 	X, Y, Z, W float64
 }
 
 func (p Vec4) Dot(q Vec4) float64 {
 	return p.X*q.X + p.Y*q.Y + p.Z*q.Z + p.W*q.W
+}
+
+func (p Vec4) RGBA() (r, g, b, a uint32) {
+	c := color.RGBA{
+		uint8(Clamp(p.X*255, 0, 255)),
+		uint8(Clamp(p.Y*255, 0, 255)),
+		uint8(Clamp(p.Z*255, 0, 255)),
+		uint8(Clamp(p.W*255, 0, 255)),
+	}
+	return c.RGBA()
 }
 
 type Mat4 [4][4]float64
