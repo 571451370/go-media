@@ -1,5 +1,7 @@
 package f64
 
+import "math"
+
 type Vec2 struct {
 	X, Y float64
 }
@@ -16,6 +18,10 @@ func (p Vec2) Dot(q Vec2) float64 {
 	return p.X*q.X + p.Y*q.Y
 }
 
+func (p Vec2) Len() float64 {
+	return math.Sqrt(p.X*p.X + p.Y*p.Y)
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -30,6 +36,10 @@ func (p Vec3) Sub(q Vec3) Vec3 {
 
 func (p Vec3) Dot(q Vec3) float64 {
 	return p.X*q.X + p.Y*q.Y + p.Z*q.Z
+}
+
+func (p Vec3) Len() float64 {
+	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
 type Vec4 struct {
