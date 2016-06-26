@@ -99,7 +99,9 @@ func (p Vec4) Dot(q Vec4) float64 {
 
 type Mat4 [4][4]float64
 
-type Quat [4]float64
+type Quat struct {
+	R, I, J, K float64
+}
 
 func Lerp(a, b, t float64) float64 {
 	return a*t + (1-t)*b
