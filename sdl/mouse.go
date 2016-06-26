@@ -34,19 +34,19 @@ func GetMouseFocus() *Window {
 func GetMouseState() (button uint32, x, y int) {
 	var cx, cy C.int
 	cbutton := C.SDL_GetMouseState(&cx, &cy)
-	return uint32(cbutton), int(x), int(y)
+	return uint32(cbutton), int(cx), int(cy)
 }
 
 func GetGlobalMouseState() (button uint32, x, y int) {
 	var cx, cy C.int
 	cbutton := C.SDL_GetGlobalMouseState(&cx, &cy)
-	return uint32(cbutton), int(x), int(y)
+	return uint32(cbutton), int(cx), int(cy)
 }
 
 func GetRelativeMouseState() (button uint32, x, y int) {
 	var cx, cy C.int
 	cbutton := C.SDL_GetRelativeMouseState(&cx, &cy)
-	return uint32(cbutton), int(x), int(y)
+	return uint32(cbutton), int(cx), int(cy)
 }
 
 func GetCursor() *Cursor {
