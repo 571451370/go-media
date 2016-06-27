@@ -148,6 +148,24 @@ func (m *Aff2) Translate(v Vec2) *Aff2 {
 	return m.Mul(m, t)
 }
 
+func (m *Aff2) Scale(v Vec2) *Aff2 {
+	s := &Aff2{
+		{v.X, 0, 0},
+		{0, v.Y, 0},
+		{0, 0, 1},
+	}
+	return m.Mul(m, s)
+}
+
+func (m *Aff2) Shear(v Vec2) *Aff2 {
+	s := &Aff2{
+		{0, v.X, 0},
+		{v.Y, 0, 0},
+		{0, 0, 1},
+	}
+	return m.Mul(m, s)
+}
+
 func (m *Aff2) Rotate(rad float64) *Aff2 {
 	s, c := math.Sincos(rad)
 	r := &Aff2{
