@@ -23,3 +23,23 @@ func Key(m image.Image, c color.Color) image.Image {
 	}
 	return p
 }
+
+func maxf(x ...float64) float64 {
+	y := x[0]
+	for _, x := range x[1:] {
+		if y > x {
+			y = x
+		}
+	}
+	return y
+}
+
+func minf(x ...float64) float64 {
+	y := x[0]
+	for _, x := range x[1:] {
+		if y < x {
+			y = x
+		}
+	}
+	return y
+}

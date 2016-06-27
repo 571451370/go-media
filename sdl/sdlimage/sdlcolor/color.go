@@ -1,6 +1,9 @@
 package sdlcolor
 
 import (
+	"image/color"
+	"math"
+
 	"github.com/qeedquan/go-gfx/math/f64"
 	"github.com/qeedquan/go-gfx/sdl"
 )
@@ -17,6 +20,97 @@ type HSL struct {
 
 type HSV struct {
 	H, S, V float64
+}
+
+var (
+	HSVModel = color.ModelFunc(hsvModel)
+	HSLModel = color.ModelFunc(hslModel)
+)
+
+func hsvModel(c color.Color) color.Color {
+	n := color.NRGBAModel.Convert(c).(color.NRGBA)
+	r := float64(n.R) / 255
+	g := float64(n.G) / 255
+	b := float64(n.B) / 255
+
+	max := maxf(r, g, b)
+	min := minf(r, g, b)
+	eps := 1e-4
+	d := max - min
+
+	var h, s, v float64
+
+	v = max
+	if max != 0 {
+		s = d / max
+	}
+	if math.Abs(max-min) < eps {
+		h = 0
+	} else {
+		switch {
+		case math.Abs(max-r) < eps:
+			h = (g - b) / d
+			if g < b {
+				h += 6
+			}
+		case math.Abs(max-g) < eps:
+			h = (b-r)/d + 2
+		case math.Abs(max-b) < eps:
+			h = (r-g)/d + 4
+		}
+		h /= 6
+	}
+
+	return HSV{h, s, v}
+}
+
+func hslModel(c color.Color) color.Color {
+	n := color.NRGBAModel.Convert(c).(color.NRGBA)
+	r := float64(n.R) / 255
+	g := float64(n.G) / 255
+	b := float64(n.B) / 255
+
+	max := maxf(r, g, b)
+	min := minf(r, g, b)
+	eps := 1e-4
+
+	var h, s, l float64
+	l = (max + min) / 2
+	if math.Abs(max-min) < eps {
+		h, s, l = 0, 0, 0
+	} else {
+		d := max - min
+		if l > 0.5 {
+			s = d / (2 - max - min)
+		} else {
+			s = d / (max + min)
+		}
+		switch {
+		case math.Abs(max-r) < eps:
+			h = (g - b) / d
+			if g < b {
+				h += 6
+			}
+		case math.Abs(max-g) < eps:
+			h = (b-r)/d + 2
+		case math.Abs(max-b) < eps:
+			h = (r-g)/d + 4
+		}
+
+		h /= 6
+	}
+
+	return HSL{h, s, l}
+}
+
+func (h HSV) RGBA() (r, g, b, a uint32) {
+	hue := (2 - h.S) * h.V
+	if hue >= 1 {
+		hue = 2 - hue
+	}
+	sat := h.S * h.V / hue
+	hsl := HSL{h.H, sat, hue / 2}
+	return hsl.RGBA()
 }
 
 func (h HSL) RGBA() (r, g, b, a uint32) {
