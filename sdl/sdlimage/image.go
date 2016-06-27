@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"unsafe"
 
+	_ "github.com/qeedquan/go-gfx/image/psd"
 	_ "github.com/qeedquan/go-gfx/image/tga"
 	"github.com/qeedquan/go-gfx/sdl"
 )
