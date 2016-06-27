@@ -12,6 +12,9 @@ var (
 	White       = sdl.Color{255, 255, 255, 255}
 	Black       = sdl.Color{0, 0, 0, 255}
 	Transparent = sdl.Color{0, 0, 0, 0}
+	Red         = sdl.Color{255, 0, 0, 255}
+	Blue        = sdl.Color{0, 0, 255, 255}
+	Green       = sdl.Color{0, 255, 0, 255}
 )
 
 type HSL struct {
@@ -23,12 +26,33 @@ type HSV struct {
 }
 
 var (
-	HSVModel = color.ModelFunc(hsvModel)
-	HSLModel = color.ModelFunc(hslModel)
+	HSVModel   = color.ModelFunc(hsvModel)
+	HSLModel   = color.ModelFunc(hslModel)
+	Vec3dModel = color.ModelFunc(vec3dModel)
+	Vec4dModel = color.ModelFunc(vec4dModel)
 )
 
+func vec3dModel(c color.Color) color.Color {
+	n := color.RGBAModel.Convert(c).(color.RGBA)
+	return f64.Vec3{
+		float64(n.R) / 255,
+		float64(n.G) / 255,
+		float64(n.B) / 255,
+	}
+}
+
+func vec4dModel(c color.Color) color.Color {
+	n := color.RGBAModel.Convert(c).(color.RGBA)
+	return f64.Vec4{
+		float64(n.R) / 255,
+		float64(n.G) / 255,
+		float64(n.B) / 255,
+		float64(n.A) / 255,
+	}
+}
+
 func hsvModel(c color.Color) color.Color {
-	n := color.NRGBAModel.Convert(c).(color.NRGBA)
+	n := color.RGBAModel.Convert(c).(color.RGBA)
 	r := float64(n.R) / 255
 	g := float64(n.G) / 255
 	b := float64(n.B) / 255
@@ -65,7 +89,7 @@ func hsvModel(c color.Color) color.Color {
 }
 
 func hslModel(c color.Color) color.Color {
-	n := color.NRGBAModel.Convert(c).(color.NRGBA)
+	n := color.RGBAModel.Convert(c).(color.RGBA)
 	r := float64(n.R) / 255
 	g := float64(n.G) / 255
 	b := float64(n.B) / 255

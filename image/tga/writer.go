@@ -9,7 +9,13 @@ import (
 
 func Encode(w io.Writer, m image.Image) (err error) {
 	bw := bufio.NewWriter(w)
-	defer bw.Flush()
+	defer func() {
+		xerr := bw.Flush()
+		if err == nil {
+			err = xerr
+		}
+	}()
+
 	width, height := m.Bounds().Dx(), m.Bounds().Dy()
 	head := header{
 		Type:   2,
