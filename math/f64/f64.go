@@ -48,6 +48,10 @@ func (p Vec2) Distance(q Vec2) float64 {
 	return p.Sub(q).Len()
 }
 
+func (p Vec2) Polar() Polar {
+	return Polar{p.Len(), math.Atan2(p.Y / p.X)}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -197,6 +201,15 @@ func (m *Aff2) Transform(v Vec2) Vec2 {
 }
 
 type Mat4 [4][4]float64
+
+type Polar struct {
+	R, P float64
+}
+
+func (p *Polar) Cartesian() Vec2 {
+	s, c := math.Sincos(p.P)
+	return Vec2{p.R * c, p.R * s}
+}
 
 type Quat struct {
 	R, I, J, K float64
