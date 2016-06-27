@@ -128,6 +128,56 @@ func (p Vec4) RGBA() (r, g, b, a uint32) {
 	return c.RGBA()
 }
 
+type Aff2 [3][3]float64
+
+func (m *Aff2) Identity() *Aff2 {
+	*m = Aff2{
+		{1, 0, 0},
+		{0, 1, 0},
+		{0, 0, 1},
+	}
+	return m
+}
+
+func (m *Aff2) Translate(v Vec2) *Aff2 {
+	t := &Aff2{
+		{1, 0, v.X},
+		{0, 1, v.Y},
+		{0, 0, 1},
+	}
+	return m.Mul(m, t)
+}
+
+func (m *Aff2) Rotate(rad float64) *Aff2 {
+	s, c := math.Sincos(rad)
+	r := &Aff2{
+		{c, -s, 0},
+		{s, c, 0},
+		{0, 0, 1},
+	}
+	return m.Mul(m, r)
+}
+
+func (m *Aff2) Mul(a, b *Aff2) *Aff2 {
+	var p Aff2
+	for i := range a {
+		for j := range a[i] {
+			for k := range a[j] {
+				p[i][j] += a[i][k] * b[k][j]
+			}
+		}
+	}
+	*m = p
+	return m
+}
+
+func (m *Aff2) Transform(v Vec2) Vec2 {
+	return Vec2{
+		m[0][0]*v.X + m[0][1]*v.Y + m[0][2],
+		m[1][0]*v.X + m[1][1]*v.Y + m[1][2],
+	}
+}
+
 type Mat4 [4][4]float64
 
 type Quat struct {
