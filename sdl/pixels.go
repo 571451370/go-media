@@ -17,8 +17,12 @@ type (
 )
 
 var (
-	ColorModel = color.NRGBAModel
+	ColorModel = color.ModelFunc(colorModel)
 )
+
+func colorModel(c color.Color) color.Color {
+	return Color(color.NRGBAModel.Convert(c).(color.NRGBA))
+}
 
 func (c Color) RGBA() (r, g, b, a uint32) {
 	return color.NRGBA(c).RGBA()
