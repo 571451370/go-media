@@ -49,7 +49,7 @@ func (p Vec2) Distance(q Vec2) float64 {
 }
 
 func (p Vec2) Polar() Polar {
-	return Polar{p.Len(), math.Atan2(p.Y / p.X)}
+	return Polar{p.Len(), math.Atan2(p.Y, p.X)}
 }
 
 type Vec3 struct {
