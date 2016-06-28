@@ -9,7 +9,7 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/qeedquan/go-gfx/sdl"
+	"github.com/qeedquan/go-media/sdl"
 )
 
 type Style int

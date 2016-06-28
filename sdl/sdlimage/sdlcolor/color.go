@@ -4,8 +4,8 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/qeedquan/go-gfx/math/f64"
-	"github.com/qeedquan/go-gfx/sdl"
+	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/sdl"
 )
 
 var (
