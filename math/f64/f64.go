@@ -132,15 +132,38 @@ func (p Vec4) RGBA() (r, g, b, a uint32) {
 	return c.RGBA()
 }
 
-type Aff2 [3][3]float64
+type Mat3 [3][3]float64
 
-func (m *Aff2) Identity() *Aff2 {
-	*m = Aff2{
+func (m *Mat3) Identity() *Mat3 {
+	*m = Mat3{
 		{1, 0, 0},
 		{0, 1, 0},
 		{0, 0, 1},
 	}
 	return m
+}
+
+func (m *Mat3) Mul(a, b *Mat3) *Mat3 {
+	var p Mat3
+	for i := range a {
+		for j := range a[i] {
+			for k := range a[j] {
+				p[i][j] += a[i][k] * b[k][j]
+			}
+		}
+	}
+	*m = p
+	return m
+}
+
+type Aff2 Mat3
+
+func (m *Aff2) Identity() *Aff2 {
+	return (*Aff2)((*Mat3)(m).Identity())
+}
+
+func (m *Aff2) Mul(a, b *Aff2) *Aff2 {
+	return (*Aff2)((*Mat3)(m).Mul((*Mat3)(a), (*Mat3)(b)))
 }
 
 func (m *Aff2) Translate(v Vec2) *Aff2 {
@@ -178,19 +201,6 @@ func (m *Aff2) Rotate(rad float64) *Aff2 {
 		{0, 0, 1},
 	}
 	return m.Mul(m, r)
-}
-
-func (m *Aff2) Mul(a, b *Aff2) *Aff2 {
-	var p Aff2
-	for i := range a {
-		for j := range a[i] {
-			for k := range a[j] {
-				p[i][j] += a[i][k] * b[k][j]
-			}
-		}
-	}
-	*m = p
-	return m
 }
 
 func (m *Aff2) Transform(v Vec2) Vec2 {
