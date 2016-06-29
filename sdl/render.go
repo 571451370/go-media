@@ -274,3 +274,13 @@ func (re *Renderer) LogicalSize() (width, height int) {
 func (re *Renderer) Clear() error {
 	return ek(C.SDL_RenderClear(re))
 }
+
+func (re *Renderer) SetBlendMode(blendMode BlendMode) error {
+	return ek(C.SDL_SetRenderDrawBlendMode(re, C.SDL_BlendMode(blendMode)))
+}
+
+func (re *Renderer) BlendMode() (BlendMode, error) {
+	var mode C.SDL_BlendMode
+	rc := C.SDL_GetRenderDrawBlendMode(re, &mode)
+	return BlendMode(mode), ek(rc)
+}
