@@ -56,7 +56,7 @@ const (
 	MESSAGEBOX_COLOR_MAX                                   = C.SDL_MESSAGEBOX_COLOR_MAX
 )
 
-func ShowSimpleMessageBox(flags uint32, title, message string, window *Window) error {
+func ShowSimpleMessageBox(flags MessageBoxFlags, title, message string, window *Window) error {
 	ctitle := C.CString(title)
 	cmessage := C.CString(message)
 	defer C.free(unsafe.Pointer(ctitle))
