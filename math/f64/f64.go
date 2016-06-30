@@ -212,6 +212,49 @@ func (m *Aff2) Transform(v Vec2) Vec2 {
 
 type Mat4 [4][4]float64
 
+func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
+	var p Mat4
+	for i := range a {
+		for j := range a[i] {
+			for k := range a[j] {
+				p[i][j] += a[i][k] * b[k][j]
+			}
+		}
+	}
+	*m = p
+	return m
+}
+
+func (m *Mat4) Perspective(fovy, aspect, near, far float64) *Mat4 {
+	f := math.Tan(fovy / 2)
+	z := near - far
+	p := &Mat4{
+		{1 / (f * aspect), 0, 0, 0},
+		{0, 1 / f, 0, 0},
+		{0, 0, (-near - far) / z, 2 * far * near / z},
+		{0, 0, 1, 0},
+	}
+	return m.Mul(m, p)
+}
+
+func (m *Mat4) Ortho(l, r, b, t, n, f float64) *Mat4 {
+	sx := 2 / (r - l)
+	sy := 2 / (t - b)
+	sz := -2 / (f - n)
+
+	tx := -(r + l) / (r - l)
+	ty := -(t + b) / (t - b)
+	tz := -(f + n) / (f - n)
+
+	o := &Mat4{
+		{sx, 0, 0, tx},
+		{0, sy, 0, ty},
+		{0, 0, sz, tz},
+		{0, 0, 0, 1},
+	}
+	return m.Mul(m, o)
+}
+
 type Polar struct {
 	R, P float64
 }

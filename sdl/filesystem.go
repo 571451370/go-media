@@ -6,7 +6,7 @@ package sdl
 import "C"
 import "unsafe"
 
-func BasePath() string {
+func GetBasePath() string {
 	return C.GoString(C.SDL_GetBasePath())
 }
 
