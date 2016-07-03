@@ -84,6 +84,8 @@ type Surface C.SDL_Surface
 
 func (s *Surface) Flags() uint32             { return uint32(s.flags) }
 func (s *Surface) Size() (width, height int) { return int(s.w), int(s.h) }
+func (s *Surface) PixelFormat() *PixelFormat { return &PixelFormat{s.format} }
+func (s *Surface) Pixels() []byte            { return C.GoBytes(s.pixels, s.w*s.h*C.int(s.format.BytesPerPixel)) }
 
 func CreateRGBSurface(flags uint32, width, height, depth int, rmask, gmask, bmask, amask uint32) (*Surface, error) {
 	s := (*Surface)(C.SDL_CreateRGBSurface(C.Uint32(flags), C.int(width), C.int(height), C.int(depth),
