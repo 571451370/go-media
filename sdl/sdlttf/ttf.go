@@ -56,6 +56,18 @@ func WasInit() bool {
 	return true
 }
 
+func OpenFontRW(rwops *sdl.RWOps, freeSrc bool, ptSize int) (*Font, error) {
+	var cfreeSrc C.int
+	if freeSrc {
+		cfreeSrc = 1
+	}
+	f := C.TTF_OpenFontRW((*C.struct_SDL_RWops)(rwops.Ops), cfreeSrc, C.int(ptSize))
+	if f == nil {
+		return nil, GetError()
+	}
+	return (*Font)(f), nil
+}
+
 func OpenFont(name string, ptSize int) (*Font, error) {
 	cs := C.CString(name)
 	defer C.free(unsafe.Pointer(cs))

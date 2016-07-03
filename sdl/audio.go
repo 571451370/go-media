@@ -6,7 +6,6 @@ package sdl
 import "C"
 
 import (
-	"reflect"
 	"sync"
 	"unsafe"
 )
@@ -146,11 +145,6 @@ func (a *audio) AddCallback(f AudioCallback) int {
 
 //export goAudioCallback
 func goAudioCallback(p unsafe.Pointer, stream *C.Uint8, len C.int) {
-	var buf []byte
-	sl := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
-	sl.Data = uintptr(unsafe.Pointer(stream))
-	sl.Len = int(len)
-	sl.Cap = sl.Len
-
+	buf := C.GoBytes(unsafe.Pointer(stream), len)
 	xaudio.callbacks[uintptr(p)](buf)
 }

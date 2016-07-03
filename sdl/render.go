@@ -4,10 +4,7 @@ package sdl
 #include "sdl.h"
 */
 import "C"
-import (
-	"reflect"
-	"unsafe"
-)
+import "unsafe"
 
 type (
 	Renderer        C.SDL_Renderer
@@ -174,16 +171,13 @@ func (t *Texture) Lock(rect *Rect) ([]byte, error) {
 		return nil, GetError()
 	}
 
-	var buf []byte
-	sl := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
-	sl.Data = uintptr(pixels)
+	var length C.int
 	if rect == nil {
-		sl.Len = int(pitch) * int(height)
+		length = pitch * C.int(height)
 	} else {
-		sl.Len = int(pitch) * int(rect.H)
+		length = pitch * C.int(rect.H)
 	}
-	sl.Cap = sl.Len
-	return buf, nil
+	return C.GoBytes(pixels, length), nil
 }
 
 func (t *Texture) Unlock() {

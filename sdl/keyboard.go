@@ -4,10 +4,7 @@ package sdl
 #include "sdl.h"
 */
 import "C"
-import (
-	"reflect"
-	"unsafe"
-)
+import "unsafe"
 
 type (
 	Scancode C.SDL_Scancode
@@ -32,14 +29,8 @@ func GetKeyFromName(name string) Keycode {
 
 func GetKeyboardState() []uint8 {
 	var numkeys C.int
-	var keystate []uint8
-
 	state := C.SDL_GetKeyboardState(&numkeys)
-	sl := (*reflect.SliceHeader)((unsafe.Pointer(&keystate)))
-	sl.Cap = int(numkeys)
-	sl.Len = int(numkeys)
-	sl.Data = uintptr(unsafe.Pointer(state))
-	return keystate
+	return C.GoBytes(unsafe.Pointer(state), numkeys)
 }
 
 func StartTextInput() {
