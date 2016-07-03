@@ -13,8 +13,6 @@ import (
 	_ "image/png"
 	"io"
 	"os"
-	"reflect"
-	"unsafe"
 
 	_ "github.com/qeedquan/go-media/image/psd"
 	_ "github.com/qeedquan/go-media/image/tga"
@@ -43,12 +41,8 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	r := m.Bounds()
 	w, h := r.Dx(), r.Dy()
 
-	var p []byte
 	b := C.malloc(C.size_t(w * h * 4))
-	l := (*reflect.SliceHeader)(unsafe.Pointer(&p))
-	l.Data = uintptr(b)
-	l.Len = w * h * 4
-	l.Cap = l.Len
+	p := C.GoBytes(b, C.int(w*h*4))
 
 	n := &image.NRGBA{p, w * 4, r}
 	draw.Draw(n, n.Bounds(), m, image.ZP, draw.Src)
