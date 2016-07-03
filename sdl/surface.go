@@ -68,6 +68,10 @@ void setPixel(SDL_Surface *surface, size_t x, size_t y, Uint32 pixel) {
 	}
 	SDL_UnlockSurface(surface);
 }
+
+int blitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
+	return SDL_BlitSurface(src, srcrect, dst, dstrect);
+}
 */
 import "C"
 import (
@@ -107,6 +111,20 @@ func (s *Surface) ClipRect() Rect {
 	var rect Rect
 	C.SDL_GetClipRect(s, (*C.SDL_Rect)(unsafe.Pointer(&rect)))
 	return rect
+}
+
+func (s *Surface) FillRect(rect *Rect, c Color) {
+	col := uint32(c.R) | uint32(c.G)<<8 | uint32(c.B)<<16 | uint32(c.A)<<24
+	C.SDL_FillRect(s, (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(col))
+}
+
+func (s *Surface) FillRects(rects []Rect, c Color) {
+	col := uint32(c.R) | uint32(c.G)<<8 | uint32(c.B)<<16 | uint32(c.A)<<24
+	C.SDL_FillRects(s, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects)), C.Uint32(col))
+}
+
+func BlitSurface(src *Surface, srcrect *Rect, dst *Surface, dstrect *Rect) error {
+	return ek(C.blitSurface(src, (*C.SDL_Rect)(unsafe.Pointer(srcrect)), dst, (*C.SDL_Rect)(unsafe.Pointer(dstrect))))
 }
 
 func (s *Surface) Lock() error {
