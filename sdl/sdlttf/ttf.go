@@ -71,6 +71,15 @@ func OpenFontRW(rwops *sdl.RWOps, freeSrc bool, ptSize int) (*Font, error) {
 	return (*Font)(f), nil
 }
 
+func OpenFontMem(mem []byte, ptSize int) (*Font, error) {
+	rw, err := sdl.RWFromConstMem(mem)
+	if err != nil {
+		return nil, err
+	}
+	defer rw.Free()
+	return OpenFontRW(rw, false, ptSize)
+}
+
 func OpenFont(name string, ptSize int) (*Font, error) {
 	cs := C.CString(name)
 	defer C.free(unsafe.Pointer(cs))
