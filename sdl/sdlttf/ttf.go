@@ -1,12 +1,15 @@
 package sdlttf
 
 /*
-#include "SDL_ttf.h"
+#include "ttf.h"
 */
 import "C"
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"reflect"
 	"unsafe"
 
 	"github.com/qeedquan/go-media/sdl"
@@ -274,4 +277,51 @@ func (f *Font) StyleName() string {
 
 func (f *Font) GlyphIsProvided(ch rune) int {
 	return int(C.TTF_GlyphIsProvided((*C.TTF_Font)(f), C.Uint16(ch)))
+}
+
+func (f *Font) SizeUTF8Ex(text interface{}) (width, height int, err error) {
+	var cw, ch C.int
+	var rc C.int
+	switch p := text.(type) {
+	case string:
+		s := (*reflect.StringHeader)(unsafe.Pointer(&p))
+		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(s.Data)), C.size_t(len(p)), &cw, &ch)
+	case []byte:
+		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), &cw, &ch)
+	case *bytes.Buffer:
+		b := p.Bytes()
+		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), &cw, &ch)
+	default:
+		panic(fmt.Errorf("unsupported type %T", p))
+	}
+
+	width = int(cw)
+	height = int(ch)
+	if rc < 0 {
+		err = GetError()
+	}
+	return
+}
+
+func (f *Font) RenderUTF8BlendedEx(surface *sdl.Surface, text interface{}, fg sdl.Color) (sdl.Rect, error) {
+	var cs *C.SDL_Surface
+	var r C.SDL_Rect
+
+	switch p := text.(type) {
+	case string:
+		s := (*reflect.StringHeader)(unsafe.Pointer(&p))
+		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(s.Data)), C.size_t(len(p)), color(fg))
+	case []byte:
+		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
+	case *bytes.Buffer:
+		b := p.Bytes()
+		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), color(fg))
+	default:
+		panic(fmt.Errorf("unsupported type %T", p))
+	}
+
+	if cs == nil {
+		return sdl.Rect{}, GetError()
+	}
+	return sdl.Rect{X: int32(r.x), Y: int32(r.y), W: int32(r.w), H: int32(r.h)}, nil
 }
