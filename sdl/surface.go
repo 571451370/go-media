@@ -30,7 +30,7 @@ Uint32 getPixel(SDL_Surface *surface, size_t x, size_t y) {
         break;
 
     default:
-    	c = 0;
+		c = 0;
 	}
 	SDL_UnlockSurface(surface);
 	return c;
@@ -65,7 +65,7 @@ void setPixel(SDL_Surface *surface, size_t x, size_t y, Uint32 pixel) {
     case 4:
         *(Uint32 *)p = pixel;
         break;
-    }
+	}
 	SDL_UnlockSurface(surface);
 }
 */
