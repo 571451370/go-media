@@ -269,7 +269,15 @@ type Quat struct {
 }
 
 func Lerp(a, b, t float64) float64 {
-	return a*t + (1-t)*b
+	return a + t*(b-a)
+}
+
+func Unlerp(a, b, t float64) float64 {
+	return (t - a) / (b - a)
+}
+
+func LinearRemap(x, a, b, c, d float64) float64 {
+	return Lerp(c, d, Unlerp(a, b, x))
 }
 
 func Smoothstep(a, b, x float64) float64 {
