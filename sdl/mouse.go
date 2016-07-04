@@ -57,6 +57,22 @@ func GetDefaultCursor() *Cursor {
 	return (*Cursor)(C.SDL_GetDefaultCursor())
 }
 
+func WarpMouseInWindow(w *Window, x, y int) {
+	C.SDL_WarpMouseInWindow(w, C.int(x), C.int(y))
+}
+
+func WarpMouseGlobal(x, y int) error {
+	return ek(C.SDL_WarpMouseGlobal(C.int(x), C.int(y)))
+}
+
+func CaptureMouse(enabled bool) error {
+	return ek(C.SDL_CaptureMouse(truth(enabled)))
+}
+
+func GetRelativeMouseMode() bool {
+	return C.SDL_GetRelativeMouseMode() != 0
+}
+
 func (c *Cursor) Free() {
 	C.SDL_FreeCursor(c)
 }
