@@ -278,3 +278,21 @@ func (re *Renderer) BlendMode() (BlendMode, error) {
 	rc := C.SDL_GetRenderDrawBlendMode(re, &mode)
 	return BlendMode(mode), ek(rc)
 }
+
+func (re *Renderer) SetViewport(rect *Rect) error {
+	return ek(C.SDL_RenderSetViewport(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
+}
+
+func (re *Renderer) Viewport() Rect {
+	var r C.SDL_Rect
+	C.SDL_RenderGetViewport(re, &r)
+	return Rect{int32(r.x), int32(r.y), int32(r.w), int32(r.h)}
+}
+
+func (re *Renderer) IsClipEnabled() bool {
+	return C.SDL_RenderIsClipEnabled(re) != 0
+}
+
+func (re *Renderer) SetScale(scaleX, scaleY float64) error {
+	return ek(C.SDL_RenderSetScale(re, C.float(scaleX), C.float(scaleY)))
+}
