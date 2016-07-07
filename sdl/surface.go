@@ -80,6 +80,13 @@ import (
 	"unsafe"
 )
 
+const (
+	SWSURFACE = C.SDL_SWSURFACE
+	PREALLOC  = C.SDL_PREALLOC
+	RLEACCEL  = C.SDL_RLEACCEL
+	DONTFREE  = C.SDL_DONTFREE
+)
+
 type Surface C.SDL_Surface
 
 func (s *Surface) Flags() uint32             { return uint32(s.flags) }

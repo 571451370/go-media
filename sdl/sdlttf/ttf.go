@@ -318,8 +318,15 @@ func (f *Font) RenderUTF8BlendedEx(surface *sdl.Surface, text interface{}, fg sd
 
 	switch p := text.(type) {
 	case string:
-		s := (*reflect.StringHeader)(unsafe.Pointer(&p))
-		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(s.Data)), C.size_t(len(p)), color(fg))
+		if len(p) < 512 {
+			var buf [512]byte
+			copy(buf[:], p[:])
+			cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), color(fg))
+		} else {
+			cstr := C.CString(p)
+			defer C.free(unsafe.Pointer(cstr))
+			cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, cstr, C.size_t(len(p)), color(fg))
+		}
 	case []byte:
 		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
 	case *bytes.Buffer:
