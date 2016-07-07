@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 	"unsafe"
 
 	"github.com/qeedquan/go-media/sdl"
@@ -293,8 +292,15 @@ func (f *Font) SizeUTF8Ex(text interface{}) (width, height int, err error) {
 	var rc C.int
 	switch p := text.(type) {
 	case string:
-		s := (*reflect.StringHeader)(unsafe.Pointer(&p))
-		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(s.Data)), C.size_t(len(p)), &cw, &ch)
+		if len(p) < 512 {
+			var buf [512]byte
+			copy(buf[:], p[:])
+			rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), &cw, &ch)
+		} else {
+			cstr := C.CString(p)
+			defer C.free(unsafe.Pointer(cstr))
+			rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(cstr)), C.size_t(len(p)), &cw, &ch)
+		}
 	case []byte:
 		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), &cw, &ch)
 	case *bytes.Buffer:
