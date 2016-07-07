@@ -176,7 +176,7 @@ func LoadWAV(name string) (*Chunk, error) {
 
 	c := C.loadWAV(cs)
 	if c == nil {
-		return nil, GetError()
+		return nil, fmt.Errorf("open %s: %v", name, GetError())
 	}
 	return (*Chunk)(c), nil
 }
@@ -187,7 +187,7 @@ func LoadMUS(name string) (*Music, error) {
 
 	mus := C.Mix_LoadMUS(cs)
 	if mus == nil {
-		return nil, GetError()
+		return nil, fmt.Errorf("open %s: %v", name, GetError())
 	}
 	return (*Music)(mus), nil
 }
