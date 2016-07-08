@@ -5,7 +5,10 @@ package sdl
 */
 import "C"
 
-import "unsafe"
+import (
+	"image"
+	"unsafe"
+)
 
 type Point struct {
 	X, Y int32
@@ -39,4 +42,21 @@ func (r Rect) Enclose(p []Point) Rect {
 	var res C.SDL_Rect
 	C.SDL_EnclosePoints((*C.SDL_Point)(unsafe.Pointer(&p[0])), C.int(len(p)), (*C.SDL_Rect)(unsafe.Pointer(&r)), &res)
 	return Rect{int32(res.x), int32(res.y), int32(res.w), int32(res.h)}
+}
+
+func (r Rect) Intersect(s Rect) Rect {
+	a := image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int(r.Y+r.H))
+	b := image.Rect(int(s.X), int(s.Y), int(s.X+s.W), int(s.Y+s.H))
+	c := a.Intersect(b)
+	return Rect{
+		X: int32(c.Min.X),
+		Y: int32(c.Min.Y),
+		W: int32(c.Dx()),
+		H: int32(c.Dy()),
+	}
+}
+
+func (r Rect) Collide(s Rect) bool {
+	p := r.Intersect(s)
+	return p.W != 0 && p.H != 0
 }
