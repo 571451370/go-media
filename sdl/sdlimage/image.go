@@ -17,6 +17,7 @@ import (
 	_ "github.com/qeedquan/go-media/image/psd"
 	_ "github.com/qeedquan/go-media/image/tga"
 	"github.com/qeedquan/go-media/sdl"
+	_ "golang.org/x/image/bmp"
 )
 
 func LoadTextureFile(re *sdl.Renderer, name string) (*sdl.Texture, error) {
@@ -55,4 +56,15 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	defer s.Free()
 
 	return re.CreateTextureFromSurface(s)
+}
+
+func LoadSurfaceImage(m image.Image) (*sdl.Surface, error) {
+	r := m.Bounds()
+	bpp, rmask, gmask, bmask, amask := sdl.PixelFormatEnumToMasks(sdl.PIXELFORMAT_ARGB8888)
+	s, err := sdl.CreateRGBSurface(sdl.SWSURFACE, r.Dx(), r.Dy(), bpp, rmask, gmask, bmask, amask)
+	if err != nil {
+		return nil, err
+	}
+	draw.Draw(s, s.Bounds(), m, r.Min, draw.Src)
+	return s, nil
 }

@@ -258,3 +258,15 @@ func (t *Texture) Update(rect *Rect, pixels interface{}, pitch int) error {
 	return ek(C.SDL_UpdateTexture(t, (*C.SDL_Rect)(unsafe.Pointer(rect)),
 		unsafe.Pointer(reflect.ValueOf(pixels).Pointer()), C.int(pitch)))
 }
+
+func (t *Texture) SetBlendMode(mode BlendMode) error {
+	return ek(C.SDL_SetTextureBlendMode(t, C.SDL_BlendMode(mode)))
+}
+
+func (s *Surface) SetBlendMode(blendMode BlendMode) error {
+	return ek(C.SDL_SetSurfaceBlendMode(s, C.SDL_BlendMode(blendMode)))
+}
+
+func (w *Window) SetIcon(icon *Surface) {
+	C.SDL_SetWindowIcon(w, icon)
+}

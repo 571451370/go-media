@@ -156,3 +156,11 @@ const (
 	PIXELFORMAT_NV12 = C.SDL_PIXELFORMAT_NV12
 	PIXELFORMAT_NV21 = C.SDL_PIXELFORMAT_NV21
 )
+
+func PixelFormatEnumToMasks(format uint32) (bpp int, rmask, gmask, bmask, amask uint32) {
+	var cbpp C.int
+	var cr, cg, cb, ca C.Uint32
+
+	C.SDL_PixelFormatEnumToMasks(C.Uint32(format), &cbpp, &cr, &cg, &cb, &ca)
+	return int(cbpp), uint32(cr), uint32(cg), uint32(cb), uint32(ca)
+}
