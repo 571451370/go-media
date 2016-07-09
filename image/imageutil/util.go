@@ -23,7 +23,7 @@ func LoadFile(name string) (*image.RGBA, error) {
 
 	m, _, err := image.Decode(f)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{Op: "decode", Path: name, Err: err}
 	}
 
 	if p, _ := m.(*image.RGBA); p != nil {
