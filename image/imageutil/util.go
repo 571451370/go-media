@@ -36,7 +36,7 @@ func LoadFile(name string) (*image.RGBA, error) {
 	return p, nil
 }
 
-func ColorKey(m image.Image, c color.Color) image.Image {
+func ColorKey(m image.Image, c color.Color) *image.RGBA {
 	p := image.NewRGBA(m.Bounds())
 	b := p.Bounds()
 
