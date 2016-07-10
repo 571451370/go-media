@@ -2708,6 +2708,10 @@ TTF_RenderUTF8_SolidEx(TTF_Font * font, SDL_Surface *textbuf, SDL_Rect *bounds,
 
 	/* Fill the palette with the foreground color */
 	palette = textbuf->format->palette;
+	if (!palette) {
+		TTF_SetError("Surface has no palette");
+		return NULL;
+	}
 	palette->colors[0].r = 255 - fg.r;
 	palette->colors[0].g = 255 - fg.g;
 	palette->colors[0].b = 255 - fg.b;

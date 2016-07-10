@@ -148,6 +148,10 @@ func (s *Surface) Free() {
 	C.SDL_FreeSurface(s)
 }
 
+func (s *Surface) Pitch() int {
+	return int(s.pitch)
+}
+
 func (s *Surface) ColorModel() color.Model {
 	return color.NRGBAModel
 }
