@@ -43,7 +43,7 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	w, h := r.Dx(), r.Dy()
 
 	b := C.malloc(C.size_t(w * h * 4))
-	p := C.GoBytes(b, C.int(w*h*4))
+	p := ((*[1 << 30]uint8)(b))[:w*h*4 : w*h*4]
 
 	n := &image.NRGBA{p, w * 4, r}
 	draw.Draw(n, n.Bounds(), m, image.ZP, draw.Src)

@@ -145,6 +145,6 @@ func (a *audio) AddCallback(f AudioCallback) int {
 
 //export goAudioCallback
 func goAudioCallback(p unsafe.Pointer, stream *C.Uint8, len C.int) {
-	buf := C.GoBytes(unsafe.Pointer(stream), len)
+	buf := ((*[1 << 30]byte)(unsafe.Pointer(stream)))[:len:len]
 	xaudio.callbacks[uintptr(p)](buf)
 }

@@ -177,7 +177,7 @@ func (t *Texture) Lock(rect *Rect) ([]byte, error) {
 	} else {
 		length = pitch * C.int(rect.H)
 	}
-	return C.GoBytes(pixels, length), nil
+	return ((*[1 << 30]uint8)(unsafe.Pointer(pixels)))[:length:length], nil
 }
 
 func (t *Texture) Unlock() {

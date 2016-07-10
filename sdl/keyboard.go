@@ -30,7 +30,7 @@ func GetKeyFromName(name string) Keycode {
 func GetKeyboardState() []uint8 {
 	var numkeys C.int
 	state := C.SDL_GetKeyboardState(&numkeys)
-	return C.GoBytes(unsafe.Pointer(state), numkeys)
+	return ((*[1 << 30]uint8)(unsafe.Pointer(state)))[:numkeys:numkeys]
 }
 
 func StartTextInput() {
