@@ -75,7 +75,6 @@ func OpenFontMem(mem []byte, ptSize int) (*Font, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rw.Free()
 	return OpenFontRW(rw, false, ptSize)
 }
 
