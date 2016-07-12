@@ -60,3 +60,11 @@ func (r Rect) Collide(s Rect) bool {
 	p := r.Intersect(s)
 	return p.W != 0 && p.H != 0
 }
+
+func (r Rect) CenterX() int {
+	return int(r.X + r.W/2)
+}
+
+func (r Rect) CenterY() int {
+	return int(r.Y + r.H/2)
+}
