@@ -17,6 +17,10 @@ type Keysym struct {
 	Mod      uint16
 }
 
+func GetKeyboardFocus() *Window {
+	return (*Window)(C.SDL_GetKeyboardFocus())
+}
+
 func GetKeyName(key Keycode) string {
 	return C.GoString(C.SDL_GetKeyName(C.SDL_Keycode(key)))
 }
@@ -33,6 +37,14 @@ func GetKeyboardState() []uint8 {
 	return ((*[1 << 30]uint8)(unsafe.Pointer(state)))[:numkeys:numkeys]
 }
 
+func GetModState() Keymod {
+	return Keymod(C.SDL_GetModState())
+}
+
+func SetModState(modstate Keymod) {
+	C.SDL_SetModState(C.SDL_Keymod(modstate))
+}
+
 func StartTextInput() {
 	C.SDL_StartTextInput()
 }
@@ -43,4 +55,16 @@ func IsTextInputActive() bool {
 
 func StopTextInput() {
 	C.SDL_StopTextInput()
+}
+
+func SetTextInputRect(r *Rect) {
+	C.SDL_SetTextInputRect((*C.SDL_Rect)(unsafe.Pointer(r)))
+}
+
+func HasScreenKeyboardSupport() bool {
+	return C.SDL_HasScreenKeyboardSupport() != 0
+}
+
+func IsScreenKeyboardShown(w *Window) bool {
+	return C.SDL_IsScreenKeyboardShown(w) != 0
 }
