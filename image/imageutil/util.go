@@ -46,7 +46,7 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 			col := m.At(x, y)
 			r, g, b, _ := col.RGBA()
 			if cr == r && cg == g && cb == b {
-				p.Set(x, y, color.RGBA{})
+				p.Set(x, y, color.Transparent)
 			} else {
 				p.Set(x, y, col)
 			}
