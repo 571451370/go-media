@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/qeedquan/go-media/image/imageutil"
 	_ "github.com/qeedquan/go-media/image/psd"
 	_ "github.com/qeedquan/go-media/image/tga"
 	"github.com/qeedquan/go-media/sdl"
@@ -56,6 +57,14 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	defer s.Free()
 
 	return re.CreateTextureFromSurface(s)
+}
+
+func LoadSurfaceFile(name string) (*sdl.Surface, error) {
+	m, err := imageutil.LoadFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return LoadSurfaceImage(m)
 }
 
 func LoadSurfaceImage(m image.Image) (*sdl.Surface, error) {
