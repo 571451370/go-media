@@ -270,3 +270,7 @@ func (s *Surface) SetBlendMode(blendMode BlendMode) error {
 func (w *Window) SetIcon(icon *Surface) {
 	C.SDL_SetWindowIcon(w, icon)
 }
+
+func (w *Window) SetFullscreen(flags uint32) error {
+	return ek(C.SDL_SetWindowFullscreen(w, C.Uint32(flags)))
+}
