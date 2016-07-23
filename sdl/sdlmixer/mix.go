@@ -10,6 +10,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"unsafe"
 )
 
@@ -176,7 +177,11 @@ func LoadWAV(name string) (*Chunk, error) {
 
 	c := C.loadWAV(cs)
 	if c == nil {
-		return nil, fmt.Errorf("open %s: %v", name, GetError())
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: name,
+			Err:  GetError(),
+		}
 	}
 	return (*Chunk)(c), nil
 }
@@ -187,7 +192,11 @@ func LoadMUS(name string) (*Music, error) {
 
 	mus := C.Mix_LoadMUS(cs)
 	if mus == nil {
-		return nil, fmt.Errorf("open %s: %v", name, GetError())
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: name,
+			Err:  GetError(),
+		}
 	}
 	return (*Music)(mus), nil
 }
