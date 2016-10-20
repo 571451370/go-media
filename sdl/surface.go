@@ -116,39 +116,39 @@ func CreateRGBSurfaceFrom(pixels []byte, width, height, depth, pitch int, rmask,
 }
 
 func (s *Surface) SetClipRect(rect Rect) {
-	C.SDL_SetClipRect(s, (*C.SDL_Rect)(unsafe.Pointer(&rect)))
+	C.SDL_SetClipRect((*C.SDL_Surface)(s), (*C.SDL_Rect)(unsafe.Pointer(&rect)))
 }
 
 func (s *Surface) ClipRect() Rect {
 	var rect Rect
-	C.SDL_GetClipRect(s, (*C.SDL_Rect)(unsafe.Pointer(&rect)))
+	C.SDL_GetClipRect((*C.SDL_Surface)(s), (*C.SDL_Rect)(unsafe.Pointer(&rect)))
 	return rect
 }
 
 func (s *Surface) FillRect(rect *Rect, c Color) {
 	col := uint32(c.R) | uint32(c.G)<<8 | uint32(c.B)<<16 | uint32(c.A)<<24
-	C.SDL_FillRect(s, (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(col))
+	C.SDL_FillRect((*C.SDL_Surface)(s), (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(col))
 }
 
 func (s *Surface) FillRects(rects []Rect, c Color) {
 	col := uint32(c.R) | uint32(c.G)<<8 | uint32(c.B)<<16 | uint32(c.A)<<24
-	C.SDL_FillRects(s, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects)), C.Uint32(col))
+	C.SDL_FillRects((*C.SDL_Surface)(s), (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects)), C.Uint32(col))
 }
 
 func BlitSurface(src *Surface, srcrect *Rect, dst *Surface, dstrect *Rect) error {
-	return ek(C.blitSurface(src, (*C.SDL_Rect)(unsafe.Pointer(srcrect)), dst, (*C.SDL_Rect)(unsafe.Pointer(dstrect))))
+	return ek(C.blitSurface((*C.SDL_Surface)(src), (*C.SDL_Rect)(unsafe.Pointer(srcrect)), (*C.SDL_Surface)(dst), (*C.SDL_Rect)(unsafe.Pointer(dstrect))))
 }
 
 func (s *Surface) Lock() error {
-	return ek(C.SDL_LockSurface(s))
+	return ek(C.SDL_LockSurface((*C.SDL_Surface)(s)))
 }
 
 func (s *Surface) Unlock() {
-	C.SDL_UnlockSurface(s)
+	C.SDL_UnlockSurface((*C.SDL_Surface)(s))
 }
 
 func (s *Surface) Free() {
-	C.SDL_FreeSurface(s)
+	C.SDL_FreeSurface((*C.SDL_Surface)(s))
 }
 
 func (s *Surface) Pitch() int {
@@ -165,12 +165,12 @@ func (s *Surface) Bounds() image.Rectangle {
 
 func (s *Surface) At(x, y int) color.Color {
 	var cr, cg, cb, ca C.Uint8
-	pixel := C.getPixel(s, C.size_t(x), C.size_t(y))
+	pixel := C.getPixel((*C.SDL_Surface)(s), C.size_t(x), C.size_t(y))
 	C.SDL_GetRGBA(pixel, s.format, &cr, &cg, &cb, &ca)
 	return color.NRGBA{uint8(cr), uint8(cg), uint8(cb), uint8(ca)}
 }
 
 func (s *Surface) Set(x, y int, c color.Color) {
 	p := color.NRGBAModel.Convert(c).(color.NRGBA)
-	C.setPixel(s, C.size_t(x), C.size_t(y), C.SDL_MapRGBA(s.format, C.Uint8(p.R), C.Uint8(p.G), C.Uint8(p.B), C.Uint8(p.A)))
+	C.setPixel((*C.SDL_Surface)(s), C.size_t(x), C.size_t(y), C.SDL_MapRGBA(s.format, C.Uint8(p.R), C.Uint8(p.G), C.Uint8(p.B), C.Uint8(p.A)))
 }

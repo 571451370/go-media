@@ -157,17 +157,17 @@ func CreateWindow(title string, x, y, w, h int, flags WindowFlags) (*Window, err
 }
 
 func (w *Window) Flags() WindowFlags {
-	return WindowFlags(C.SDL_GetWindowFlags(w))
+	return WindowFlags(C.SDL_GetWindowFlags((*C.SDL_Window)(w)))
 }
 
 func (w *Window) SetTitle(title string) {
 	ctitle := C.CString(title)
 	defer C.free(unsafe.Pointer(ctitle))
-	C.SDL_SetWindowTitle(w, ctitle)
+	C.SDL_SetWindowTitle((*C.SDL_Window)(w), ctitle)
 }
 
 func (w *Window) Title() string {
-	return C.GoString(C.SDL_GetWindowTitle(w))
+	return C.GoString(C.SDL_GetWindowTitle((*C.SDL_Window)(w)))
 }
 
 func GetGrabbedWindow() *Window {
@@ -175,61 +175,61 @@ func GetGrabbedWindow() *Window {
 }
 
 func (w *Window) SetBrightness(brightness float32) {
-	C.SDL_SetWindowBrightness(w, C.float(brightness))
+	C.SDL_SetWindowBrightness((*C.SDL_Window)(w), C.float(brightness))
 }
 
 func (w *Window) Brightness() float32 {
-	return float32(C.SDL_GetWindowBrightness(w))
+	return float32(C.SDL_GetWindowBrightness((*C.SDL_Window)(w)))
 }
 
 func (w *Window) SetSize(width, height int) {
-	C.SDL_SetWindowSize(w, C.int(width), C.int(height))
+	C.SDL_SetWindowSize((*C.SDL_Window)(w), C.int(width), C.int(height))
 }
 
 func (w *Window) Size() (width, height int) {
 	var cw, ch C.int
-	C.SDL_GetWindowSize(w, &cw, &ch)
+	C.SDL_GetWindowSize((*C.SDL_Window)(w), &cw, &ch)
 	return int(cw), int(ch)
 }
 
 func (w *Window) SetMinimumSize(minWidth, minHeight int) {
-	C.SDL_SetWindowMinimumSize(w, C.int(minWidth), C.int(minHeight))
+	C.SDL_SetWindowMinimumSize((*C.SDL_Window)(w), C.int(minWidth), C.int(minHeight))
 }
 
 func (w *Window) MinimumSize() (minWidth, minHeight int) {
 	var mw, mh C.int
-	C.SDL_GetWindowMinimumSize(w, &mw, &mh)
+	C.SDL_GetWindowMinimumSize((*C.SDL_Window)(w), &mw, &mh)
 	return int(mw), int(mh)
 }
 
 func (w *Window) SetMaximumSize(maxWidth, maxHeight int) {
-	C.SDL_SetWindowMaximumSize(w, C.int(maxWidth), C.int(maxHeight))
+	C.SDL_SetWindowMaximumSize((*C.SDL_Window)(w), C.int(maxWidth), C.int(maxHeight))
 }
 
 func (w *Window) MaximumSize() (maxWidth, maxHeight int) {
 	var mw, mh C.int
-	C.SDL_GetWindowMaximumSize(w, &mw, &mh)
+	C.SDL_GetWindowMaximumSize((*C.SDL_Window)(w), &mw, &mh)
 	return int(mw), int(mh)
 }
 
 func (w *Window) SetBordered(bordered bool) {
-	C.SDL_SetWindowBordered(w, truth(bordered))
+	C.SDL_SetWindowBordered((*C.SDL_Window)(w), truth(bordered))
 }
 
 func (w *Window) Show() {
-	C.SDL_ShowWindow(w)
+	C.SDL_ShowWindow((*C.SDL_Window)(w))
 }
 
 func (w *Window) Hide() {
-	C.SDL_HideWindow(w)
+	C.SDL_HideWindow((*C.SDL_Window)(w))
 }
 
 func (w *Window) Raise() {
-	C.SDL_RaiseWindow(w)
+	C.SDL_RaiseWindow((*C.SDL_Window)(w))
 }
 
 func (w *Window) Maximize() {
-	C.SDL_MaximizeWindow(w)
+	C.SDL_MaximizeWindow((*C.SDL_Window)(w))
 }
 
 func IsScreenSaverEnabled() bool {
@@ -255,22 +255,22 @@ func GLGetAttribute(attr GLattr) (int, error) {
 }
 
 func (t *Texture) Update(rect *Rect, pixels interface{}, pitch int) error {
-	return ek(C.SDL_UpdateTexture(t, (*C.SDL_Rect)(unsafe.Pointer(rect)),
+	return ek(C.SDL_UpdateTexture((*C.SDL_Texture)(t), (*C.SDL_Rect)(unsafe.Pointer(rect)),
 		unsafe.Pointer(reflect.ValueOf(pixels).Pointer()), C.int(pitch)))
 }
 
 func (t *Texture) SetBlendMode(mode BlendMode) error {
-	return ek(C.SDL_SetTextureBlendMode(t, C.SDL_BlendMode(mode)))
+	return ek(C.SDL_SetTextureBlendMode((*C.SDL_Texture)(t), C.SDL_BlendMode(mode)))
 }
 
 func (s *Surface) SetBlendMode(blendMode BlendMode) error {
-	return ek(C.SDL_SetSurfaceBlendMode(s, C.SDL_BlendMode(blendMode)))
+	return ek(C.SDL_SetSurfaceBlendMode((*C.SDL_Surface)(s), C.SDL_BlendMode(blendMode)))
 }
 
 func (w *Window) SetIcon(icon *Surface) {
-	C.SDL_SetWindowIcon(w, icon)
+	C.SDL_SetWindowIcon((*C.SDL_Window)(w), (*C.SDL_Surface)(icon))
 }
 
 func (w *Window) SetFullscreen(flags WindowFlags) error {
-	return ek(C.SDL_SetWindowFullscreen(w, C.Uint32(flags)))
+	return ek(C.SDL_SetWindowFullscreen((*C.SDL_Window)(w), C.Uint32(flags)))
 }

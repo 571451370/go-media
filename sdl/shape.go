@@ -12,7 +12,7 @@ const (
 )
 
 func (w *Window) IsShaped() bool {
-	return C.SDL_IsShapedWindow(w) != 0
+	return C.SDL_IsShapedWindow((*C.SDL_Window)(w)) != 0
 }
 
 type WindowShapeMode C.WindowShapeMode

@@ -40,7 +40,7 @@ func JoystickFromInstanceID(joyid JoystickID) *Joystick {
 }
 
 func (j *Joystick) Name() string {
-	return C.GoString(C.SDL_JoystickName(j))
+	return C.GoString(C.SDL_JoystickName((*C.SDL_Joystick)(j)))
 }
 
 func JoystickGetDeviceGUID(deviceIndex int) JoystickGUID {
@@ -48,7 +48,7 @@ func JoystickGetDeviceGUID(deviceIndex int) JoystickGUID {
 }
 
 func (j *Joystick) GUID() JoystickGUID {
-	return JoystickGUID(C.SDL_JoystickGetGUID(j))
+	return JoystickGUID(C.SDL_JoystickGetGUID((*C.SDL_Joystick)(j)))
 }
 
 func JoystickGetGUIDString(guid JoystickGUID) string {
@@ -64,27 +64,27 @@ func JoystickGetGUIDFromString(pch string) JoystickGUID {
 }
 
 func (j *Joystick) Attached() bool {
-	return C.SDL_JoystickGetAttached(j) != 0
+	return C.SDL_JoystickGetAttached((*C.SDL_Joystick)(j)) != 0
 }
 
 func (j *Joystick) ID() JoystickID {
-	return JoystickID(C.SDL_JoystickInstanceID(j))
+	return JoystickID(C.SDL_JoystickInstanceID((*C.SDL_Joystick)(j)))
 }
 
 func (j *Joystick) NumAxes() int {
-	return int(C.SDL_JoystickNumAxes(j))
+	return int(C.SDL_JoystickNumAxes((*C.SDL_Joystick)(j)))
 }
 
 func (j *Joystick) NumBalls() int {
-	return int(C.SDL_JoystickNumBalls(j))
+	return int(C.SDL_JoystickNumBalls((*C.SDL_Joystick)(j)))
 }
 
 func (j *Joystick) NumHats() int {
-	return int(C.SDL_JoystickNumHats(j))
+	return int(C.SDL_JoystickNumHats((*C.SDL_Joystick)(j)))
 }
 
 func (j *Joystick) NumButtons() int {
-	return int(C.SDL_JoystickNumButtons(j))
+	return int(C.SDL_JoystickNumButtons((*C.SDL_Joystick)(j)))
 }
 
 func JoystickUpdate() {
@@ -96,7 +96,7 @@ func JoystickEventState(state int) int {
 }
 
 func (j *Joystick) Axis(axis int) int16 {
-	return int16(C.SDL_JoystickGetAxis(j, C.int(axis)))
+	return int16(C.SDL_JoystickGetAxis((*C.SDL_Joystick)(j), C.int(axis)))
 }
 
 const (
@@ -112,23 +112,23 @@ const (
 )
 
 func (j *Joystick) Hat(hat int) uint8 {
-	return uint8(C.SDL_JoystickGetHat(j, C.int(hat)))
+	return uint8(C.SDL_JoystickGetHat((*C.SDL_Joystick)(j), C.int(hat)))
 }
 
 func (j *Joystick) Ball(ball int) (dx, dy int, err error) {
 	var cx, cy C.int
-	rc := C.SDL_JoystickGetBall(j, C.int(ball), &cx, &cy)
+	rc := C.SDL_JoystickGetBall((*C.SDL_Joystick)(j), C.int(ball), &cx, &cy)
 	return int(cx), int(cy), ek(rc)
 }
 
 func (j *Joystick) Button(button int) uint8 {
-	return uint8(C.SDL_JoystickGetButton(j, C.int(button)))
+	return uint8(C.SDL_JoystickGetButton((*C.SDL_Joystick)(j), C.int(button)))
 }
 
 func (j *Joystick) Close() {
-	C.SDL_JoystickClose(j)
+	C.SDL_JoystickClose((*C.SDL_Joystick)(j))
 }
 
 func (j *Joystick) PowerLevel() JoystickPowerLevel {
-	return JoystickPowerLevel(C.SDL_JoystickCurrentPowerLevel(j))
+	return JoystickPowerLevel(C.SDL_JoystickCurrentPowerLevel((*C.SDL_Joystick)(j)))
 }

@@ -33,7 +33,7 @@ func HapticOpenFromMouse() (*Haptic, error) {
 }
 
 func (j *Joystick) IsHaptic() (bool, error) {
-	rc := C.SDL_JoystickIsHaptic(j)
+	rc := C.SDL_JoystickIsHaptic((*C.SDL_Joystick)(j))
 	if rc < 0 {
 		return false, GetError()
 	}
@@ -41,7 +41,7 @@ func (j *Joystick) IsHaptic() (bool, error) {
 }
 
 func HapticOpenFromJoystick(j *Joystick) (*Haptic, error) {
-	h := C.SDL_HapticOpenFromJoystick(j)
+	h := C.SDL_HapticOpenFromJoystick((*C.SDL_Joystick)(j))
 	if h == nil {
 		return nil, GetError()
 	}
@@ -49,43 +49,43 @@ func HapticOpenFromJoystick(j *Joystick) (*Haptic, error) {
 }
 
 func (h *Haptic) NumEffects() (int, error) {
-	rc := C.SDL_HapticNumEffects(h)
+	rc := C.SDL_HapticNumEffects((*C.SDL_Haptic)(h))
 	return int(rc), ek(rc)
 }
 
 func (h *Haptic) NumEffectsPlaying() (int, error) {
-	rc := C.SDL_HapticNumEffectsPlaying(h)
+	rc := C.SDL_HapticNumEffectsPlaying((*C.SDL_Haptic)(h))
 	return int(rc), ek(rc)
 }
 
 func (h *Haptic) Query() uint {
-	return uint(C.SDL_HapticQuery(h))
+	return uint(C.SDL_HapticQuery((*C.SDL_Haptic)(h)))
 }
 
 func (h *Haptic) Close() {
-	C.SDL_HapticClose(h)
+	C.SDL_HapticClose((*C.SDL_Haptic)(h))
 }
 
 func (h *Haptic) Pause() error {
-	return ek(C.SDL_HapticPause(h))
+	return ek(C.SDL_HapticPause((*C.SDL_Haptic)(h)))
 }
 
 func (h *Haptic) Unpause() error {
-	return ek(C.SDL_HapticUnpause(h))
+	return ek(C.SDL_HapticUnpause((*C.SDL_Haptic)(h)))
 }
 
 func (h *Haptic) StopAll() error {
-	return ek(C.SDL_HapticStopAll(h))
+	return ek(C.SDL_HapticStopAll((*C.SDL_Haptic)(h)))
 }
 
 func (h *Haptic) RumbleInit() error {
-	return ek(C.SDL_HapticRumbleInit(h))
+	return ek(C.SDL_HapticRumbleInit((*C.SDL_Haptic)(h)))
 }
 
 func (h *Haptic) RumblePlay(strength float32, length uint32) error {
-	return ek(C.SDL_HapticRumblePlay(h, C.float(strength), C.Uint32(length)))
+	return ek(C.SDL_HapticRumblePlay((*C.SDL_Haptic)(h), C.float(strength), C.Uint32(length)))
 }
 
 func (h *Haptic) RumbleStop() error {
-	return ek(C.SDL_HapticRumbleStop(h))
+	return ek(C.SDL_HapticRumbleStop((*C.SDL_Haptic)(h)))
 }

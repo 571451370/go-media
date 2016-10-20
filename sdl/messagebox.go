@@ -61,7 +61,7 @@ func ShowSimpleMessageBox(flags MessageBoxFlags, title, message string, window *
 	cmessage := C.CString(message)
 	defer C.free(unsafe.Pointer(ctitle))
 	defer C.free(unsafe.Pointer(cmessage))
-	return ek(C.SDL_ShowSimpleMessageBox(C.Uint32(flags), ctitle, cmessage, window))
+	return ek(C.SDL_ShowSimpleMessageBox(C.Uint32(flags), ctitle, cmessage, (*C.SDL_Window)(window)))
 }
 
 func ShowMessageBox(data *MessageBoxData) (int, error) {

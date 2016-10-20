@@ -44,7 +44,7 @@ func (guid JoystickGUID) Mapping() string {
 }
 
 func (c *GameController) Mapping() string {
-	cmap := C.SDL_GameControllerMapping(c)
+	cmap := C.SDL_GameControllerMapping((*C.SDL_GameController)(c))
 	defer C.free(unsafe.Pointer(cmap))
 	return C.GoString(cmap)
 }
@@ -70,15 +70,15 @@ func GameControllerFromInstanceID(joyid JoystickID) *GameController {
 }
 
 func (c *GameController) Name() string {
-	return C.GoString(C.SDL_GameControllerName(c))
+	return C.GoString(C.SDL_GameControllerName((*C.SDL_GameController)(c)))
 }
 
 func (c *GameController) Attached() bool {
-	return C.SDL_GameControllerGetAttached(c) != 0
+	return C.SDL_GameControllerGetAttached((*C.SDL_GameController)(c)) != 0
 }
 
 func (c *GameController) Joystick() *Joystick {
-	return (*Joystick)(C.SDL_GameControllerGetJoystick(c))
+	return (*Joystick)(C.SDL_GameControllerGetJoystick((*C.SDL_GameController)(c)))
 }
 
 func GameControllerEventState(state int) int {
@@ -111,11 +111,11 @@ func GameControllerGetStringForAxis(axis GameControllerAxis) string {
 }
 
 func (c *GameController) BindForAxis(axis GameControllerAxis) GameControllerButtonBind {
-	return GameControllerButtonBind(C.SDL_GameControllerGetBindForAxis(c, C.SDL_GameControllerAxis(axis)))
+	return GameControllerButtonBind(C.SDL_GameControllerGetBindForAxis((*C.SDL_GameController)(c), C.SDL_GameControllerAxis(axis)))
 }
 
 func (c *GameController) Axis(axis GameControllerAxis) int16 {
-	return int16(C.SDL_GameControllerGetAxis(c, C.SDL_GameControllerAxis(axis)))
+	return int16(C.SDL_GameControllerGetAxis((*C.SDL_GameController)(c), C.SDL_GameControllerAxis(axis)))
 }
 
 const (
@@ -149,13 +149,13 @@ func GameControllerGetStringForButton(button GameControllerButton) string {
 }
 
 func (c *GameController) ButtonBind(button GameControllerButton) GameControllerButtonBind {
-	return GameControllerButtonBind(C.SDL_GameControllerGetBindForButton(c, C.SDL_GameControllerButton(button)))
+	return GameControllerButtonBind(C.SDL_GameControllerGetBindForButton((*C.SDL_GameController)(c), C.SDL_GameControllerButton(button)))
 }
 
 func (c *GameController) Button(button GameControllerButton) uint8 {
-	return uint8(C.SDL_GameControllerGetButton(c, C.SDL_GameControllerButton(button)))
+	return uint8(C.SDL_GameControllerGetButton((*C.SDL_GameController)(c), C.SDL_GameControllerButton(button)))
 }
 
 func (c *GameController) Close() {
-	C.SDL_GameControllerClose(c)
+	C.SDL_GameControllerClose((*C.SDL_GameController)(c))
 }

@@ -41,7 +41,7 @@ func RWFromConstMem(mem []byte) (*RWOps, error) {
 }
 
 func (rw *RWOps) Free() {
-	C.SDL_FreeRW(rw.Ops)
+	C.SDL_FreeRW((*C.SDL_RWops)(rw.Ops))
 	if rw.mem != nil {
 		C.free(rw.mem)
 	}

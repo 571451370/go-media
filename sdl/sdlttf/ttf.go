@@ -294,17 +294,17 @@ func (f *Font) SizeUTF8Ex(text interface{}) (width, height int, err error) {
 		if len(p) < 512 {
 			var buf [512]byte
 			copy(buf[:], p[:])
-			rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), &cw, &ch)
+			rc = C.TTF_SizeUTF8Ex((*C.struct__TTF_Font)(f), (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), &cw, &ch)
 		} else {
 			cstr := C.CString(p)
 			defer C.free(unsafe.Pointer(cstr))
-			rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(cstr)), C.size_t(len(p)), &cw, &ch)
+			rc = C.TTF_SizeUTF8Ex((*C.struct__TTF_Font)(f), (*C.char)(unsafe.Pointer(cstr)), C.size_t(len(p)), &cw, &ch)
 		}
 	case []byte:
-		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), &cw, &ch)
+		rc = C.TTF_SizeUTF8Ex((*C.struct__TTF_Font)(f), (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), &cw, &ch)
 	case *bytes.Buffer:
 		b := p.Bytes()
-		rc = C.TTF_SizeUTF8Ex(f, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), &cw, &ch)
+		rc = C.TTF_SizeUTF8Ex((*C.struct__TTF_Font)(f), (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), &cw, &ch)
 	default:
 		panic(fmt.Errorf("unsupported type %T", p))
 	}
@@ -326,17 +326,17 @@ func (f *Font) RenderUTF8BlendedEx(surface *sdl.Surface, text interface{}, fg sd
 		if len(p) < 512 {
 			var buf [512]byte
 			copy(buf[:], p[:])
-			cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), color(fg))
+			cs = C.TTF_RenderUTF8_BlendedEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), color(fg))
 		} else {
 			cstr := C.CString(p)
 			defer C.free(unsafe.Pointer(cstr))
-			cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, cstr, C.size_t(len(p)), color(fg))
+			cs = C.TTF_RenderUTF8_BlendedEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, cstr, C.size_t(len(p)), color(fg))
 		}
 	case []byte:
-		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
+		cs = C.TTF_RenderUTF8_BlendedEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
 	case *bytes.Buffer:
 		b := p.Bytes()
-		cs = C.TTF_RenderUTF8_BlendedEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), color(fg))
+		cs = C.TTF_RenderUTF8_BlendedEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), color(fg))
 	default:
 		panic(fmt.Errorf("unsupported type %T", p))
 	}
@@ -356,17 +356,17 @@ func (f *Font) RenderUTF8SolidEx(surface *sdl.Surface, text interface{}, fg sdl.
 		if len(p) < 512 {
 			var buf [512]byte
 			copy(buf[:], p[:])
-			cs = C.TTF_RenderUTF8_SolidEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), color(fg))
+			cs = C.TTF_RenderUTF8_SolidEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(p)), color(fg))
 		} else {
 			cstr := C.CString(p)
 			defer C.free(unsafe.Pointer(cstr))
-			cs = C.TTF_RenderUTF8_SolidEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, cstr, C.size_t(len(p)), color(fg))
+			cs = C.TTF_RenderUTF8_SolidEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, cstr, C.size_t(len(p)), color(fg))
 		}
 	case []byte:
-		cs = C.TTF_RenderUTF8_SolidEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
+		cs = C.TTF_RenderUTF8_SolidEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&p[0])), C.size_t(len(p)), color(fg))
 	case *bytes.Buffer:
 		b := p.Bytes()
-		cs = C.TTF_RenderUTF8_SolidEx(f, (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), color(fg))
+		cs = C.TTF_RenderUTF8_SolidEx((*C.struct__TTF_Font)(f), (*C.SDL_Surface)(unsafe.Pointer(surface)), &r, (*C.char)(unsafe.Pointer(&b[0])), C.size_t(len(b)), color(fg))
 	default:
 		panic(fmt.Errorf("unsupported type %T", p))
 	}

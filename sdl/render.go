@@ -84,7 +84,7 @@ func CreateWindowAndRenderer(width, height int, windowFlags WindowFlags) (*Windo
 }
 
 func CreateRenderer(window *Window, index int, rendererFlags RendererFlags) (*Renderer, error) {
-	renderer := C.SDL_CreateRenderer(window, C.int(index), C.Uint32(rendererFlags))
+	renderer := C.SDL_CreateRenderer((*C.SDL_Window)(window), C.int(index), C.Uint32(rendererFlags))
 	if renderer == nil {
 		return nil, GetError()
 	}
@@ -92,7 +92,7 @@ func CreateRenderer(window *Window, index int, rendererFlags RendererFlags) (*Re
 }
 
 func CreateSoftwareRenderer(surface *Surface) (*Renderer, error) {
-	re := C.SDL_CreateSoftwareRenderer(surface)
+	re := C.SDL_CreateSoftwareRenderer((*C.SDL_Surface)(surface))
 	if re == nil {
 		return nil, GetError()
 	}
@@ -100,23 +100,23 @@ func CreateSoftwareRenderer(surface *Surface) (*Renderer, error) {
 }
 
 func (w *Window) Renderer() *Renderer {
-	return (*Renderer)(C.SDL_GetRenderer(w))
+	return (*Renderer)(C.SDL_GetRenderer((*C.SDL_Window)(w)))
 }
 
 func (re *Renderer) Info() (RendererInfo, error) {
 	var info C.SDL_RendererInfo
-	rc := C.SDL_GetRendererInfo(re, &info)
+	rc := C.SDL_GetRendererInfo((*C.SDL_Renderer)(re), &info)
 	return makeRendererInfo(&info), ek(rc)
 }
 
 func (re *Renderer) OutputSize() (width, height int, err error) {
 	var cw, ch C.int
-	rc := C.SDL_GetRendererOutputSize(re, &cw, &ch)
+	rc := C.SDL_GetRendererOutputSize((*C.SDL_Renderer)(re), &cw, &ch)
 	return int(cw), int(ch), ek(rc)
 }
 
 func (re *Renderer) CreateTexture(format uint32, access TextureAccess, width, height int) (*Texture, error) {
-	t := C.SDL_CreateTexture(re, C.Uint32(format), C.int(access), C.int(width), C.int(height))
+	t := C.SDL_CreateTexture((*C.SDL_Renderer)(re), C.Uint32(format), C.int(access), C.int(width), C.int(height))
 	if t == nil {
 		return nil, GetError()
 	}
@@ -124,7 +124,7 @@ func (re *Renderer) CreateTexture(format uint32, access TextureAccess, width, he
 }
 
 func (re *Renderer) CreateTextureFromSurface(surface *Surface) (*Texture, error) {
-	t := C.SDL_CreateTextureFromSurface(re, surface)
+	t := C.SDL_CreateTextureFromSurface((*C.SDL_Renderer)(re), (*C.SDL_Surface)(surface))
 	if t == nil {
 		return nil, GetError()
 	}
@@ -134,27 +134,27 @@ func (re *Renderer) CreateTextureFromSurface(surface *Surface) (*Texture, error)
 func (t *Texture) Query() (format uint32, access TextureAccess, width, height int, err error) {
 	var cformat C.Uint32
 	var caccess, cw, ch C.int
-	rc := C.SDL_QueryTexture(t, &cformat, &caccess, &cw, &ch)
+	rc := C.SDL_QueryTexture((*C.SDL_Texture)(t), &cformat, &caccess, &cw, &ch)
 	return uint32(cformat), TextureAccess(caccess), int(cw), int(ch), ek(rc)
 }
 
 func (t *Texture) SetColorMod(c Color) error {
-	return ek(C.SDL_SetTextureColorMod(t, C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B)))
+	return ek(C.SDL_SetTextureColorMod((*C.SDL_Texture)(t), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B)))
 }
 
 func (t *Texture) ColorMod() (Color, error) {
 	var cr, cg, cb C.Uint8
-	rc := C.SDL_GetTextureColorMod(t, &cr, &cg, &cb)
+	rc := C.SDL_GetTextureColorMod((*C.SDL_Texture)(t), &cr, &cg, &cb)
 	return Color{uint8(cr), uint8(cg), uint8(cb), 255}, ek(rc)
 }
 
 func (t *Texture) SetAlphaMod(alpha uint8) error {
-	return ek(C.SDL_SetTextureAlphaMod(t, C.Uint8(alpha)))
+	return ek(C.SDL_SetTextureAlphaMod((*C.SDL_Texture)(t), C.Uint8(alpha)))
 }
 
 func (t *Texture) AlphaMod() (uint8, error) {
 	var calpha C.Uint8
-	rc := C.SDL_GetTextureAlphaMod(t, &calpha)
+	rc := C.SDL_GetTextureAlphaMod((*C.SDL_Texture)(t), &calpha)
 	return uint8(calpha), ek(rc)
 }
 
@@ -166,7 +166,7 @@ func (t *Texture) Lock(rect *Rect) ([]byte, error) {
 
 	var pixels unsafe.Pointer
 	var pitch C.int
-	rc := C.SDL_LockTexture(t, (*C.SDL_Rect)(unsafe.Pointer(rect)), &pixels, &pitch)
+	rc := C.SDL_LockTexture((*C.SDL_Texture)(t), (*C.SDL_Rect)(unsafe.Pointer(rect)), &pixels, &pitch)
 	if rc < 0 {
 		return nil, GetError()
 	}
@@ -181,118 +181,118 @@ func (t *Texture) Lock(rect *Rect) ([]byte, error) {
 }
 
 func (t *Texture) Unlock() {
-	C.SDL_UnlockTexture(t)
+	C.SDL_UnlockTexture((*C.SDL_Texture)(t))
 }
 
 func (re *Renderer) SetDrawColor(c Color) error {
-	return ek(C.SDL_SetRenderDrawColor(re, C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
+	return ek(C.SDL_SetRenderDrawColor((*C.SDL_Renderer)(re), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func (re *Renderer) DrawColor() (Color, error) {
 	var cr, cg, cb, ca C.Uint8
-	rc := C.SDL_GetRenderDrawColor(re, &cr, &cg, &cb, &ca)
+	rc := C.SDL_GetRenderDrawColor((*C.SDL_Renderer)(re), &cr, &cg, &cb, &ca)
 	return Color{uint8(cr), uint8(cg), uint8(cb), uint8(ca)}, ek(rc)
 }
 
 func (re *Renderer) DrawPoint(x, y int) error {
-	return ek(C.SDL_RenderDrawPoint(re, C.int(x), C.int(y)))
+	return ek(C.SDL_RenderDrawPoint((*C.SDL_Renderer)(re), C.int(x), C.int(y)))
 }
 
 func (re *Renderer) DrawPoints(pts []Point) error {
-	return ek(C.SDL_RenderDrawPoints(re, (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts))))
+	return ek(C.SDL_RenderDrawPoints((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts))))
 }
 
 func (re *Renderer) DrawLine(x1, y1, x2, y2 int) error {
-	return ek(C.SDL_RenderDrawLine(re, C.int(x1), C.int(y1), C.int(x2), C.int(y2)))
+	return ek(C.SDL_RenderDrawLine((*C.SDL_Renderer)(re), C.int(x1), C.int(y1), C.int(x2), C.int(y2)))
 }
 
 func (re *Renderer) DrawLines(points []Point) error {
-	return ek(C.SDL_RenderDrawLines(re, (*C.SDL_Point)(unsafe.Pointer(&points[0])), C.int(len(points))))
+	return ek(C.SDL_RenderDrawLines((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&points[0])), C.int(len(points))))
 }
 
 func (re *Renderer) DrawRect(rect *Rect) error {
-	return ek(C.SDL_RenderDrawRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
+	return ek(C.SDL_RenderDrawRect((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }
 
 func (re *Renderer) DrawRects(rects []Rect) error {
-	return ek(C.SDL_RenderDrawRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
+	return ek(C.SDL_RenderDrawRects((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
 }
 
 func (re *Renderer) FillRect(rect *Rect) error {
-	return ek(C.SDL_RenderFillRect(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
+	return ek(C.SDL_RenderFillRect((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }
 
 func (re *Renderer) FillRects(rects []Rect) error {
-	return ek(C.SDL_RenderFillRects(re, (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
+	return ek(C.SDL_RenderFillRects((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(&rects[0])), C.int(len(rects))))
 }
 
 func (re *Renderer) CopyEx(texture *Texture, src, dst *Rect, angle float64, center *Point, flip RendererFlip) error {
-	return ek(C.SDL_RenderCopyEx(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst)),
+	return ek(C.SDL_RenderCopyEx((*C.SDL_Renderer)(re), (*C.SDL_Texture)(texture), (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst)),
 		C.double(angle), (*C.SDL_Point)(unsafe.Pointer(center)), C.SDL_RendererFlip(flip)))
 }
 
 func (re *Renderer) Copy(texture *Texture, src, dst *Rect) error {
-	return ek(C.SDL_RenderCopy(re, texture, (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst))))
+	return ek(C.SDL_RenderCopy((*C.SDL_Renderer)(re), (*C.SDL_Texture)(texture), (*C.SDL_Rect)(unsafe.Pointer(src)), (*C.SDL_Rect)(unsafe.Pointer(dst))))
 }
 
 func (re *Renderer) ReadPixels(rect *Rect, format uint32, pixels []byte, pitch int) error {
-	return ek(C.SDL_RenderReadPixels(re, (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(format), unsafe.Pointer(&pixels[0]), C.int(pitch)))
+	return ek(C.SDL_RenderReadPixels((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(rect)), C.Uint32(format), unsafe.Pointer(&pixels[0]), C.int(pitch)))
 }
 
 func (re *Renderer) SetTarget(texture *Texture) error {
-	return ek(C.SDL_SetRenderTarget(re, (*C.SDL_Texture)(texture)))
+	return ek(C.SDL_SetRenderTarget((*C.SDL_Renderer)(re), (*C.SDL_Texture)(texture)))
 }
 
 func (re *Renderer) Present() {
-	C.SDL_RenderPresent(re)
+	C.SDL_RenderPresent((*C.SDL_Renderer)(re))
 }
 
 func (t *Texture) Destroy() {
-	C.SDL_DestroyTexture(t)
+	C.SDL_DestroyTexture((*C.SDL_Texture)(t))
 }
 
 func (re *Renderer) Destroy() {
-	C.SDL_DestroyRenderer(re)
+	C.SDL_DestroyRenderer((*C.SDL_Renderer)(re))
 }
 
 func (re *Renderer) SetLogicalSize(width, height int) {
-	C.SDL_RenderSetLogicalSize(re, C.int(width), C.int(height))
+	C.SDL_RenderSetLogicalSize((*C.SDL_Renderer)(re), C.int(width), C.int(height))
 }
 
 func (re *Renderer) LogicalSize() (width, height int) {
 	var cw, ch C.int
-	C.SDL_RenderGetLogicalSize(re, &cw, &ch)
+	C.SDL_RenderGetLogicalSize((*C.SDL_Renderer)(re), &cw, &ch)
 	return int(cw), int(ch)
 }
 
 func (re *Renderer) Clear() error {
-	return ek(C.SDL_RenderClear(re))
+	return ek(C.SDL_RenderClear((*C.SDL_Renderer)(re)))
 }
 
 func (re *Renderer) SetBlendMode(blendMode BlendMode) error {
-	return ek(C.SDL_SetRenderDrawBlendMode(re, C.SDL_BlendMode(blendMode)))
+	return ek(C.SDL_SetRenderDrawBlendMode((*C.SDL_Renderer)(re), C.SDL_BlendMode(blendMode)))
 }
 
 func (re *Renderer) BlendMode() (BlendMode, error) {
 	var mode C.SDL_BlendMode
-	rc := C.SDL_GetRenderDrawBlendMode(re, &mode)
+	rc := C.SDL_GetRenderDrawBlendMode((*C.SDL_Renderer)(re), &mode)
 	return BlendMode(mode), ek(rc)
 }
 
 func (re *Renderer) SetViewport(rect *Rect) error {
-	return ek(C.SDL_RenderSetViewport(re, (*C.SDL_Rect)(unsafe.Pointer(rect))))
+	return ek(C.SDL_RenderSetViewport((*C.SDL_Renderer)(re), (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }
 
 func (re *Renderer) Viewport() Rect {
 	var r C.SDL_Rect
-	C.SDL_RenderGetViewport(re, &r)
+	C.SDL_RenderGetViewport((*C.SDL_Renderer)(re), &r)
 	return Rect{int32(r.x), int32(r.y), int32(r.w), int32(r.h)}
 }
 
 func (re *Renderer) IsClipEnabled() bool {
-	return C.SDL_RenderIsClipEnabled(re) != 0
+	return C.SDL_RenderIsClipEnabled((*C.SDL_Renderer)(re)) != 0
 }
 
 func (re *Renderer) SetScale(scaleX, scaleY float64) error {
-	return ek(C.SDL_RenderSetScale(re, C.float(scaleX), C.float(scaleY)))
+	return ek(C.SDL_RenderSetScale((*C.SDL_Renderer)(re), C.float(scaleX), C.float(scaleY)))
 }

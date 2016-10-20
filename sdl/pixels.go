@@ -52,7 +52,7 @@ func (p *PixelFormat) Free() {
 }
 
 func (p *Palette) SetColors(colors []Color, firstcolor, ncolors int) error {
-	return ek(C.SDL_SetPaletteColors(p, (*C.SDL_Color)(unsafe.Pointer(&colors[0])), C.int(firstcolor), C.int(ncolors)))
+	return ek(C.SDL_SetPaletteColors((*C.SDL_Palette)(p), (*C.SDL_Color)(unsafe.Pointer(&colors[0])), C.int(firstcolor), C.int(ncolors)))
 }
 
 const (

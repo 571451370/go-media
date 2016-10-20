@@ -66,5 +66,5 @@ func HasScreenKeyboardSupport() bool {
 }
 
 func IsScreenKeyboardShown(w *Window) bool {
-	return C.SDL_IsScreenKeyboardShown(w) != 0
+	return C.SDL_IsScreenKeyboardShown((*C.SDL_Window)(w)) != 0
 }
