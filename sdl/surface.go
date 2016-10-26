@@ -106,9 +106,25 @@ func CreateRGBSurface(flags uint32, width, height, depth int, rmask, gmask, bmas
 	return s, nil
 }
 
+func CreateRGBSurfaceWithFormat(flags uint32, width, height, depth int, format uint32) (*Surface, error) {
+	s := (*Surface)(C.SDL_CreateRGBSurfaceWithFormat(C.Uint32(flags), C.int(width), C.int(height), C.int(depth), C.Uint32(format)))
+	if s == nil {
+		return nil, GetError()
+	}
+	return s, nil
+}
+
 func CreateRGBSurfaceFrom(pixels []byte, width, height, depth, pitch int, rmask, gmask, bmask, amask uint32) (*Surface, error) {
 	s := (*Surface)(C.SDL_CreateRGBSurfaceFrom(unsafe.Pointer(&pixels[0]), C.int(width), C.int(height), C.int(depth), C.int(pitch),
 		C.Uint32(rmask), C.Uint32(gmask), C.Uint32(bmask), C.Uint32(amask)))
+	if s == nil {
+		return nil, GetError()
+	}
+	return s, nil
+}
+
+func CreateRGBSurfaceWithFormatFrom(pixels []byte, width, height, depth, pitch int, format uint32) (*Surface, error) {
+	s := (*Surface)(C.SDL_CreateRGBSurfaceWithFormatFrom(unsafe.Pointer(&pixels[0]), C.int(width), C.int(height), C.int(depth), C.int(pitch), C.Uint32(format)))
 	if s == nil {
 		return nil, GetError()
 	}

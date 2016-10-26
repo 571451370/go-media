@@ -42,6 +42,11 @@ const (
 	WINDOW_FOREIGN            WindowFlags = C.SDL_WINDOW_FOREIGN
 	WINDOW_ALLOW_HIGHDPI      WindowFlags = C.SDL_WINDOW_ALLOW_HIGHDPI
 	WINDOW_MOUSE_CAPTURE      WindowFlags = C.SDL_WINDOW_MOUSE_CAPTURE
+	WINDOW_ALWAYS_ON_TOP      WindowFlags = C.SDL_WINDOW_ALWAYS_ON_TOP
+	WINDOW_SKIP_TASKBAR       WindowFlags = C.SDL_WINDOW_SKIP_TASKBAR
+	WINDOW_UTILITY            WindowFlags = C.SDL_WINDOW_UTILITY
+	WINDOW_TOOLTIP            WindowFlags = C.SDL_WINDOW_TOOLTIP
+	WINDOW_POPUP_MENU         WindowFlags = C.SDL_WINDOW_POPUP_MENU
 )
 
 const (
@@ -65,6 +70,8 @@ const (
 	WINDOWEVENT_FOCUS_GAINED WindowEventID = C.SDL_WINDOWEVENT_FOCUS_GAINED
 	WINDOWEVENT_FOCUS_LOST   WindowEventID = C.SDL_WINDOWEVENT_FOCUS_LOST
 	WINDOWEVENT_CLOSE        WindowEventID = C.SDL_WINDOWEVENT_CLOSE
+	WINDOWEVENT_TAKE_FOCUS   WindowEventID = C.SDL_WINDOWEVENT_TAKE_FOCUS
+	WINDOWEVENT_HIT_TEST     WindowEventID = C.SDL_WINDOWEVENT_HIT_TEST
 )
 
 const (
@@ -273,4 +280,26 @@ func (w *Window) SetIcon(icon *Surface) {
 
 func (w *Window) SetFullscreen(flags WindowFlags) error {
 	return ek(C.SDL_SetWindowFullscreen((*C.SDL_Window)(w), C.Uint32(flags)))
+}
+
+func (w *Window) BordersSize() (top, left, bottom, right int, err error) {
+	var ctop, cleft, cbottom, cright C.int
+	rc := C.SDL_GetWindowBordersSize((*C.SDL_Window)(w), &ctop, &cleft, &cbottom, &cright)
+	return int(ctop), int(cleft), int(cbottom), int(cright), ek(rc)
+}
+
+func (w *Window) SetResizable(resizable bool) {
+	C.SDL_SetWindowResizable((*C.SDL_Window)(w), truth(resizable))
+}
+
+func (w *Window) SetWindowOpacity(opacity float64) error {
+	return ek(C.SDL_SetWindowOpacity((*C.SDL_Window)(w), C.float(opacity)))
+}
+
+func (w *Window) SetModal(parent *Window) error {
+	return ek(C.SDL_SetWindowModalFor((*C.SDL_Window)(w), (*C.SDL_Window)(parent)))
+}
+
+func GetDisplayUsableBounds(displayIndex int, rect *Rect) error {
+	return ek(C.SDL_GetDisplayUsableBounds(C.int(displayIndex), (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }

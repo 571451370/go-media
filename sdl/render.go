@@ -296,3 +296,11 @@ func (re *Renderer) IsClipEnabled() bool {
 func (re *Renderer) SetScale(scaleX, scaleY float64) error {
 	return ek(C.SDL_RenderSetScale((*C.SDL_Renderer)(re), C.float(scaleX), C.float(scaleY)))
 }
+
+func (re *Renderer) SetIntegerScale(enable bool) error {
+	return ek(C.SDL_RenderSetIntegerScale((*C.SDL_Renderer)(re), truth(enable)))
+}
+
+func (re *Renderer) IntegerScale() bool {
+	return C.SDL_RenderGetIntegerScale((*C.SDL_Renderer)(re)) != 0
+}

@@ -10,7 +10,10 @@ import (
 	"unsafe"
 )
 
-type AudioFormat C.SDL_AudioFormat
+type (
+	AudioFormat   C.SDL_AudioFormat
+	AudioDeviceID C.SDL_AudioDeviceID
+)
 
 const (
 	AUDIO_MASK_BITSIZE  = C.SDL_AUDIO_MASK_BITSIZE
@@ -125,6 +128,14 @@ func OpenAudio(desired AudioSpec) (AudioSpec, error) {
 	spec = cAudioSpec(&desired)
 	C.SDL_OpenAudio(&spec, &obtained)
 	return goAudioSpec(&obtained), nil
+}
+
+func QueueAudio(dev AudioDeviceID, data []byte) uint32 {
+	return uint32(C.SDL_QueueAudio(C.SDL_AudioDeviceID(dev), unsafe.Pointer(&data[0]), C.Uint32(len(data))))
+}
+
+func DequeueAudio(dev AudioDeviceID, data []byte) uint32 {
+	return uint32(C.SDL_DequeueAudio(C.SDL_AudioDeviceID(dev), unsafe.Pointer(&data[0]), C.Uint32(len(data))))
 }
 
 type audio struct {
