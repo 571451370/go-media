@@ -11,9 +11,9 @@ import (
 
 type DisplayMode struct {
 	Format     uint32
-	W, H       int32
-	Rate       int32
-	driverdata *byte
+	W, H       int
+	Rate       int
+	driverdata unsafe.Pointer
 }
 
 type (
@@ -302,4 +302,52 @@ func (w *Window) SetModal(parent *Window) error {
 
 func GetDisplayUsableBounds(displayIndex int, rect *Rect) error {
 	return ek(C.SDL_GetDisplayUsableBounds(C.int(displayIndex), (*C.SDL_Rect)(unsafe.Pointer(rect))))
+}
+
+func GetDisplayMode(displayIndex, modeIndex int) (*DisplayMode, error) {
+	var dm C.SDL_DisplayMode
+	rc := C.SDL_GetDisplayMode(C.int(displayIndex), C.int(modeIndex), &dm)
+	if rc != 0 {
+		return nil, GetError()
+	}
+
+	return &DisplayMode{
+		Format:     uint32(dm.format),
+		W:          int(dm.w),
+		H:          int(dm.h),
+		Rate:       int(dm.refresh_rate),
+		driverdata: dm.driverdata,
+	}, nil
+}
+
+func GetDesktopDisplayMode(displayIndex int) (*DisplayMode, error) {
+	var dm C.SDL_DisplayMode
+	rc := C.SDL_GetDesktopDisplayMode(C.int(displayIndex), &dm)
+	if rc != 0 {
+		return nil, GetError()
+	}
+
+	return &DisplayMode{
+		Format:     uint32(dm.format),
+		W:          int(dm.w),
+		H:          int(dm.h),
+		Rate:       int(dm.refresh_rate),
+		driverdata: dm.driverdata,
+	}, nil
+}
+
+func GetCurrentDisplayMode(displayIndex int) (*DisplayMode, error) {
+	var dm C.SDL_DisplayMode
+	rc := C.SDL_GetCurrentDisplayMode(C.int(displayIndex), &dm)
+	if rc != 0 {
+		return nil, GetError()
+	}
+
+	return &DisplayMode{
+		Format:     uint32(dm.format),
+		W:          int(dm.w),
+		H:          int(dm.h),
+		Rate:       int(dm.refresh_rate),
+		driverdata: dm.driverdata,
+	}, nil
 }
