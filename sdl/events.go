@@ -297,7 +297,26 @@ func PollEvent() Event {
 	if C.SDL_PollEvent(&ev) == 0 {
 		return nil
 	}
+	return evCommon(ev)
+}
 
+func WaitEvent() Event {
+	var ev C.SDL_Event
+	if C.SDL_WaitEvent(&ev) == 0 {
+		return nil
+	}
+	return evCommon(ev)
+}
+
+func WaitEventTimeout(timeout int) Event {
+	var ev C.SDL_Event
+	if C.SDL_WaitEventTimeout(&ev, C.int(timeout)) == 0 {
+		return nil
+	}
+	return evCommon(ev)
+}
+
+func evCommon(ev C.SDL_Event) Event {
 	cev := (*C.SDL_CommonEvent)(unsafe.Pointer(&ev))
 	switch cev._type {
 	case C.SDL_APP_TERMINATING,
