@@ -6,6 +6,7 @@ package sdlimage
 import "C"
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	_ "image/gif"
@@ -42,6 +43,9 @@ func LoadTextureReader(re *sdl.Renderer, r io.Reader) (*sdl.Texture, error) {
 func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	r := m.Bounds()
 	w, h := r.Dx(), r.Dy()
+	if w == 0 || h == 0 {
+		return nil, fmt.Errorf("invalid dimension %dx%d", w, h)
+	}
 
 	b := C.malloc(C.size_t(w * h * 4))
 	p := ((*[1 << 30]uint8)(b))[:w*h*4 : w*h*4]
