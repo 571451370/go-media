@@ -15,6 +15,12 @@ const (
 	INIT_EVERYTHING = C.SDL_INIT_EVERYTHING
 )
 
+const (
+	ENABLE  = C.SDL_ENABLE
+	DISABLE = C.SDL_DISABLE
+	QUERY   = C.SDL_QUERY
+)
+
 func Init(flags uint32) error {
 	return ek(C.SDL_Init(C.Uint32(flags)))
 }
