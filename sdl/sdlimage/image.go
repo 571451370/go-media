@@ -50,8 +50,8 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 	b := C.malloc(C.size_t(w * h * 4))
 	p := ((*[1 << 30]uint8)(b))[:w*h*4 : w*h*4]
 
-	n := &image.NRGBA{p, w * 4, r}
-	draw.Draw(n, n.Bounds(), m, image.ZP, draw.Src)
+	n := &image.NRGBA{p, w * 4, image.Rect(0, 0, w, h)}
+	draw.Draw(n, n.Bounds(), m, r.Min, draw.Src)
 
 	s, err := sdl.CreateRGBSurfaceFrom(n.Pix[:], w, h, 32, w*4, 0xff, 0xff00, 0xff0000, 0xff000000)
 	if err != nil {
