@@ -47,6 +47,12 @@ func Encode(w io.Writer, f *File) error {
 	}
 	binary.Write(b, binary.LittleEndian, &h)
 
+	const (
+		headerLen = 6
+		direntLen = 16
+	)
+
+	off := headerLen + direntLen*uint32(h.Entries)
 	for i, m := range f.Image {
 		p := new(bytes.Buffer)
 		err := png.Encode(p, m)
@@ -58,8 +64,6 @@ func Encode(w io.Writer, f *File) error {
 			return fmt.Errorf("ico: image %d is too big", i)
 		}
 
-		const direntLen = 16
-
 		r := m.Bounds()
 		if r.Dx() >= math.MaxUint8 || r.Dy() >= math.MaxUint8 {
 			return fmt.Errorf("ico: image %d with dimension %dx%d is too big", i, r.Dx(), r.Dy())
@@ -70,9 +74,14 @@ func Encode(w io.Writer, f *File) error {
 			Height: uint8(r.Dy()),
 			Bpp:    4,
 			Size:   uint32(p.Len()),
-			Off:    direntLen * uint32(h.Entries),
+			Off:    off,
 		}
 		binary.Write(b, binary.LittleEndian, &d)
+
+		if int64(off)+int64(p.Len()) >= math.MaxUint32 {
+			return fmt.Errorf("ico: too many images")
+		}
+		off += uint32(p.Len())
 	}
 
 	return b.Flush()
@@ -120,8 +129,10 @@ func Decode(r io.Reader) (*File, error) {
 }
 
 func decodeBMP(n int, d *dirent, b []byte) (image.Image, error) {
-	const fileHeaderLen = 14
-	const infoHeaderLen = 40
+	const (
+		fileHeaderLen = 14
+		infoHeaderLen = 40
+	)
 
 	if int64(d.Off) >= int64(len(b)) || int64(len(b))-int64(d.Off) < int64(d.Size) || len(b) <= fileHeaderLen+infoHeaderLen {
 		return nil, fmt.Errorf("invalid size for bitmap %d with offset %d and size %d",
