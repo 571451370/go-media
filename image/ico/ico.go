@@ -72,7 +72,7 @@ func Encode(w io.Writer, f *File) error {
 		d := dirent{
 			Width:  uint8(r.Dx()),
 			Height: uint8(r.Dy()),
-			Bpp:    4,
+			Bpp:    32,
 			Size:   uint32(p.Len()),
 			Off:    off,
 		}
