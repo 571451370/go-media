@@ -141,7 +141,12 @@ func decodeBMP(n int, d *dirent, b []byte) (image.Image, error) {
 
 	sz := d.Size
 	b = b[d.Off : d.Off+d.Size]
-	off := fileHeaderLen + infoHeaderLen + uint32(readUint16(b[28-fileHeaderLen:]))
+	bpp := readUint16(b[28-fileHeaderLen:])
+	off := fileHeaderLen + infoHeaderLen
+	switch bpp {
+	case 8:
+		off += 256 * 4
+	}
 
 	b = append([]uint8{
 		'B', 'M',
