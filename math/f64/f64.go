@@ -164,60 +164,6 @@ func (m *Mat3) Mul(a, b *Mat3) *Mat3 {
 	return m
 }
 
-type Aff2 Mat3
-
-func (m *Aff2) Identity() *Aff2 {
-	return (*Aff2)((*Mat3)(m).Identity())
-}
-
-func (m *Aff2) Mul(a, b *Aff2) *Aff2 {
-	return (*Aff2)((*Mat3)(m).Mul((*Mat3)(a), (*Mat3)(b)))
-}
-
-func (m *Aff2) Translate(v Vec2) *Aff2 {
-	t := &Aff2{
-		{1, 0, v.X},
-		{0, 1, v.Y},
-		{0, 0, 1},
-	}
-	return m.Mul(m, t)
-}
-
-func (m *Aff2) Scale(v Vec2) *Aff2 {
-	s := &Aff2{
-		{v.X, 0, 0},
-		{0, v.Y, 0},
-		{0, 0, 1},
-	}
-	return m.Mul(m, s)
-}
-
-func (m *Aff2) Shear(v Vec2) *Aff2 {
-	s := &Aff2{
-		{0, v.X, 0},
-		{v.Y, 0, 0},
-		{0, 0, 1},
-	}
-	return m.Mul(m, s)
-}
-
-func (m *Aff2) Rotate(rad float64) *Aff2 {
-	s, c := math.Sincos(rad)
-	r := &Aff2{
-		{c, -s, 0},
-		{s, c, 0},
-		{0, 0, 1},
-	}
-	return m.Mul(m, r)
-}
-
-func (m *Aff2) Transform(v Vec2) Vec2 {
-	return Vec2{
-		m[0][0]*v.X + m[0][1]*v.Y + m[0][2],
-		m[1][0]*v.X + m[1][1]*v.Y + m[1][2],
-	}
-}
-
 type Mat4 [4][4]float64
 
 func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
