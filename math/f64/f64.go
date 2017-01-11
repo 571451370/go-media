@@ -213,7 +213,7 @@ func (m *Mat4) RotX(r float64) *Mat4 {
 	si, co := math.Sincos(r)
 	*m = Mat4{
 		{1, 0, 0, 0},
-		{0, co, si, 0},
+		{0, co, -si, 0},
 		{0, si, co, 0},
 		{0, 0, 0, 1},
 	}
