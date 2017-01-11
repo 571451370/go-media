@@ -166,6 +166,16 @@ func (m *Mat3) Mul(a, b *Mat3) *Mat3 {
 
 type Mat4 [4][4]float64
 
+func (m *Mat4) Identity() *Mat4 {
+	*m = Mat4{
+		{1, 0, 0, 0},
+		{0, 1, 0, 0},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
 func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
 	var p Mat4
 	for i := range a {
@@ -228,7 +238,34 @@ func (p *Polar) Cartesian() Vec2 {
 }
 
 type Quat struct {
-	R, I, J, K float64
+	X, Y, Z, W float64
+}
+
+func (q Quat) Add(r Quat) Quat {
+	return Quat{
+		q.X + r.X,
+		q.Y + r.Y,
+		q.Z + r.Z,
+		q.W + r.W,
+	}
+}
+
+func (q Quat) Sub(r Quat) Quat {
+	return Quat{
+		q.X - r.X,
+		q.Y - r.Y,
+		q.Z - r.Z,
+		q.W - r.W,
+	}
+}
+
+func (q Quat) Mul(r Quat) Quat {
+	return Quat{
+		q.X*r.W + q.Y*r.Z - q.Z*r.Y + q.W*r.X,
+		q.Y*r.W + q.Z*r.X + q.W*r.Y - q.X*r.Z,
+		q.Z*r.W + q.W*r.Z + q.X*r.Y - q.Y*r.X,
+		q.W*r.W - q.X*r.X - q.Y*r.Y - q.Z*r.Z,
+	}
 }
 
 func Lerp(a, b, t float64) float64 {
