@@ -273,12 +273,19 @@ func (m *Mat4) Ortho(l, r, b, t, n, f float64) *Mat4 {
 }
 
 func (m *Mat4) Transform(v Vec4) Vec4 {
-	return Vec4{
+	v = Vec4{
 		m[0][0]*v.X + m[0][1]*v.Y + m[0][2]*v.Z + m[0][3]*v.W,
 		m[1][0]*v.X + m[1][1]*v.Y + m[1][2]*v.Z + m[1][3]*v.W,
 		m[2][0]*v.X + m[2][1]*v.Y + m[2][2]*v.Z + m[2][3]*v.W,
 		m[3][0]*v.X + m[3][1]*v.Y + m[3][2]*v.Z + m[3][3]*v.W,
 	}
+	if v.W != 0 {
+		v.X /= v.W
+		v.Y /= v.W
+		v.Z /= v.W
+		v.W = 1
+	}
+	return v
 }
 
 type Polar struct {
