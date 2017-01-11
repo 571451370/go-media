@@ -189,6 +189,26 @@ func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
 	return m
 }
 
+func (m *Mat4) Translate(tx, ty, tz float64) *Mat4 {
+	*m = Mat4{
+		{1, 0, 0, tx},
+		{0, 1, 0, ty},
+		{0, 0, 1, tz},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
+func (m *Mat4) Scale(sx, sy, sz float64) *Mat4 {
+	*m = Mat4{
+		{sx, 0, 0, 0},
+		{0, sy, 0, 0},
+		{0, 0, sz, 0},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
 func (m *Mat4) RotX(r float64) *Mat4 {
 	si, co := math.Sincos(r)
 	*m = Mat4{
