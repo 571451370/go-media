@@ -176,6 +176,24 @@ func (m *Mat4) Identity() *Mat4 {
 	return m
 }
 
+func (m *Mat4) Add(a, b *Mat4) *Mat4 {
+	for i := range a {
+		for j := range a[i] {
+			m[i][j] = a[i][j] + b[i][j]
+		}
+	}
+	return m
+}
+
+func (m *Mat4) Sub(a, b *Mat4) *Mat4 {
+	for i := range a {
+		for j := range a[i] {
+			m[i][j] = a[i][j] - b[i][j]
+		}
+	}
+	return m
+}
+
 func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
 	var p Mat4
 	for i := range a {
@@ -206,6 +224,23 @@ func (m *Mat4) Scale(sx, sy, sz float64) *Mat4 {
 		{0, 0, sz, 0},
 		{0, 0, 0, 1},
 	}
+	return m
+}
+
+func (m *Mat4) LookAt(eye, at, up Vec3) *Mat4 {
+	z := at.Sub(eye).Normalize()
+	x := up.Cross(z).Normalize()
+	y := z.Cross(x)
+
+	var r, t Mat4
+	r = Mat4{
+		{x.X, y.X, z.X, 0},
+		{x.Y, y.Y, z.Y, 0},
+		{x.Z, y.Z, z.Z, 0},
+		{0, 0, 0, 1},
+	}
+	t.Translate(-eye.X, -eye.Y, -eye.Z)
+	m.Mul(&r, &t)
 	return m
 }
 
