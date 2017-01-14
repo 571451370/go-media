@@ -307,6 +307,33 @@ func (m *Mat4) Ortho(l, r, b, t, n, f float64) *Mat4 {
 	return m
 }
 
+func (m *Mat4) Inverse() *Mat4 {
+	a := Vec3{m[0][0], m[1][0], m[2][0]}
+	b := Vec3{m[0][1], m[1][1], m[2][1]}
+	c := Vec3{m[0][2], m[1][2], m[2][2]}
+	d := Vec3{m[0][3], m[1][3], m[2][3]}
+
+	s := a.Cross(b)
+	t := c.Cross(d)
+
+	invDet := 1 / s.Dot(c)
+
+	s = s.Scalar(invDet)
+	t = t.Scalar(invDet)
+	v := c.Scalar(invDet)
+
+	r0 := b.Cross(v)
+	r1 := v.Cross(a)
+
+	*m = Mat4{
+		{r0.X, r0.Y, r0.Z, -b.Dot(t)},
+		{r1.X, r1.Y, r1.Z, a.Dot(t)},
+		{s.X, s.Y, s.Z, -d.Dot(s)},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
 func (m *Mat4) Transform(v Vec4) Vec4 {
 	v = Vec4{
 		m[0][0]*v.X + m[0][1]*v.Y + m[0][2]*v.Z + m[0][3]*v.W,
