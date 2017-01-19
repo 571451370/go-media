@@ -358,6 +358,12 @@ func (m *Mat4) Transform(v Vec4) Vec4 {
 	return v
 }
 
+func (m *Mat4) Transform3(v Vec3) Vec3 {
+	p := Vec4{v.X, v.Y, v.Z, 1}
+	p = m.Transform(p)
+	return Vec3{p.X, p.Y, p.Z}
+}
+
 type Polar struct {
 	R, P float64
 }
