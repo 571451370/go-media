@@ -112,6 +112,14 @@ func (p Vec3) Lerp(q Vec3, t float64) Vec3 {
 	}
 }
 
+func (p Vec3) Abs() Vec3 {
+	return Vec3{
+		math.Abs(p.X),
+		math.Abs(p.Y),
+		math.Abs(p.Z),
+	}
+}
+
 func (p Vec3) RGBA() (r, g, b, a uint32) {
 	c := color.RGBA{
 		uint8(Clamp(p.X*255, 0, 255)),
