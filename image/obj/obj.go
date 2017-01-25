@@ -11,9 +11,9 @@ import (
 )
 
 type Model struct {
-	Verts   []f64.Vec3
-	Coords  []f64.Vec3
-	Normals []f64.Vec3
+	Verts   []f64.Vec4
+	Coords  []f64.Vec4
+	Normals []f64.Vec4
 	Faces   [][3][3]int
 	Mats    []Material
 }
@@ -49,26 +49,36 @@ func Load(obj string) (*Model, error) {
 			m.Normals = addVert(m.Normals, line)
 		case strings.HasPrefix(line, "f "):
 			m.Faces = addFace(m.Faces, line)
+		case strings.HasPrefix(line, "mtllib "):
+			m.Mats, err = addMat(m.Mats, line)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return m, nil
 }
 
-func addVert(verts []f64.Vec3, line string) []f64.Vec3 {
+func addVert(verts []f64.Vec4, line string) []f64.Vec4 {
 	var (
 		t string
-		p [3]float64
+		p [4]float64
 	)
-	n, _ := fmt.Sscan(line, &t, &p[0], &p[1], &p[2])
-	if n != 3 {
+	p[3] = 1
+
+	n, _ := fmt.Sscan(line, &t, &p[0], &p[1], &p[2], &p[3])
+	if n != 4 {
+		n, _ = fmt.Sscan(line, &t, &p[0], &p[1], &p[2])
+	}
+	if n != 4 && n != 3 {
 		n, _ = fmt.Sscan(line, &t, &p[0], &p[1])
 	}
-	if n != 3 && n != 2 {
+	if n != 4 && n != 3 && n != 2 {
 		return verts
 	}
 
-	return append(verts, f64.Vec3{p[0], p[1], p[2]})
+	return append(verts, f64.Vec4{p[0], p[1], p[2], p[3]})
 }
 
 func addFace(faces [][3][3]int, line string) [][3][3]int {
@@ -95,4 +105,37 @@ func addFace(faces [][3][3]int, line string) [][3][3]int {
 		{f[3], f[4], f[5]},
 		{f[6], f[7], f[8]},
 	})
+}
+
+func addMat(mat []Material, line string) ([]Material, error) {
+	var (
+		t string
+		e string
+	)
+	n, _ := fmt.Sscan(line, &t, &e)
+	if n != 2 {
+		return mat, nil
+	}
+
+	f, err := os.Open(e)
+	if err != nil {
+		return mat, err
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	for {
+		line = s.Text()
+		switch {
+		case strings.HasPrefix(line, "newmtl "):
+		case strings.HasPrefix(line, "Ka "):
+		case strings.HasPrefix(line, "Kd "):
+		case strings.HasPrefix(line, "Ks "):
+		case strings.HasPrefix(line, "map_Ka "):
+		case strings.HasPrefix(line, "map_Kd "):
+		case strings.HasPrefix(line, "map_Ks "):
+		case strings.HasPrefix(line, "map_Ns "):
+		case strings.HasPrefix(line, "map_d "):
+		}
+	}
 }
