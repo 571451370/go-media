@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/qeedquan/go-media/image/imageutil"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -123,19 +124,61 @@ func addMat(mat []Material, line string) ([]Material, error) {
 	}
 	defer f.Close()
 
+	p := make([]Material, 1)
+	m := &p[0]
+
 	s := bufio.NewScanner(f)
-	for {
+	for s.Scan() {
 		line = s.Text()
 		switch {
 		case strings.HasPrefix(line, "newmtl "):
+			var name string
+			fmt.Sscan(line, &t, &name)
+			if len(p) == 1 {
+				m.Name = name
+			} else {
+				p = append(p, Material{Name: name})
+				m = &p[len(p)-1]
+			}
 		case strings.HasPrefix(line, "Ka "):
+			fmt.Sscan(line, &t, &m.Colors[0].X, &m.Colors[0].Y, &m.Colors[0].Z)
 		case strings.HasPrefix(line, "Kd "):
+			fmt.Sscan(line, &t, &m.Colors[1].X, &m.Colors[1].Y, &m.Colors[1].Z)
 		case strings.HasPrefix(line, "Ks "):
+			fmt.Sscan(line, &t, &m.Colors[2].X, &m.Colors[2].Y, &m.Colors[2].Z)
 		case strings.HasPrefix(line, "map_Ka "):
+			m.Ambient, err = loadTexture(line)
 		case strings.HasPrefix(line, "map_Kd "):
+			m.Diffuse, err = loadTexture(line)
 		case strings.HasPrefix(line, "map_Ks "):
+			m.Specular, err = loadTexture(line)
 		case strings.HasPrefix(line, "map_Ns "):
+			m.Bump, err = loadTexture(line)
 		case strings.HasPrefix(line, "map_d "):
+			m.Alpha, err = loadTexture(line)
+		}
+
+		if err != nil {
+			return nil, err
 		}
 	}
+
+	if len(p) > 1 || m.Name != "" {
+		mat = append(mat, p...)
+	}
+
+	return mat, nil
+}
+
+func loadTexture(line string) (*image.RGBA, error) {
+	var (
+		t string
+		s string
+	)
+	n, _ := fmt.Sscan(line, &t, &s)
+	if n < 1 {
+		return nil, fmt.Errorf("no texture file specified")
+	}
+
+	return imageutil.LoadFile(s)
 }
