@@ -80,6 +80,26 @@ func (p Vec3) Cross(q Vec3) Vec3 {
 	}
 }
 
+func (p Vec3) Neg() Vec3 {
+	return Vec3{-p.X, -p.Y, -p.Z}
+}
+
+func (p Vec3) Reflect(q Vec3) Vec3 {
+	q = q.Scalar(2 * p.Dot(q))
+	return p.Sub(q)
+}
+
+func (p Vec3) Refract(q Vec3, eta float64) Vec3 {
+	x := p.Dot(q)
+	k := 1 - eta*eta*(1-x*x)
+	if k < 0 {
+		return Vec3{}
+	}
+	a := q.Scalar(eta)
+	b := p.Scalar(eta*x + math.Sqrt(k))
+	return a.Sub(b)
+}
+
 func (p Vec3) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
