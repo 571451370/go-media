@@ -17,6 +17,14 @@ func (p Vec2) Sub(q Vec2) Vec2 {
 	return Vec2{p.X - q.X, p.Y - q.Y}
 }
 
+func (p Vec2) Neg() Vec2 {
+	return Vec2{-p.X, -p.Y}
+}
+
+func (p Vec2) Abs() Vec2 {
+	return Vec2{math.Abs(p.X), math.Abs(p.Y)}
+}
+
 func (p Vec2) Dot(q Vec2) float64 {
 	return p.X*q.X + p.Y*q.Y
 }
@@ -422,6 +430,86 @@ func (q Quat) Mul(r Quat) Quat {
 		q.Z*r.W + q.W*r.Z + q.X*r.Y - q.Y*r.X,
 		q.W*r.W - q.X*r.X - q.Y*r.Y - q.Z*r.Z,
 	}
+}
+
+func (q Quat) Len() float64 {
+	return math.Sqrt(q.X*q.X + q.Y*q.Y + q.Z*q.Z + q.W*q.W)
+}
+
+func (q Quat) Normalize() Quat {
+	l := q.Len()
+	if l == 0 {
+		return Quat{}
+	}
+	return Quat{
+		q.X / l,
+		q.Y / l,
+		q.Z / l,
+		q.W / l,
+	}
+}
+
+func (q Quat) Conj() Quat {
+	return Quat{-q.X, -q.Y, -q.Z, q.W}
+}
+
+func (q Quat) FromAxis(v Vec3, r float64) Quat {
+	r *= 0.5
+	vn := v.Normalize()
+	si, co := math.Sincos(r)
+	return Quat{
+		vn.X * si,
+		vn.Y * si,
+		vn.Z * si,
+		co,
+	}
+}
+
+func (q Quat) FromEuler(pitch, yaw, roll float64) Quat {
+	p := pitch / 2
+	y := yaw / 2
+	r := roll / 2
+
+	sinp := math.Sin(p)
+	siny := math.Sin(y)
+	sinr := math.Sin(r)
+	cosp := math.Cos(p)
+	cosy := math.Cos(y)
+	cosr := math.Cos(r)
+
+	return Quat{
+		sinr*cosp*cosy - cosr*sinp*siny,
+		cosr*sinp*cosy + sinr*cosp*siny,
+		cosr*cosp*siny - sinr*sinp*cosy,
+		cosr*cosp*cosy + sinr*sinp*siny,
+	}.Normalize()
+}
+
+func (q Quat) Matrix() Mat4 {
+	x, y, z, w := q.X, q.Y, q.Z, q.W
+	x2 := x * x
+	y2 := y * y
+	z2 := z * z
+	xy := x * y
+	xz := x * z
+	yz := y * z
+	wx := w * x
+	wy := w * y
+	wz := w * z
+
+	return Mat4{
+		{1.0 - 2.0*(y2+z2), 2.0 * (xy - wz), 2.0 * (xz + wy), 0.0},
+		{2.0 * (xy + wz), 1.0 - 2.0*(x2+z2), 2.0 * (yz - wx), 0.0},
+		{2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0*(x2+y2), 0.0},
+		{0.0, 0.0, 0.0, 1.0},
+	}
+}
+
+func (q Quat) Axis() (v Vec3, r float64) {
+	s := math.Sqrt(q.X*q.X + q.Y*q.Y + q.Z*q.Z)
+	v = Vec3{q.X / s, q.Y / s, q.Z / s}
+	r = math.Acos(q.W) * 2
+	return
 }
 
 func Lerp(a, b, t float64) float64 {
