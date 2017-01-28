@@ -208,6 +208,17 @@ func (p Vec4) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
+func (p Vec4) V3() Vec3 {
+	if p.W != 0 {
+		return Vec3{
+			p.X / p.W,
+			p.Y / p.W,
+			p.Z / p.W,
+		}
+	}
+	return Vec3{p.X, p.Y, p.Z}
+}
+
 func (p Vec4) Normalize() Vec4 {
 	l := p.Len()
 	if l == 0 {
