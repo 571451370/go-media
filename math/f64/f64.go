@@ -68,6 +68,20 @@ func (p Vec2) Polar() Polar {
 	return Polar{p.Len(), math.Atan2(p.Y, p.X)}
 }
 
+func (p Vec2) Mins(k float64) Vec2 {
+	return Vec2{
+		math.Min(p.X, k),
+		math.Min(p.Y, k),
+	}
+}
+
+func (p Vec2) Maxs(k float64) Vec2 {
+	return Vec2{
+		math.Max(p.X, k),
+		math.Max(p.Y, k),
+	}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -156,6 +170,22 @@ func (p Vec3) Abs() Vec3 {
 	}
 }
 
+func (p Vec3) Maxs(k float64) Vec3 {
+	return Vec3{
+		math.Max(p.X, k),
+		math.Max(p.Y, k),
+		math.Max(p.Z, k),
+	}
+}
+
+func (p Vec3) Mins(k float64) Vec3 {
+	return Vec3{
+		math.Min(p.X, k),
+		math.Min(p.Y, k),
+		math.Min(p.Z, k),
+	}
+}
+
 func (p Vec3) RGBA() (r, g, b, a uint32) {
 	c := color.RGBA{
 		uint8(Clamp(p.X*255, 0, 255)),
@@ -172,6 +202,23 @@ type Vec4 struct {
 
 func (p Vec4) Dot(q Vec4) float64 {
 	return p.X*q.X + p.Y*q.Y + p.Z*q.Z + p.W*q.W
+}
+
+func (p Vec4) Len() float64 {
+	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
+}
+
+func (p Vec4) Normalize() Vec4 {
+	l := p.Len()
+	if l == 0 {
+		return Vec4{0, 0, 0, p.W}
+	}
+	return Vec4{
+		p.X / l,
+		p.Y / l,
+		p.Z / l,
+		p.W,
+	}
 }
 
 func (p Vec4) RGBA() (r, g, b, a uint32) {
@@ -273,14 +320,14 @@ func (m *Mat4) Scale(sx, sy, sz float64) *Mat4 {
 
 func (m *Mat4) LookAt(eye, at, up Vec3) *Mat4 {
 	z := at.Sub(eye).Normalize()
-	x := up.Cross(z).Normalize()
+	x := z.Cross(up).Normalize()
 	y := z.Cross(x)
 
 	var r, t Mat4
 	r = Mat4{
-		{x.X, y.X, z.X, 0},
-		{x.Y, y.Y, z.Y, 0},
-		{x.Z, y.Z, z.Z, 0},
+		{x.X, y.X, -z.X, 0},
+		{x.Y, y.Y, -z.Y, 0},
+		{x.Z, y.Z, -z.Z, 0},
 		{0, 0, 0, 1},
 	}
 	t.Translate(-eye.X, -eye.Y, -eye.Z)
