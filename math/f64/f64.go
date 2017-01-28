@@ -45,7 +45,11 @@ func (p Vec2) Scale(kx, ky float64) Vec2 {
 	return Vec2{p.X * kx, p.Y * ky}
 }
 
-func (p Vec2) Scalar(k float64) Vec2 {
+func (p Vec2) Scalev(q Vec2) Vec2 {
+	return Vec2{p.X * q.X, p.Y * q.Y}
+}
+
+func (p Vec2) Scales(k float64) Vec2 {
 	return Vec2{p.X * k, p.Y * k}
 }
 
@@ -93,7 +97,7 @@ func (p Vec3) Neg() Vec3 {
 }
 
 func (p Vec3) Reflect(q Vec3) Vec3 {
-	q = q.Scalar(2 * p.Dot(q))
+	q = q.Scales(2 * p.Dot(q))
 	return p.Sub(q)
 }
 
@@ -103,8 +107,8 @@ func (p Vec3) Refract(q Vec3, eta float64) Vec3 {
 	if k < 0 {
 		return Vec3{}
 	}
-	a := q.Scalar(eta)
-	b := p.Scalar(eta*x + math.Sqrt(k))
+	a := q.Scales(eta)
+	b := p.Scales(eta*x + math.Sqrt(k))
 	return a.Sub(b)
 }
 
@@ -116,7 +120,11 @@ func (p Vec3) Scale(kx, ky, kz float64) Vec3 {
 	return Vec3{p.X * kx, p.Y * ky, p.Z * kz}
 }
 
-func (p Vec3) Scalar(k float64) Vec3 {
+func (p Vec3) Scalev(q Vec3) Vec3 {
+	return Vec3{p.X * q.X, p.Y * q.Y, p.Z * q.Z}
+}
+
+func (p Vec3) Scales(k float64) Vec3 {
 	return Vec3{p.X * k, p.Y * k, p.Z * k}
 }
 
@@ -354,9 +362,9 @@ func (m *Mat4) Inverse() *Mat4 {
 
 	invDet := 1 / s.Dot(c)
 
-	s = s.Scalar(invDet)
-	t = t.Scalar(invDet)
-	v := c.Scalar(invDet)
+	s = s.Scales(invDet)
+	t = t.Scales(invDet)
+	v := c.Scales(invDet)
 
 	r0 := b.Cross(v)
 	r1 := v.Cross(a)
