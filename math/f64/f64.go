@@ -196,6 +196,15 @@ func (p Vec3) RGBA() (r, g, b, a uint32) {
 	return c.RGBA()
 }
 
+func (p Vec3) Spherical() Spherical {
+	l := p.Len()
+	return Spherical{
+		R: l,
+		T: math.Acos(p.Z / l),
+		P: math.Atan2(p.Y, p.X),
+	}
+}
+
 type Vec4 struct {
 	X, Y, Z, W float64
 }
@@ -576,6 +585,24 @@ func (q Quat) Axis() (v Vec3, r float64) {
 	v = Vec3{q.X / s, q.Y / s, q.Z / s}
 	r = math.Acos(q.W) * 2
 	return
+}
+
+type Spherical struct {
+	R, T, P float64
+}
+
+func (s Spherical) Euclidean() Vec3 {
+	sint := math.Sin(s.T)
+	cost := math.Sin(s.T)
+	sinp := math.Sin(s.P)
+	cosp := math.Sin(s.P)
+	r := s.R
+
+	return Vec3{
+		r * sint * cosp,
+		r * sint * sinp,
+		r * cost,
+	}
 }
 
 func Lerp(a, b, t float64) float64 {
