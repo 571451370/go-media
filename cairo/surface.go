@@ -6,7 +6,8 @@ package cairo
 */
 import "C"
 import (
-	"reflect"
+	"image"
+	"image/color"
 	"unsafe"
 )
 
@@ -91,14 +92,57 @@ func (s *Surface) Stride() int {
 	return int(C.cairo_image_surface_get_stride((*C.cairo_surface_t)(s)))
 }
 
-func (s *Surface) Data() []byte {
-	var buf []byte
+func (s *Surface) Format() Format {
+	return Format(C.cairo_image_surface_get_format((*C.cairo_surface_t)(s)))
+}
 
-	sl := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
-	sl.Len = s.Stride() * s.Height()
-	sl.Cap = sl.Len
-	sl.Data = uintptr(unsafe.Pointer(C.cairo_image_surface_get_data((*C.cairo_surface_t)(s))))
-	return buf
+func (s *Surface) Data() []byte {
+	n := s.Stride() * s.Height()
+	p := ((*[1 << 30]byte)(unsafe.Pointer(C.cairo_image_surface_get_data((*C.cairo_surface_t)(s)))))[:n:n]
+	return p
+}
+
+func (s *Surface) At(x, y int) color.Color {
+	n := s.Stride()
+	p := s.Data()
+	r := s.Bounds()
+	if !image.Pt(x, y).In(r) {
+		return color.RGBA{}
+	}
+
+	switch s.Format() {
+	case FORMAT_ARGB32:
+		return color.RGBA{
+			p[y*n+x*4],
+			p[y*n+x*4+1],
+			p[y*n+x*4+2],
+			p[y*n+x*4+3],
+		}
+	}
+
+	return color.RGBA{}
+}
+
+func (s *Surface) Set(x, y int, c color.Color) {
+	n := s.Stride()
+	p := s.Data()
+	r := s.Bounds()
+	if !image.Pt(x, y).In(r) {
+		return
+	}
+
+	cr, cg, cb, ca := c.RGBA()
+	switch s.Format() {
+	case FORMAT_ARGB32:
+		p[y*n+x*4] = byte(cr >> 8)
+		p[y*n+x*4+1] = byte(cg >> 8)
+		p[y*n+x*4+2] = byte(cb >> 8)
+		p[y*n+x*4+3] = byte(ca >> 8)
+	}
+}
+
+func (s *Surface) Bounds() image.Rectangle {
+	return image.Rect(0, 0, s.Width(), s.Height())
 }
 
 func FormatStrideForWidth(f Format, w int) int {
