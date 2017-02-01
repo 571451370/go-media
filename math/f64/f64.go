@@ -536,6 +536,23 @@ func (q Quat) Mul(r Quat) Quat {
 	}
 }
 
+func (q Quat) Neg() Quat {
+	return Quat{-q.X, -q.Y, -q.Z, -q.W}
+}
+
+func (q Quat) Dot(p Quat) float64 {
+	return q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z
+}
+
+func (q Quat) Scales(k float64) Quat {
+	return Quat{
+		q.X * k,
+		q.Y * k,
+		q.Z * k,
+		q.W * k,
+	}
+}
+
 func (q Quat) Len() float64 {
 	return math.Sqrt(q.X*q.X + q.Y*q.Y + q.Z*q.Z + q.W*q.W)
 }
@@ -616,6 +633,10 @@ func (q Quat) Axis() (v Vec3, r float64) {
 	return
 }
 
+func (q Quat) Lerp(p Quat, t float64) Quat {
+	return q.Add(p.Sub(q).Scales(t))
+}
+
 type Spherical struct {
 	R, T, P float64
 }
@@ -632,6 +653,33 @@ func (s Spherical) Euclidean() Vec3 {
 		r * sint * sinp,
 		r * cost,
 	}
+}
+
+func Slerp(v0, v1 Quat, t float64) Quat {
+	v0 = v0.Normalize()
+	v1 = v1.Normalize()
+
+	const threshold = 0.9995
+	dot := v0.Dot(v1)
+	if dot > threshold {
+		return v0.Lerp(v1, t).Normalize()
+	}
+
+	if dot < 0 {
+		v1 = v1.Neg()
+		dot = -dot
+	}
+
+	dot = Clamp(dot, -1, 1)
+	theta0 := math.Acos(dot)
+	theta := theta0 * t
+
+	v2 := v1.Sub(v0.Scales(dot))
+	v2 = v2.Normalize()
+
+	v3 := v0.Scales(math.Cos(theta))
+	v4 := v2.Scales(math.Sin(theta))
+	return v3.Add(v4)
 }
 
 func Lerp(a, b, t float64) float64 {
