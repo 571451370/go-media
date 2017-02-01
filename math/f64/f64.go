@@ -287,6 +287,23 @@ func (m *Mat3) Mul(a, b *Mat3) *Mat3 {
 	return m
 }
 
+func (m *Mat3) Transform(p Vec3) Vec3 {
+	return Vec3{
+		m[0][0]*p.X + m[0][1]*p.Y + m[0][2]*p.Z,
+		m[1][0]*p.X + m[1][1]*p.Y + m[1][2]*p.Z,
+		m[2][0]*p.X + m[2][1]*p.Y + m[2][2]*p.Z,
+	}
+}
+
+func (m *Mat3) Transform2(p Vec2) Vec2 {
+	v := m.Transform(Vec3{p.X, p.Y, 1})
+	if v.Z != 0 {
+		v.X /= v.Z
+		v.Y /= v.Z
+	}
+	return Vec2{v.X, v.Y}
+}
+
 type Mat4 [4][4]float64
 
 func (m *Mat4) Identity() *Mat4 {
