@@ -15,6 +15,7 @@ var (
 	Red         = sdl.Color{255, 0, 0, 255}
 	Blue        = sdl.Color{0, 0, 255, 255}
 	Green       = sdl.Color{0, 255, 0, 255}
+	Yellow      = sdl.Color{255, 255, 0, 255}
 )
 
 type HSL struct {

@@ -82,6 +82,14 @@ func (p Vec2) Maxs(k float64) Vec2 {
 	}
 }
 
+func (p Vec2) Rotate(r float64) Vec2 {
+	si, co := math.Sincos(r)
+	return Vec2{
+		p.X*co - p.Y*si,
+		p.X*si + p.Y*co,
+	}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
