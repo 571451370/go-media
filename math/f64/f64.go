@@ -41,15 +41,11 @@ func (p Vec2) Normalize() Vec2 {
 	return Vec2{p.X / l, p.Y / l}
 }
 
-func (p Vec2) Scale(kx, ky float64) Vec2 {
-	return Vec2{p.X * kx, p.Y * ky}
-}
-
 func (p Vec2) Scalev(q Vec2) Vec2 {
 	return Vec2{p.X * q.X, p.Y * q.Y}
 }
 
-func (p Vec2) Scales(k float64) Vec2 {
+func (p Vec2) Scale(k float64) Vec2 {
 	return Vec2{p.X * k, p.Y * k}
 }
 
@@ -68,14 +64,14 @@ func (p Vec2) Polar() Polar {
 	return Polar{p.Len(), math.Atan2(p.Y, p.X)}
 }
 
-func (p Vec2) Mins(k float64) Vec2 {
+func (p Vec2) Min(k float64) Vec2 {
 	return Vec2{
 		math.Min(p.X, k),
 		math.Min(p.Y, k),
 	}
 }
 
-func (p Vec2) Maxs(k float64) Vec2 {
+func (p Vec2) Max(k float64) Vec2 {
 	return Vec2{
 		math.Max(p.X, k),
 		math.Max(p.Y, k),
@@ -102,6 +98,14 @@ func (p Vec3) Sub(q Vec3) Vec3 {
 	return Vec3{p.X - q.X, p.Y - q.Y, p.Z - q.Z}
 }
 
+func (p Vec3) AddScale(q Vec3, t float64) Vec3 {
+	return p.Add(q.Scale(t))
+}
+
+func (p Vec3) SubScale(q Vec3, t float64) Vec3 {
+	return p.Sub(q.Scale(t))
+}
+
 func (p Vec3) Dot(q Vec3) float64 {
 	return p.X*q.X + p.Y*q.Y + p.Z*q.Z
 }
@@ -119,7 +123,7 @@ func (p Vec3) Neg() Vec3 {
 }
 
 func (p Vec3) Reflect(q Vec3) Vec3 {
-	q = q.Scales(2 * p.Dot(q))
+	q = q.Scale(2 * p.Dot(q))
 	return p.Sub(q)
 }
 
@@ -129,8 +133,8 @@ func (p Vec3) Refract(q Vec3, eta float64) Vec3 {
 	if k < 0 {
 		return Vec3{}
 	}
-	a := q.Scales(eta)
-	b := p.Scales(eta*x + math.Sqrt(k))
+	a := q.Scale(eta)
+	b := p.Scale(eta*x + math.Sqrt(k))
 	return a.Sub(b)
 }
 
@@ -138,15 +142,11 @@ func (p Vec3) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
-func (p Vec3) Scale(kx, ky, kz float64) Vec3 {
-	return Vec3{p.X * kx, p.Y * ky, p.Z * kz}
-}
-
 func (p Vec3) Scalev(q Vec3) Vec3 {
 	return Vec3{p.X * q.X, p.Y * q.Y, p.Z * q.Z}
 }
 
-func (p Vec3) Scales(k float64) Vec3 {
+func (p Vec3) Scale(k float64) Vec3 {
 	return Vec3{p.X * k, p.Y * k, p.Z * k}
 }
 
@@ -178,7 +178,7 @@ func (p Vec3) Abs() Vec3 {
 	}
 }
 
-func (p Vec3) Maxs(k float64) Vec3 {
+func (p Vec3) Max(k float64) Vec3 {
 	return Vec3{
 		math.Max(p.X, k),
 		math.Max(p.Y, k),
@@ -186,7 +186,7 @@ func (p Vec3) Maxs(k float64) Vec3 {
 	}
 }
 
-func (p Vec3) Mins(k float64) Vec3 {
+func (p Vec3) Min(k float64) Vec3 {
 	return Vec3{
 		math.Min(p.X, k),
 		math.Min(p.Y, k),
@@ -217,7 +217,7 @@ type Vec4 struct {
 	X, Y, Z, W float64
 }
 
-func (p Vec4) Scales(k float64) Vec4 {
+func (p Vec4) Scale(k float64) Vec4 {
 	return Vec4{p.X * k, p.Y * k, p.Z * k, p.W}
 }
 
@@ -458,9 +458,9 @@ func (m *Mat4) Inverse() *Mat4 {
 
 	invDet := 1 / s.Dot(c)
 
-	s = s.Scales(invDet)
-	t = t.Scales(invDet)
-	v := c.Scales(invDet)
+	s = s.Scale(invDet)
+	t = t.Scale(invDet)
+	v := c.Scale(invDet)
 
 	r0 := b.Cross(v)
 	r1 := v.Cross(a)
@@ -544,7 +544,7 @@ func (q Quat) Dot(p Quat) float64 {
 	return q.W*q.W + q.X*q.X + q.Y*q.Y + q.Z*q.Z
 }
 
-func (q Quat) Scales(k float64) Quat {
+func (q Quat) Scale(k float64) Quat {
 	return Quat{
 		q.X * k,
 		q.Y * k,
@@ -634,7 +634,7 @@ func (q Quat) Axis() (v Vec3, r float64) {
 }
 
 func (q Quat) Lerp(p Quat, t float64) Quat {
-	return q.Add(p.Sub(q).Scales(t))
+	return q.Add(p.Sub(q).Scale(t))
 }
 
 type Spherical struct {
@@ -674,11 +674,11 @@ func Slerp(v0, v1 Quat, t float64) Quat {
 	theta0 := math.Acos(dot)
 	theta := theta0 * t
 
-	v2 := v1.Sub(v0.Scales(dot))
+	v2 := v1.Sub(v0.Scale(dot))
 	v2 = v2.Normalize()
 
-	v3 := v0.Scales(math.Cos(theta))
-	v4 := v2.Scales(math.Sin(theta))
+	v3 := v0.Scale(math.Cos(theta))
+	v4 := v2.Scale(math.Sin(theta))
 	return v3.Add(v4)
 }
 
