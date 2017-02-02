@@ -37,6 +37,14 @@ func (p Vec2) Dot(q Vec2) float64 {
 	return p.X*q.X + p.Y*q.Y
 }
 
+func (p Vec2) MinComp() float64 {
+	return math.Min(p.X, p.Y)
+}
+
+func (p Vec2) MaxComp() float64 {
+	return math.Max(p.X, p.Y)
+}
+
 func (p Vec2) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
@@ -200,6 +208,14 @@ func (p Vec3) Min(k float64) Vec3 {
 		math.Min(p.Y, k),
 		math.Min(p.Z, k),
 	}
+}
+
+func (p Vec3) MinComp() float64 {
+	return math.Min(p.X, math.Min(p.Y, p.Z))
+}
+
+func (p Vec3) MaxComp() float64 {
+	return math.Max(p.X, math.Max(p.Y, p.Z))
 }
 
 func (p Vec3) RGBA() (r, g, b, a uint32) {
