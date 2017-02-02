@@ -17,6 +17,14 @@ func (p Vec2) Sub(q Vec2) Vec2 {
 	return Vec2{p.X - q.X, p.Y - q.Y}
 }
 
+func (p Vec2) AddScale(q Vec2, t float64) Vec2 {
+	return p.Add(q.Scale(t))
+}
+
+func (p Vec2) SubScale(q Vec2, t float64) Vec2 {
+	return p.Sub(q.Scale(t))
+}
+
 func (p Vec2) Neg() Vec2 {
 	return Vec2{-p.X, -p.Y}
 }
