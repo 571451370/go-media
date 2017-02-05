@@ -79,7 +79,11 @@ func (d *decoder) decodeHeader() error {
 
 	d.w = d.readInt()
 	d.h = d.readInt()
-	d.maxval = d.readInt()
+	if d.format != 1 && d.format != 4 {
+		d.maxval = d.readInt()
+	} else {
+		d.maxval = 255
+	}
 
 	if d.err != nil {
 		return fmt.Errorf("pnm: %v", d.err)
