@@ -2,7 +2,7 @@
 // http://staffwww.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf
 package simplx
 
-func Noise1(x float64) float64 {
+func Noise1D(x float64) float64 {
 	i0 := floor(x)
 	i1 := i0 + 1
 	x0 := x - float64(i0)
@@ -18,7 +18,7 @@ func Noise1(x float64) float64 {
 	return 0.395 * (n0 + n1)
 }
 
-func Noise2(x, y float64) float64 {
+func Noise2D(x, y float64) float64 {
 	const F2 = 0.366025403
 	const G2 = 0.211324865
 

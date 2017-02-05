@@ -1,6 +1,7 @@
 package f64
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 )
@@ -359,6 +360,28 @@ func (m *Mat3) Transpose() *Mat3 {
 	return m
 }
 
+func (m *Mat3) Det() float64 {
+	A1 := Vec3{m[0][0], m[0][1], m[0][2]}
+	A2 := Vec3{m[1][1], m[1][2], m[1][0]}
+	A3 := Vec3{m[2][2], m[2][0], m[2][1]}
+	A4 := Vec3{m[1][2], m[1][0], m[1][1]}
+	A5 := Vec3{m[2][1], m[2][2], m[2][0]}
+
+	X := A2.Scalev(A3)
+	Y := A4.Scalev(A5)
+	A6 := X.Sub(Y)
+	return A1.Dot(A6)
+}
+
+func (m Mat3) String() string {
+	return fmt.Sprintf(`Mat3[% 0.3f, % 0.3f, % 0.3f,
+		     % 0.3f, % 0.3f, % 0.3f,
+			      % 0.3f, % 0.3f, % 0.3f]`,
+		m[0][0], m[0][1], m[0][2],
+		m[1][0], m[1][1], m[1][2],
+		m[2][0], m[2][1], m[2][2])
+}
+
 type Mat4 [4][4]float64
 
 func (m *Mat4) Identity() *Mat4 {
@@ -571,6 +594,17 @@ func (m *Mat4) Transform3(v Vec3) Vec3 {
 	return Vec3{p.X, p.Y, p.Z}
 }
 
+func (m Mat4) String() string {
+	return fmt.Sprintf(`Mat4[% 0.3f, % 0.3f, % 0.3f, % 0.3f,
+		     % 0.3f, % 0.3f, % 0.3f, % 0.3f,
+			      % 0.3f, % 0.3f, % 0.3f, % 0.3f,
+				       % 0.3f, % 0.3f, % 0.3f, % 0.3f]`,
+		m[0][0], m[0][1], m[0][2], m[0][3],
+		m[1][0], m[1][1], m[1][2], m[1][3],
+		m[2][0], m[2][1], m[2][2], m[2][3],
+		m[3][0], m[3][1], m[3][2], m[3][3])
+}
+
 type Polar struct {
 	R, P float64
 }
@@ -774,6 +808,11 @@ func Smoothstep(a, b, x float64) float64 {
 	return t * t * (3 - 2*t)
 }
 
+func CubicBezier1D(t, p0, p1, p2, p3 float64) float64 {
+	it := 1 - t
+	return it*it*it*p0 + 3*it*it*t*p1 + 3*it*t*t*p2 + t*t*t*p3
+}
+
 func Clamp(x, s, e float64) float64 {
 	if x < s {
 		x = s
@@ -782,4 +821,8 @@ func Clamp(x, s, e float64) float64 {
 		x = e
 	}
 	return x
+}
+
+func Saturate(x float64) float64 {
+	return math.Max(0, math.Min(1, x))
 }
