@@ -241,8 +241,28 @@ type Vec4 struct {
 	X, Y, Z, W float64
 }
 
+func (p Vec4) Add(q Vec4) Vec4 {
+	return Vec4{p.X + q.X, p.Y + q.Y, p.Z + q.Z, p.W}
+}
+
+func (p Vec4) Sub(q Vec4) Vec4 {
+	return Vec4{p.X - q.X, p.Y - q.Y, p.Z - q.Z, p.W}
+}
+
+func (p Vec4) AddScale(q Vec4, k float64) Vec4 {
+	return p.Add(q.Scale(k))
+}
+
+func (p Vec4) SubScale(q Vec4, k float64) Vec4 {
+	return p.Sub(q.Scale(k))
+}
+
 func (p Vec4) Scale(k float64) Vec4 {
 	return Vec4{p.X * k, p.Y * k, p.Z * k, p.W}
+}
+
+func (p Vec4) Scalev(q Vec4) Vec4 {
+	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W}
 }
 
 func (p Vec4) Dot(q Vec4) float64 {
@@ -329,11 +349,13 @@ func (m *Mat3) Transform2(p Vec2) Vec2 {
 }
 
 func (m *Mat3) Transpose() *Mat3 {
+	var p Mat3
 	for i := range m {
 		for j := range m[i] {
-			m[i][j], m[j][i] = m[j][i], m[i][j]
+			p[j][i] = m[i][j]
 		}
 	}
+	*m = p
 	return m
 }
 
@@ -517,11 +539,13 @@ func (m *Mat4) Inverse() *Mat4 {
 }
 
 func (m *Mat4) Transpose() *Mat4 {
+	var p Mat4
 	for i := range m {
 		for j := range m[i] {
-			m[i][j], m[j][i] = m[j][i], m[i][j]
+			p[j][i] = m[i][j]
 		}
 	}
+	*m = p
 	return m
 }
 
