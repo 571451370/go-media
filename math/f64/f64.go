@@ -408,6 +408,15 @@ func (m *Mat4) LookAt(eye, at, up Vec3) *Mat4 {
 	return m
 }
 
+func (m *Mat4) Viewport(x, y, w, h float64) {
+	*m = Mat4{
+		{w / 2, 0, 0, w/2 + x},
+		{0, h / 2, 0, h/2 + y},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
+	}
+}
+
 func (m *Mat4) RotX(r float64) *Mat4 {
 	si, co := math.Sincos(r)
 	*m = Mat4{
