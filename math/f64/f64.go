@@ -328,6 +328,15 @@ func (m *Mat3) Transform2(p Vec2) Vec2 {
 	return Vec2{v.X, v.Y}
 }
 
+func (m *Mat3) Transpose() *Mat3 {
+	for i := range m {
+		for j := range m[i] {
+			m[i][j], m[j][i] = m[j][i], m[i][j]
+		}
+	}
+	return m
+}
+
 type Mat4 [4][4]float64
 
 func (m *Mat4) Identity() *Mat4 {
@@ -503,6 +512,15 @@ func (m *Mat4) Inverse() *Mat4 {
 		{r1.X, r1.Y, r1.Z, a.Dot(t)},
 		{s.X, s.Y, s.Z, -d.Dot(s)},
 		{0, 0, 0, 1},
+	}
+	return m
+}
+
+func (m *Mat4) Transpose() *Mat4 {
+	for i := range m {
+		for j := range m[i] {
+			m[i][j], m[j][i] = m[j][i], m[i][j]
+		}
 	}
 	return m
 }
