@@ -29,7 +29,11 @@ func Decode(r io.Reader) (image.Image, error) {
 		}
 	}
 
-	return m, d.err
+	if d.err != nil {
+		return nil, fmt.Errorf("pnm: %v", d.err)
+	}
+
+	return m, nil
 }
 
 func DecodeConfig(r io.Reader) (image.Config, error) {
@@ -77,7 +81,11 @@ func (d *decoder) decodeHeader() error {
 	d.h = d.readInt()
 	d.maxval = d.readInt()
 
-	return d.err
+	if d.err != nil {
+		return fmt.Errorf("pnm: %v", d.err)
+	}
+
+	return nil
 }
 
 func (d *decoder) peek() uint8 {

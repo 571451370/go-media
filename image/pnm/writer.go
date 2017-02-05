@@ -85,5 +85,9 @@ func Encode(w io.Writer, m image.Image, o *Options) error {
 		binary.Write(w, binary.LittleEndian, bw)
 	}
 
-	return b.Flush()
+	err := b.Flush()
+	if err != nil {
+		return fmt.Errorf("pnm: %v", err)
+	}
+	return nil
 }
