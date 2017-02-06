@@ -453,20 +453,25 @@ func (m *Mat4) Scale(sx, sy, sz float64) *Mat4 {
 	return m
 }
 
-func (m *Mat4) LookAt(eye, at, up Vec3) *Mat4 {
-	z := at.Sub(eye).Normalize()
-	x := z.Cross(up).Normalize()
-	y := z.Cross(x)
+func (m *Mat4) LookAt(eye, center, up Vec3) *Mat4 {
+	f := center
+	f = f.Sub(eye)
+	f = f.Normalize()
 
-	var r, t Mat4
-	r = Mat4{
-		{x.X, y.X, -z.X, 0},
-		{x.Y, y.Y, -z.Y, 0},
-		{x.Z, y.Z, -z.Z, 0},
+	s := f.Cross(up)
+	s = s.Normalize()
+	u := s.Cross(f)
+
+	*m = Mat4{
+		{s.X, s.Y, s.Z, 0},
+		{u.X, u.Y, u.Z, 0},
+		{-f.X, -f.Y, -f.Z, 0},
 		{0, 0, 0, 1},
 	}
+
+	var t Mat4
 	t.Translate(-eye.X, -eye.Y, -eye.Z)
-	m.Mul(&r, &t)
+	m.Mul(&t, m)
 	return m
 }
 
