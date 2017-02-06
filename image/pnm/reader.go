@@ -84,6 +84,9 @@ func (d *decoder) decodeHeader() error {
 	} else {
 		d.maxval = 255
 	}
+	if d.maxval <= 0 {
+		d.maxval = 255
+	}
 
 	if d.err != nil {
 		return fmt.Errorf("pnm: %v", d.err)

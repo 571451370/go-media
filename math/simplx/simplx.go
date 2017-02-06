@@ -80,6 +80,128 @@ func Noise2D(x, y float64) float64 {
 	return 40 * (n0 + n1 + n2)
 }
 
+func Noise3D(x, y, z float64) float64 {
+	const F3 = 0.333333333
+	const G3 = 0.166666667
+
+	s := (x + y + z) * F3
+	xs := x + s
+	ys := y + s
+	zs := z + s
+	i := floor(xs)
+	j := floor(ys)
+	k := floor(zs)
+
+	t := float64(i+j+k) * G3
+	X0 := float64(i) - t
+	Y0 := float64(j) - t
+	Z0 := float64(k) - t
+	x0 := x - X0 // The x,y,z distances from the cell origin
+	y0 := y - Y0
+	z0 := z - Z0
+
+	var i1, j1, k1 int
+	var i2, j2, k2 int
+
+	if x0 >= y0 {
+		if y0 >= z0 {
+			i1 = 1
+			j1 = 0
+			k1 = 0
+			i2 = 1
+			j2 = 1
+			k2 = 0
+		} else if x0 >= z0 {
+			i1 = 1
+			j1 = 0
+			k1 = 0
+			i2 = 1
+			j2 = 0
+			k2 = 1
+		} else {
+			i1 = 0
+			j1 = 0
+			k1 = 1
+			i2 = 1
+			j2 = 0
+			k2 = 1
+		}
+	} else { // x0<y0
+		if y0 < z0 {
+			i1 = 0
+			j1 = 0
+			k1 = 1
+			i2 = 0
+			j2 = 1
+			k2 = 1
+		} else if x0 < z0 {
+			i1 = 0
+			j1 = 1
+			k1 = 0
+			i2 = 0
+			j2 = 1
+			k2 = 1
+		} else {
+			i1 = 0
+			j1 = 1
+			k1 = 0
+			i2 = 1
+			j2 = 1
+			k2 = 0
+		}
+	}
+
+	x1 := x0 - float64(i1) + G3
+	y1 := y0 - float64(j1) + G3
+	z1 := z0 - float64(k1) + G3
+	x2 := x0 - float64(i2) + 2.0*G3
+	y2 := y0 - float64(j2) + 2.0*G3
+	z2 := z0 - float64(k2) + 2.0*G3
+	x3 := x0 - 1.0 + 3.0*G3
+	y3 := y0 - 1.0 + 3.0*G3
+	z3 := z0 - 1.0 + 3.0*G3
+
+	ii := i & 0xff
+	jj := j & 0xff
+	kk := k & 0xff
+
+	var n0, n1, n2, n3 float64
+
+	t0 := 0.6 - x0*x0 - y0*y0 - z0*z0
+	if t0 < 0.0 {
+		n0 = 0.0
+	} else {
+		t0 *= t0
+		n0 = t0 * t0 * grad3(perm[ii+perm[jj+perm[kk]]], x0, y0, z0)
+	}
+
+	t1 := 0.6 - x1*x1 - y1*y1 - z1*z1
+	if t1 < 0.0 {
+		n1 = 0.0
+	} else {
+		t1 *= t1
+		n1 = t1 * t1 * grad3(perm[ii+i1+perm[jj+j1+perm[kk+k1]]], x1, y1, z1)
+	}
+
+	t2 := 0.6 - x2*x2 - y2*y2 - z2*z2
+	if t2 < 0.0 {
+		n2 = 0.0
+	} else {
+		t2 *= t2
+		n2 = t2 * t2 * grad3(perm[ii+i2+perm[jj+j2+perm[kk+k2]]], x2, y2, z2)
+	}
+
+	t3 := 0.6 - x3*x3 - y3*y3 - z3*z3
+	if t3 < 0.0 {
+		n3 = 0.0
+	} else {
+		t3 *= t3
+		n3 = t3 * t3 * grad3(perm[ii+1+perm[jj+1+perm[kk+1]]], x3, y3, z3)
+	}
+
+	return 32.0 * (n0 + n1 + n2 + n3)
+}
+
 func grad1(hash int, x float64) float64 {
 	h := hash & 15
 	grad := 1 + float64(h&7)
@@ -92,8 +214,30 @@ func grad1(hash int, x float64) float64 {
 func grad2(hash int, x, y float64) float64 {
 	h := hash & 7
 	u, v := x, y
-	if h < 4 {
+	if !(h < 4) {
 		u, v = y, x
+	}
+	if h&1 != 0 {
+		u = -u
+	}
+	if h&2 != 0 {
+		v = -v
+	}
+	return u + 2*v
+}
+
+func grad3(hash int, x, y, z float64) float64 {
+	h := hash & 15
+	u, v := x, y
+	if !(h < 8) {
+		u = y
+	}
+	if !(h < 4) {
+		if h == 12 || h == 14 {
+			v = x
+		} else {
+			v = z
+		}
 	}
 	if h&1 != 0 {
 		u = -u

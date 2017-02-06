@@ -9,6 +9,7 @@ import (
 	_ "image/png"
 	"os"
 
+	_ "github.com/qeedquan/go-media/image/pnm"
 	_ "github.com/qeedquan/go-media/image/psd"
 	_ "github.com/qeedquan/go-media/image/tga"
 	_ "golang.org/x/image/bmp"
