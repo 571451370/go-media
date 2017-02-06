@@ -826,3 +826,6 @@ func Clamp(x, s, e float64) float64 {
 func Saturate(x float64) float64 {
 	return math.Max(0, math.Min(1, x))
 }
+
+func Radians(a float64) float64 { return a * math.Pi / 180 }
+func Degrees(r float64) float64 { return r * 180 / math.Pi }
