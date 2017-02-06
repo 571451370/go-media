@@ -66,6 +66,14 @@ func (p Vec2) Scale(k float64) Vec2 {
 	return Vec2{p.X * k, p.Y * k}
 }
 
+func (p Vec2) Shear(k float64) Vec2 {
+	return Vec2{p.X + k*p.Y, p.Y + k*p.X}
+}
+
+func (p Vec2) Shearv(q Vec2) Vec2 {
+	return Vec2{p.X + q.X*p.Y, p.Y + q.Y*p.X}
+}
+
 func (p Vec2) Lerp(q Vec2, t float64) Vec2 {
 	return Vec2{
 		Lerp(p.X, q.X, t),
