@@ -138,6 +138,42 @@ func DequeueAudio(dev AudioDeviceID, data []byte) uint32 {
 	return uint32(C.SDL_DequeueAudio(C.SDL_AudioDeviceID(dev), unsafe.Pointer(&data[0]), C.Uint32(len(data))))
 }
 
+func LockAudio() {
+	C.SDL_LockAudio()
+}
+
+func LockAudioDevice(dev AudioDeviceID) {
+	C.SDL_LockAudioDevice(C.SDL_AudioDeviceID(dev))
+}
+
+func UnlockAudio() {
+	C.SDL_UnlockAudio()
+}
+
+func UnlockAudioDevice(dev AudioDeviceID) {
+	C.SDL_UnlockAudioDevice(C.SDL_AudioDeviceID(dev))
+}
+
+func CloseAudio() {
+	C.SDL_CloseAudio()
+}
+
+func CloseAudioDevice(dev AudioDeviceID) {
+	C.SDL_CloseAudioDevice(C.SDL_AudioDeviceID(dev))
+}
+
+func GetQueueAudioSize(dev AudioDeviceID) uint32 {
+	return uint32(C.SDL_GetQueuedAudioSize(C.SDL_AudioDeviceID(dev)))
+}
+
+func PauseAudio(pauseOn int) {
+	C.SDL_PauseAudio(C.int(pauseOn))
+}
+
+func PauseAudioDevice(dev AudioDeviceID, pauseOn int) {
+	C.SDL_PauseAudioDevice(C.SDL_AudioDeviceID(dev), C.int(pauseOn))
+}
+
 type audio struct {
 	sync.Mutex
 	callbacks []AudioCallback

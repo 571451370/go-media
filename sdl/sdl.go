@@ -17,6 +17,7 @@ const (
 
 const (
 	ENABLE  = C.SDL_ENABLE
+	IGNORE  = C.SDL_IGNORE
 	DISABLE = C.SDL_DISABLE
 	QUERY   = C.SDL_QUERY
 )

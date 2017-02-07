@@ -628,3 +628,11 @@ func evDollarGesture(pev *C.SDL_DollarGestureEvent) DollarGestureEvent {
 func PumpEvents() {
 	C.SDL_PumpEvents()
 }
+
+func EventState(typ uint32, state int) uint8 {
+	return uint8(C.SDL_EventState(C.Uint32(typ), C.int(state)))
+}
+
+func RegisterEvents(numEvents int) uint32 {
+	return uint32(C.SDL_RegisterEvents(C.int(numEvents)))
+}
