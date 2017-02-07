@@ -309,6 +309,14 @@ func (p Vec4) Scalev(q Vec4) Vec4 {
 	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W}
 }
 
+func (p Vec4) Shrink(k float64) Vec4 {
+	return Vec4{p.X / k, p.Y / k, p.Z / k, p.W}
+}
+
+func (p Vec4) Shrinkv(q Vec4) Vec4 {
+	return Vec4{p.X / q.X, p.Y / q.Y, p.Z / q.Z, p.W}
+}
+
 func (p Vec4) Dot(q Vec4) float64 {
 	return p.X*q.X + p.Y*q.Y + p.Z*q.Z + p.W*q.W
 }
@@ -317,9 +325,10 @@ func (p Vec4) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
-func (p Vec4) XYZ() Vec3 {
-	return Vec3{p.X, p.Y, p.Z}
-}
+func (p Vec4) XYZ() Vec3 { return Vec3{p.X, p.Y, p.Z} }
+func (p Vec4) XZY() Vec3 { return Vec3{p.X, p.Z, p.Y} }
+func (p Vec4) YXZ() Vec3 { return Vec3{p.Y, p.X, p.Z} }
+func (p Vec4) YZX() Vec3 { return Vec3{p.Y, p.Z, p.X} }
 
 func (p Vec4) Normalize() Vec4 {
 	l := p.Len()
