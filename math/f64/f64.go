@@ -119,6 +119,10 @@ func (p Vec2) Shrinkv(q Vec2) Vec2 {
 	return Vec2{p.X / q.X, p.Y / q.Y}
 }
 
+func (p Vec2) YX() Vec2 {
+	return Vec2{p.Y, p.X}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -272,6 +276,10 @@ func (p Vec3) Spherical() Spherical {
 
 func (p Vec3) XY() Vec2 { return Vec2{p.X, p.Y} }
 func (p Vec3) XZ() Vec2 { return Vec2{p.X, p.Z} }
+func (p Vec3) YX() Vec2 { return Vec2{p.Y, p.X} }
+func (p Vec3) YZ() Vec2 { return Vec2{p.Y, p.Z} }
+func (p Vec3) ZX() Vec2 { return Vec2{p.Z, p.X} }
+func (p Vec3) ZY() Vec2 { return Vec2{p.Z, p.Y} }
 
 type Vec4 struct {
 	X, Y, Z, W float64
@@ -310,13 +318,6 @@ func (p Vec4) Len() float64 {
 }
 
 func (p Vec4) XYZ() Vec3 {
-	if p.W != 0 {
-		return Vec3{
-			p.X / p.W,
-			p.Y / p.W,
-			p.Z / p.W,
-		}
-	}
 	return Vec3{p.X, p.Y, p.Z}
 }
 
