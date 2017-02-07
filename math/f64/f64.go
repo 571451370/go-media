@@ -270,9 +270,8 @@ func (p Vec3) Spherical() Spherical {
 	}
 }
 
-func (p Vec3) V2() Vec2 {
-	return Vec2{p.X, p.Y}
-}
+func (p Vec3) XY() Vec2 { return Vec2{p.X, p.Y} }
+func (p Vec3) XZ() Vec2 { return Vec2{p.X, p.Z} }
 
 type Vec4 struct {
 	X, Y, Z, W float64
@@ -310,7 +309,7 @@ func (p Vec4) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
-func (p Vec4) V3() Vec3 {
+func (p Vec4) XYZ() Vec3 {
 	if p.W != 0 {
 		return Vec3{
 			p.X / p.W,
@@ -866,6 +865,16 @@ func Clamp(x, s, e float64) float64 {
 
 func Saturate(x float64) float64 {
 	return math.Max(0, math.Min(1, x))
+}
+
+func Sign(x float64) float64 {
+	if x < 0 {
+		return -1
+	}
+	if x == 0 {
+		return 0
+	}
+	return 1
 }
 
 func Radians(a float64) float64 { return a * math.Pi / 180 }
