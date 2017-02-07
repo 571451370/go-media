@@ -111,6 +111,14 @@ func (p Vec2) Rotate(r float64) Vec2 {
 	}
 }
 
+func (p Vec2) Shrink(k float64) Vec2 {
+	return Vec2{p.X / k, p.Y / k}
+}
+
+func (p Vec2) Shrinkv(q Vec2) Vec2 {
+	return Vec2{p.X / q.X, p.Y / q.Y}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -260,6 +268,10 @@ func (p Vec3) Spherical() Spherical {
 		T: math.Acos(p.Z / l),
 		P: math.Atan2(p.Y, p.X),
 	}
+}
+
+func (p Vec3) V2() Vec2 {
+	return Vec2{p.X, p.Y}
 }
 
 type Vec4 struct {
