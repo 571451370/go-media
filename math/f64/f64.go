@@ -175,6 +175,22 @@ func (p Vec3) Scale(k float64) Vec3 {
 	return Vec3{p.X * k, p.Y * k, p.Z * k}
 }
 
+func (p Vec3) Shrink(k float64) Vec3 {
+	return Vec3{
+		p.X / k,
+		p.Y / k,
+		p.Z / k,
+	}
+}
+
+func (p Vec3) Shrinkv(q Vec3) Vec3 {
+	return Vec3{
+		p.X / q.X,
+		p.Y / q.Y,
+		p.Z / q.Z,
+	}
+}
+
 func (p Vec3) Normalize() Vec3 {
 	l := p.Len()
 	if l == 0 {

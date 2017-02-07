@@ -42,6 +42,10 @@ func Cone(p, c f64.Vec3) float64 {
 	return t1 + t2
 }
 
+func Plane(p f64.Vec3, n f64.Vec4) float64 {
+	return p.Dot(n.V3()) + n.W
+}
+
 func OpS1(d1, d2 float64) float64 {
 	return math.Max(-d2, d1)
 }

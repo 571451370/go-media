@@ -96,7 +96,7 @@ func Noise3D(x, y, z float64) float64 {
 	X0 := float64(i) - t
 	Y0 := float64(j) - t
 	Z0 := float64(k) - t
-	x0 := x - X0 // The x,y,z distances from the cell origin
+	x0 := x - X0
 	y0 := y - Y0
 	z0 := z - Z0
 
