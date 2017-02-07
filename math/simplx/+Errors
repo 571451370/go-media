@@ -1,0 +1,13 @@
+# command-line-arguments
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:253: syntax error: unexpected h at end of statement
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:254: syntax error: unexpected u at end of statement
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:254: invalid character U+003F '?'
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:255: syntax error: unexpected v at end of statement
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:255: invalid character U+003F '?'
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:256: syntax error: unexpected w at end of statement
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:256: invalid character U+003F '?'
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:257: invalid character U+003F '?'
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:257: syntax error: unexpected :, expecting )
+# command-line-arguments
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:264: invalid character U+003F '?'
+/home/qeed/projects/go/src/github.com/qeedquan/go-media/math/simplx/simplx.go:264: syntax error: unexpected :, expecting )
