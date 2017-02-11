@@ -4,15 +4,17 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"os"
+	"path/filepath"
+	"strings"
 
-	_ "github.com/qeedquan/go-media/image/pnm"
+	"github.com/qeedquan/go-media/image/pnm"
 	_ "github.com/qeedquan/go-media/image/psd"
-	_ "github.com/qeedquan/go-media/image/tga"
-	_ "golang.org/x/image/bmp"
+	"github.com/qeedquan/go-media/image/tga"
+	"golang.org/x/image/bmp"
 )
 
 func LoadFile(name string) (*image.RGBA, error) {
@@ -35,6 +37,43 @@ func LoadFile(name string) (*image.RGBA, error) {
 	p := image.NewRGBA(r)
 	draw.Draw(p, p.Bounds(), m, r.Min, draw.Src)
 	return p, nil
+}
+
+func WriteFile(img image.Image, name string) error {
+	f, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+
+	ext := filepath.Ext(name)
+	switch strings.ToLower(ext) {
+	case ".jpg", ".jpeg":
+		err = jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
+	case ".pbm":
+		err = pnm.Encode(f, img, &pnm.Options{Format: 1})
+	case ".pgm":
+		err = pnm.Encode(f, img, &pnm.Options{Format: 2})
+	case ".ppm":
+		err = pnm.Encode(f, img, &pnm.Options{Format: 3})
+	case ".gif":
+		err = gif.Encode(f, img, &gif.Options{
+			NumColors: 256,
+		})
+	case ".tga":
+		err = tga.Encode(f, img)
+	case ".bmp":
+		err = bmp.Encode(f, img)
+	case ".png":
+		fallthrough
+	default:
+		err = png.Encode(f, img)
+	}
+
+	xerr := f.Close()
+	if err != nil {
+		err = xerr
+	}
+	return err
 }
 
 func ColorKey(m image.Image, c color.Color) *image.RGBA {
