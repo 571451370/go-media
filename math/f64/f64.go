@@ -418,6 +418,10 @@ func (m *Mat3) Det() float64 {
 	return A1.Dot(A6)
 }
 
+func (m *Mat3) Trace() float64 {
+	return m[0][0] + m[1][1] + m[2][2]
+}
+
 func (m Mat3) String() string {
 	return fmt.Sprintf(`Mat3[% 0.3f, % 0.3f, % 0.3f,
 		     % 0.3f, % 0.3f, % 0.3f,
@@ -468,6 +472,10 @@ func (m *Mat4) Mul(a, b *Mat4) *Mat4 {
 	}
 	*m = p
 	return m
+}
+
+func (m *Mat4) Trace() float64 {
+	return m[0][0] + m[1][1] + m[2][2] + m[3][3]
 }
 
 func (m *Mat4) Translate(tx, ty, tz float64) *Mat4 {

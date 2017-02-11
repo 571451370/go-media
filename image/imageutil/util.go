@@ -70,7 +70,7 @@ func WriteFile(img image.Image, name string) error {
 	}
 
 	xerr := f.Close()
-	if err != nil {
+	if err == nil {
 		err = xerr
 	}
 	return err
