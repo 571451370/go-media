@@ -4,7 +4,7 @@
 #include "_cgo_export.h"
 
 void setError(char *s) {
-    Mix_SetError(s);
+    Mix_SetError("%s", s);
 }
 
 Mix_Chunk *loadWAV(char *file) {
