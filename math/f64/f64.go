@@ -322,7 +322,15 @@ func (p Vec4) Dot(q Vec4) float64 {
 }
 
 func (p Vec4) Len() float64 {
-	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
+	return math.Sqrt(p.Dot(p))
+}
+
+func (p Vec4) Dot3(q Vec4) float64 {
+	return p.X*q.X + p.Y*q.Y + p.Z*q.Z
+}
+
+func (p Vec4) Len3() float64 {
+	return math.Sqrt(p.Dot3(p))
 }
 
 func (p Vec4) XYZ() Vec3 { return Vec3{p.X, p.Y, p.Z} }
