@@ -668,9 +668,15 @@ func (m *Mat4) Transform(v Vec4) Vec4 {
 }
 
 func (m *Mat4) Transform3(v Vec3) Vec3 {
-	p := Vec4{v.X, v.Y, v.Z, 1}
-	p = m.Transform(p)
-	return Vec3{p.X, p.Y, p.Z}
+	s := m[3][0]*v.X + m[3][1]*v.Y + m[3][2]*v.Z + m[3][3]
+	switch s {
+	case 0:
+		return Vec3{}
+	default:
+		p := m.Transform(Vec4{v.X, v.Y, v.Z, 1})
+		return Vec3{p.X, p.Y, p.Z}
+	}
+
 }
 
 func (m Mat4) String() string {
@@ -916,5 +922,7 @@ func Sign(x float64) float64 {
 	return 1
 }
 
-func Radians(a float64) float64 { return a * math.Pi / 180 }
-func Degrees(r float64) float64 { return r * 180 / math.Pi }
+const (
+	Radians = math.Pi / 180
+	Degrees = 180 / math.Pi
+)
