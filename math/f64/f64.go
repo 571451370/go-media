@@ -347,6 +347,19 @@ func (p Vec4) Normalize() Vec4 {
 		p.X / l,
 		p.Y / l,
 		p.Z / l,
+		p.W / l,
+	}
+}
+
+func (p Vec4) Normalize3() Vec4 {
+	l := p.Len3()
+	if l == 0 {
+		return Vec4{0, 0, 0, p.W}
+	}
+	return Vec4{
+		p.X / l,
+		p.Y / l,
+		p.Z / l,
 		p.W,
 	}
 }
