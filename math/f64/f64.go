@@ -123,6 +123,20 @@ func (p Vec2) YX() Vec2 {
 	return Vec2{p.Y, p.X}
 }
 
+func (p Vec2) Equals(q Vec2) bool {
+	const eps = 1e-6
+	return math.Abs(p.X-q.X) <= eps && math.Abs(p.Y-q.Y) <= eps
+}
+
+func (p Vec2) OnLine(a, b Vec2) bool {
+	sx := math.Min(a.X, b.X)
+	sy := math.Min(a.Y, b.Y)
+	ex := math.Max(a.X, b.X)
+	ey := math.Max(a.Y, b.Y)
+	return sx <= p.X && p.X <= ex &&
+		sy <= p.Y && p.Y <= ey
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -272,6 +286,12 @@ func (p Vec3) Spherical() Spherical {
 		T: math.Acos(p.Z / l),
 		P: math.Atan2(p.Y, p.X),
 	}
+}
+
+func (p Vec3) Equals(q Vec3) bool {
+	const eps = 1e-6
+	return math.Abs(p.X-q.X) <= eps && math.Abs(p.Y-q.Y) <= eps &&
+		math.Abs(p.Z-q.Z) <= eps
 }
 
 func (p Vec3) XY() Vec2 { return Vec2{p.X, p.Y} }
@@ -926,3 +946,21 @@ const (
 	Radians = math.Pi / 180
 	Degrees = 180 / math.Pi
 )
+
+type Circle struct {
+	X, Y, R float64
+}
+
+func (c Circle) InPoint(x, y float64) bool {
+	return (x-c.X)*(x-c.X)+(y-c.Y)*(y-c.Y) <= c.R
+}
+
+func (c Circle) InRect(r Rectangle) bool {
+	dx := c.X - math.Max(r.Min.X, math.Min(c.X, r.Max.X))
+	dy := c.Y - math.Max(r.Min.Y, math.Min(c.Y, r.Max.Y))
+	return dx*dx+dy*dy <= c.R
+}
+
+type Rectangle struct {
+	Min, Max Vec2
+}
