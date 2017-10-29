@@ -169,6 +169,10 @@ func (p Vec3) Cross(q Vec3) Vec3 {
 	}
 }
 
+func (p Vec3) CrossNormalize(q Vec3) Vec3 {
+	return p.Cross(q).Normalize()
+}
+
 func (p Vec3) Neg() Vec3 {
 	return Vec3{-p.X, -p.Y, -p.Z}
 }
