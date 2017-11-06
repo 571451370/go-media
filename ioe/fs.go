@@ -30,3 +30,20 @@ func (fs *SFS) Open(name string) (File, error) {
 	f, err := os.Open(name)
 	return File(f), err
 }
+
+func (fs *SFS) Create(name string) (File, error) {
+	name = filepath.Join(fs.Root, name)
+	f, err := os.Create(name)
+	return File(f), err
+}
+
+func (fs *SFS) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
+	name = filepath.Join(fs.Root, name)
+	f, err := os.OpenFile(name, flag, perm)
+	return File(f), err
+}
+
+func (fs *SFS) Remove(name string) error {
+	name = filepath.Join(fs.Root, name)
+	return os.Remove(name)
+}
