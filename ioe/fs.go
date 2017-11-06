@@ -47,3 +47,14 @@ func (fs *SFS) Remove(name string) error {
 	name = filepath.Join(fs.Root, name)
 	return os.Remove(name)
 }
+
+func (fs *SFS) Stat(name string) (os.FileInfo, error) {
+	name = filepath.Join(fs.Root, name)
+	return os.Stat(name)
+}
+
+func (fs *SFS) Rename(oldpath, newpath string) error {
+	oldpath = filepath.Join(fs.Root, oldpath)
+	newpath = filepath.Join(fs.Root, newpath)
+	return os.Rename(oldpath, newpath)
+}
