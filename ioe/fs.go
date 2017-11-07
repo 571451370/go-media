@@ -14,6 +14,7 @@ type File interface {
 	io.ReadWriteSeeker
 	io.Closer
 	Stat() (os.FileInfo, error)
+	Readdir(int) ([]os.FileInfo, error)
 }
 
 type SFS struct {
