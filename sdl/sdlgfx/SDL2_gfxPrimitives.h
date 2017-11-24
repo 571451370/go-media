@@ -2,7 +2,7 @@
 
 SDL2_gfxPrimitives.h: graphics primitives for SDL
 
-Copyright (C) 2012  Andreas Schiffler
+Copyright (C) 2012-2014  Andreas Schiffler
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -46,7 +46,7 @@ extern "C" {
 
 #define SDL2_GFXPRIMITIVES_MAJOR	1
 #define SDL2_GFXPRIMITIVES_MINOR	0
-#define SDL2_GFXPRIMITIVES_MICRO	1
+#define SDL2_GFXPRIMITIVES_MICRO	3
 
 
 	/* ---- Function Prototypes */
@@ -198,29 +198,30 @@ extern "C" {
 
 	/* Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int polygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int polygonRGBA(SDL_Renderer * renderer, const SDL_Point *,
+	SDL2_GFXPRIMITIVES_SCOPE int polygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int polygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
 		int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* AA-Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int aapolygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int aapolygonRGBA(SDL_Renderer * renderer, const SDL_Point *,
+	SDL2_GFXPRIMITIVES_SCOPE int aapolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int aapolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
 		int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Filled Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonColor(SDL_Renderer * renderer, const SDL_Point *, int n, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonRGBA(SDL_Renderer * renderer, const SDL_Point *, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int filledPolygonRGBA(SDL_Renderer * renderer, const Sint16 * vx,
+		const Sint16 * vy, int n, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Textured Polygon */
 
-	SDL2_GFXPRIMITIVES_SCOPE int texturedPolygon(SDL_Renderer * renderer, const SDL_Point *, int n, SDL_Surface * texture,int texture_dx,int texture_dy);
+	SDL2_GFXPRIMITIVES_SCOPE int texturedPolygon(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, SDL_Surface * texture,int texture_dx,int texture_dy);
 
 	/* Bezier */
 
-	SDL2_GFXPRIMITIVES_SCOPE int bezierColor(SDL_Renderer * renderer, const SDL_Point *, int n, int s, Uint32 color);
-	SDL2_GFXPRIMITIVES_SCOPE int bezierRGBA(SDL_Renderer * renderer, const SDL_Point *,
+	SDL2_GFXPRIMITIVES_SCOPE int bezierColor(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy, int n, int s, Uint32 color);
+	SDL2_GFXPRIMITIVES_SCOPE int bezierRGBA(SDL_Renderer * renderer, const Sint16 * vx, const Sint16 * vy,
 		int n, int s, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	/* Characters/Strings */

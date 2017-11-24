@@ -1,8 +1,9 @@
 package sdlgfx
 
 /*
-#include "SDL2_gfxPrimitives_go.h"
+#include "SDL2_gfxPrimitives.h"
 #include "SDL2_framerate.h"
+#include "gfx.h"
 */
 import "C"
 
@@ -102,23 +103,23 @@ func FilledTrigon(re *sdl.Renderer, x1, y1, x2, y2, x3, y3 int, c sdl.Color) err
 }
 
 func Polygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
-	return ek(C.polygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
+	return ek(C.goPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func AAPolygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
-	return ek(C.aapolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
+	return ek(C.goAAPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func FilledPolygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
-	return ek(C.filledPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
+	return ek(C.goFilledPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func TexturedPolygon(re *sdl.Renderer, pts []sdl.Point, texture *sdl.Surface, dx, dy int) error {
-	return ek(C.texturedPolygon((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), (*C.SDL_Surface)(unsafe.Pointer(&texture)), C.int(dx), C.int(dy)))
+	return ek(C.goTexturedPolygon((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), (*C.SDL_Surface)(unsafe.Pointer(&texture)), C.int(dx), C.int(dy)))
 }
 
 func Bezier(re *sdl.Renderer, pts []sdl.Point, s int, c sdl.Color) error {
-	return ek(C.bezierRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.int(s), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
+	return ek(C.goBezierRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.int(s), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func SetFont(font []byte, cw, ch uint32) {
