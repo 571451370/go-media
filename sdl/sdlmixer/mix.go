@@ -30,12 +30,10 @@ type Chunk C.Mix_Chunk
 type Music C.Mix_Music
 
 const (
-	INIT_FLAC       InitFlags = C.MIX_INIT_FLAC
-	INIT_MOD        InitFlags = C.MIX_INIT_MOD
-	INIT_MODPLUG    InitFlags = C.MIX_INIT_MODPLUG
-	INIT_MP3        InitFlags = C.MIX_INIT_MP3
-	INIT_OGG        InitFlags = C.MIX_INIT_OGG
-	INIT_FLUIDSYNTH InitFlags = C.MIX_INIT_FLUIDSYNTH
+	INIT_FLAC InitFlags = C.MIX_INIT_FLAC
+	INIT_MOD  InitFlags = C.MIX_INIT_MOD
+	INIT_MP3  InitFlags = C.MIX_INIT_MP3
+	INIT_OGG  InitFlags = C.MIX_INIT_OGG
 )
 
 const (
@@ -45,16 +43,14 @@ const (
 )
 
 const (
-	MUS_NONE    MusicType = C.MUS_NONE
-	MUS_CMD     MusicType = C.MUS_CMD
-	MUS_WAV     MusicType = C.MUS_WAV
-	MUS_MOD     MusicType = C.MUS_MOD
-	MUS_MID     MusicType = C.MUS_MID
-	MUS_OGG     MusicType = C.MUS_OGG
-	MUS_MP3     MusicType = C.MUS_MP3
-	MUS_MP3_MAD MusicType = C.MUS_MP3_MAD
-	MUS_FLAC    MusicType = C.MUS_FLAC
-	MUS_MODPLUG MusicType = C.MUS_MODPLUG
+	MUS_NONE MusicType = C.MUS_NONE
+	MUS_CMD  MusicType = C.MUS_CMD
+	MUS_WAV  MusicType = C.MUS_WAV
+	MUS_MOD  MusicType = C.MUS_MOD
+	MUS_MID  MusicType = C.MUS_MID
+	MUS_OGG  MusicType = C.MUS_OGG
+	MUS_MP3  MusicType = C.MUS_MP3
+	MUS_FLAC MusicType = C.MUS_FLAC
 )
 
 func SetError(format string, args ...interface{}) {

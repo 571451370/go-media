@@ -1,7 +1,7 @@
 package sdlgfx
 
 /*
-#include "SDL2_gfxPrimitives.h"
+#include "SDL2_gfxPrimitives_go.h"
 #include "SDL2_framerate.h"
 */
 import "C"
