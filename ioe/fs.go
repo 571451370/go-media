@@ -2,6 +2,7 @@ package ioe
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -58,4 +59,14 @@ func (fs *SFS) Rename(oldpath, newpath string) error {
 	oldpath = filepath.Join(fs.Root, oldpath)
 	newpath = filepath.Join(fs.Root, newpath)
 	return os.Rename(oldpath, newpath)
+}
+
+func ReadFile(fs FS, name string) ([]byte, error) {
+	f, err := fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return ioutil.ReadAll(f)
 }
