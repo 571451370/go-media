@@ -7,6 +7,7 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,9 +25,17 @@ func LoadFile(name string) (*image.RGBA, error) {
 	}
 	defer f.Close()
 
-	m, _, err := image.Decode(f)
+	m, err := LoadReader(f)
 	if err != nil {
 		return nil, &os.PathError{Op: "decode", Path: name, Err: err}
+	}
+	return m, nil
+}
+
+func LoadReader(rd io.Reader) (*image.RGBA, error) {
+	m, _, err := image.Decode(rd)
+	if err != nil {
+		return nil, err
 	}
 
 	if p, _ := m.(*image.RGBA); p != nil {
