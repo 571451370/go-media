@@ -9,6 +9,8 @@ import (
 
 type FS interface {
 	Open(name string) (File, error)
+	Create(name string) (File, error)
+	OpenFile(name string, flag int, perm os.FileMode) (File, error)
 }
 
 type File interface {
@@ -69,4 +71,19 @@ func ReadFile(fs FS, name string) ([]byte, error) {
 	defer f.Close()
 
 	return ioutil.ReadAll(f)
+}
+
+func WriteFile(fs FS, name string, data []byte, perm os.FileMode) error {
+	f, err := fs.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	}
+	if xerr := f.Close(); err == nil {
+		err = xerr
+	}
+	return err
 }
