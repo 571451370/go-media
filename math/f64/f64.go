@@ -274,10 +274,19 @@ func (p Vec3) MaxComp() float64 {
 }
 
 func (p Vec3) RGBA() (r, g, b, a uint32) {
+	if 0 <= p.X && p.X <= 1 {
+		p.X *= 255
+	}
+	if 0 <= p.Y && p.Y <= 1 {
+		p.Y *= 255
+	}
+	if 0 <= p.Z && p.Z <= 1 {
+		p.Z *= 255
+	}
 	c := color.RGBA{
-		uint8(Clamp(p.X*255, 0, 255)),
-		uint8(Clamp(p.Y*255, 0, 255)),
-		uint8(Clamp(p.Z*255, 0, 255)),
+		uint8(Clamp(p.X, 0, 255)),
+		uint8(Clamp(p.Y, 0, 255)),
+		uint8(Clamp(p.Z, 0, 255)),
 		255,
 	}
 	return c.RGBA()
@@ -389,11 +398,20 @@ func (p Vec4) Normalize3() Vec4 {
 }
 
 func (p Vec4) RGBA() (r, g, b, a uint32) {
+	if 0 <= p.X && p.X <= 1 {
+		p.X *= 255
+	}
+	if 0 <= p.Y && p.Y <= 1 {
+		p.Y *= 255
+	}
+	if 0 <= p.Z && p.Z <= 1 {
+		p.Z *= 255
+	}
 	c := color.RGBA{
-		uint8(Clamp(p.X*255, 0, 255)),
-		uint8(Clamp(p.Y*255, 0, 255)),
-		uint8(Clamp(p.Z*255, 0, 255)),
-		uint8(Clamp(p.W*255, 0, 255)),
+		uint8(Clamp(p.X, 0, 255)),
+		uint8(Clamp(p.Y, 0, 255)),
+		uint8(Clamp(p.Z, 0, 255)),
+		uint8(Clamp(p.W, 0, 255)),
 	}
 	return c.RGBA()
 }
