@@ -180,5 +180,5 @@ func loadTexture(line string) (*image.RGBA, error) {
 		return nil, fmt.Errorf("no texture file specified")
 	}
 
-	return imageutil.LoadFile(s)
+	return imageutil.LoadRGBAFile(s)
 }

@@ -64,7 +64,7 @@ func LoadTextureImage(re *sdl.Renderer, m image.Image) (*sdl.Texture, error) {
 }
 
 func LoadSurfaceFile(name string) (*sdl.Surface, error) {
-	m, err := imageutil.LoadFile(name)
+	m, err := imageutil.LoadRGBAFile(name)
 	if err != nil {
 		return nil, err
 	}
