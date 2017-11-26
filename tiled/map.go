@@ -179,7 +179,7 @@ func (d *decoder) decodeTSX(ts *TSX) (*Set, error) {
 		TileWidth:  ts.TileWidth,
 		TileHeight: ts.TileHeight,
 	}
-	s.Image, err = imageutil.LoadRGBAVFS(d.fs, ts.Image.Source)
+	s.Image, err = imageutil.LoadRGBAFS(d.fs, ts.Image.Source)
 	if err != nil {
 		return nil, err
 	}

@@ -16,10 +16,11 @@ import (
 	"github.com/qeedquan/go-media/image/pnm"
 	_ "github.com/qeedquan/go-media/image/psd"
 	"github.com/qeedquan/go-media/image/tga"
+	"github.com/qeedquan/go-media/xio"
 	"golang.org/x/image/bmp"
 )
 
-func LoadRGBAVFS(fs FS, name string) (*image.RGBA, error) {
+func LoadRGBAFS(fs xio.FS, name string) (*image.RGBA, error) {
 	f, err := fs.Open(name)
 	if err != nil {
 		return nil, err
@@ -35,7 +36,7 @@ func LoadRGBAFile(name string) (*image.RGBA, error) {
 	}
 	defer f.Close()
 
-	m, err := LoadReader(f)
+	m, err := LoadRGBAReader(f)
 	if err != nil {
 		return nil, &os.PathError{Op: "decode", Path: name, Err: err}
 	}
@@ -118,28 +119,28 @@ func ParseColor(s string) (color.RGBA, error) {
 	var r, g, b, a uint8
 	n, _ := fmt.Sscanf(s, "rgb(%v,%v,%v)", &r, &g, &b)
 	if n == 3 {
-		return color.RGBA{r, g, b, 255}
+		return color.RGBA{r, g, b, 255}, nil
 	}
 
 	n, _ = fmt.Sscanf(s, "rgba(%v,%v,%v,%v)", &r, &g, &b, &a)
 	if n == 4 {
-		return color.RGBA{r, g, b, a}
+		return color.RGBA{r, g, b, a}, nil
 	}
 
-	n, _ = fmt.Sscanf("#%02x%02x%02x%02x", &r, &g, &b, &a)
+	n, _ = fmt.Sscanf(s, "#%02x%02x%02x%02x", &r, &g, &b, &a)
 	if n == 4 {
-		return color.RGBA{r, g, b, a}
+		return color.RGBA{r, g, b, a}, nil
 	}
 
-	n, _ = fmt.Sscanf("#%02x%02x%02x", &r, &g, &b)
+	n, _ = fmt.Sscanf(s, "#%02x%02x%02x", &r, &g, &b)
 	if n == 3 {
-		return color.RGBA{r, g, b, 255}
+		return color.RGBA{r, g, b, 255}, nil
 	}
 
-	n, _ = fmt.Sscanf("#%02x", &r)
+	n, _ = fmt.Sscanf(s, "#%02x", &r)
 	if n == 1 {
-		return color.RGBA{r, r, r, 255}
+		return color.RGBA{r, r, r, 255}, nil
 	}
 
-	return fmt.Errorf("failed to parse color %q, unknown format", s)
+	return color.RGBA{}, fmt.Errorf("failed to parse color %q, unknown format", s)
 }
