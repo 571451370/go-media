@@ -1,19 +1,17 @@
-package ioe
+package xio
 
 import (
-	"image"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/qeedquan/go-media/image/imageutil"
 )
 
 type FS interface {
 	Open(name string) (File, error)
 	Create(name string) (File, error)
 	OpenFile(name string, flag int, perm os.FileMode) (File, error)
+	Stat(name string) (os.FileInfo, error)
 }
 
 type File interface {
@@ -89,13 +87,4 @@ func WriteFile(fs FS, name string, data []byte, perm os.FileMode) error {
 		err = xerr
 	}
 	return err
-}
-
-func LoadImage(fs FS, name string) (*image.RGBA, error) {
-	f, err := fs.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return imageutil.LoadReader(f)
 }

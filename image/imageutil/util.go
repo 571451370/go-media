@@ -1,6 +1,7 @@
 package imageutil
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -18,7 +19,16 @@ import (
 	"golang.org/x/image/bmp"
 )
 
-func LoadFile(name string) (*image.RGBA, error) {
+func LoadRGBAVFS(fs FS, name string) (*image.RGBA, error) {
+	f, err := fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return LoadRGBAReader(f)
+}
+
+func LoadRGBAFile(name string) (*image.RGBA, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
@@ -32,7 +42,7 @@ func LoadFile(name string) (*image.RGBA, error) {
 	return m, nil
 }
 
-func LoadReader(rd io.Reader) (*image.RGBA, error) {
+func LoadRGBAReader(rd io.Reader) (*image.RGBA, error) {
 	m, _, err := image.Decode(rd)
 	if err != nil {
 		return nil, err
@@ -48,7 +58,7 @@ func LoadReader(rd io.Reader) (*image.RGBA, error) {
 	return p, nil
 }
 
-func WriteFile(img image.Image, name string) error {
+func WriteRGBAFile(img image.Image, name string) error {
 	f, err := os.Create(name)
 	if err != nil {
 		return err
@@ -102,4 +112,34 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 		}
 	}
 	return p
+}
+
+func ParseColor(s string) (color.RGBA, error) {
+	var r, g, b, a uint8
+	n, _ := fmt.Sscanf(s, "rgb(%v,%v,%v)", &r, &g, &b)
+	if n == 3 {
+		return color.RGBA{r, g, b, 255}
+	}
+
+	n, _ = fmt.Sscanf(s, "rgba(%v,%v,%v,%v)", &r, &g, &b, &a)
+	if n == 4 {
+		return color.RGBA{r, g, b, a}
+	}
+
+	n, _ = fmt.Sscanf("#%02x%02x%02x%02x", &r, &g, &b, &a)
+	if n == 4 {
+		return color.RGBA{r, g, b, a}
+	}
+
+	n, _ = fmt.Sscanf("#%02x%02x%02x", &r, &g, &b)
+	if n == 3 {
+		return color.RGBA{r, g, b, 255}
+	}
+
+	n, _ = fmt.Sscanf("#%02x", &r)
+	if n == 1 {
+		return color.RGBA{r, r, r, 255}
+	}
+
+	return fmt.Errorf("failed to parse color %q, unknown format", s)
 }

@@ -16,7 +16,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/qeedquan/go-media/ioe"
+	"github.com/qeedquan/go-media/image/imageutil"
+	"github.com/qeedquan/go-media/xio"
 )
 
 const (
@@ -41,7 +42,7 @@ type Set struct {
 }
 
 type Layer struct {
-	Tiles [][]Tile
+	Tiles []Tile
 }
 
 type Tile struct {
@@ -49,18 +50,19 @@ type Tile struct {
 }
 
 type TMX struct {
-	XMLName      xml.Name `xml:"map"`
-	Version      string   `xml:"version,attr"`
-	TiledVersion string   `xml:"tiledversion,attr"`
-	Orientation  string   `xml:"orientation,attr"`
-	RenderOrder  string   `xml:"renderorder,attr"`
-	Width        int      `xml:"width,attr"`
-	Height       int      `xml:"height,attr"`
-	TileWidth    int      `xml:"tilewidth,attr"`
-	TileHeight   int      `xml:"tileheight,attr"`
-	NextObjectID int      `xml:"nextobjectid,attr"`
-	Tileset      []TSX    `xml:"tileset"`
-	Layer        []TLY    `xml:"layer"`
+	XMLName         xml.Name `xml:"map"`
+	Version         string   `xml:"version,attr"`
+	TiledVersion    string   `xml:"tiledversion,attr"`
+	Orientation     string   `xml:"orientation,attr"`
+	RenderOrder     string   `xml:"renderorder,attr"`
+	Width           int      `xml:"width,attr"`
+	Height          int      `xml:"height,attr"`
+	TileWidth       int      `xml:"tilewidth,attr"`
+	TileHeight      int      `xml:"tileheight,attr"`
+	BackgroundColor string   `xml:"backgroundcolor,attr"`
+	NextObjectID    int      `xml:"nextobjectid,attr"`
+	Tileset         []TSX    `xml:"tileset"`
+	Layer           []TLY    `xml:"layer"`
 }
 
 type TSX struct {
@@ -98,7 +100,7 @@ type TLY struct {
 	} `xml:"data"`
 }
 
-func OpenMap(fs ioe.FS, name string) (*Map, error) {
+func OpenMap(fs xio.FS, name string) (*Map, error) {
 	d := decoder{
 		fs: fs,
 		m:  &Map{},
@@ -112,7 +114,7 @@ func OpenMap(fs ioe.FS, name string) (*Map, error) {
 }
 
 type decoder struct {
-	fs ioe.FS
+	fs xio.FS
 	tm TMX
 	m  *Map
 }
@@ -123,14 +125,24 @@ func (d *decoder) decode(name string) error {
 		return err
 	}
 
-	switch o := strings.ToLower(d.tm.Orientation); o {
+	switch s := strings.ToLower(d.tm.Orientation); s {
 	case "orthogonal":
 		d.m.Orientation = ORTHOGONAL
 	case "isometric":
 		d.m.Orientation = ISOMETRIC
 	default:
-		return fmt.Errorf("unsupported orientation %q", o)
+		return fmt.Errorf("unsupported orientation %q", s)
 	}
+
+	switch s := strings.ToLower(d.tm.RenderOrder); s {
+	case "right-down":
+	case "right-up":
+	case "left-down":
+	case "left-up":
+	default:
+		return fmt.Errorf("unsupported render order %q", s)
+	}
+
 	d.m.Width = d.tm.Width
 	d.m.Height = d.tm.Height
 	d.m.TileWidth = d.tm.TileWidth
@@ -167,7 +179,7 @@ func (d *decoder) decodeTSX(ts *TSX) (*Set, error) {
 		TileWidth:  ts.TileWidth,
 		TileHeight: ts.TileHeight,
 	}
-	s.Image, err = ioe.LoadImage(d.fs, ts.Image.Source)
+	s.Image, err = imageutil.LoadRGBAVFS(d.fs, ts.Image.Source)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +265,7 @@ func (d *decoder) decodeTLY(tl *TLY) (*Layer, error) {
 }
 
 func (d *decoder) decodeXML(name string, v interface{}) error {
-	buf, err := ioe.ReadFile(d.fs, name)
+	buf, err := xio.ReadFile(d.fs, name)
 	if err != nil {
 		return err
 	}
