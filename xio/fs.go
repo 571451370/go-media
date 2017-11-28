@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type FS interface {
@@ -20,6 +21,20 @@ type File interface {
 	Stat() (os.FileInfo, error)
 	Readdir(int) ([]os.FileInfo, error)
 }
+
+type Stat struct {
+	Path      string
+	Length    int64
+	Type      os.FileMode
+	Mod       time.Time
+	Interface interface{}
+}
+
+func (s *Stat) Name() string       { return filepath.Base(s.Path) }
+func (s *Stat) Size() int64        { return s.Length }
+func (s *Stat) Mode() os.FileMode  { return s.Type }
+func (s *Stat) ModTime() time.Time { return s.Mod }
+func (s *Stat) Sys() interface{}   { return s.Interface }
 
 type SFS struct {
 	Root string
