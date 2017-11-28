@@ -33,6 +33,7 @@ type Stat struct {
 func (s *Stat) Name() string       { return filepath.Base(s.Path) }
 func (s *Stat) Size() int64        { return s.Length }
 func (s *Stat) Mode() os.FileMode  { return s.Type }
+func (s *Stat) IsDir() bool        { return s.Type&os.ModeDir != 0 }
 func (s *Stat) ModTime() time.Time { return s.Mod }
 func (s *Stat) Sys() interface{}   { return s.Interface }
 
