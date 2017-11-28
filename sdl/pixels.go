@@ -13,7 +13,7 @@ import (
 type (
 	PixelFormat struct{ fmt *C.SDL_PixelFormat }
 	Palette     C.SDL_Palette
-	Color       color.NRGBA
+	Color       = color.RGBA
 )
 
 var (
@@ -21,11 +21,7 @@ var (
 )
 
 func colorModel(c color.Color) color.Color {
-	return Color(color.NRGBAModel.Convert(c).(color.NRGBA))
-}
-
-func (c Color) RGBA() (r, g, b, a uint32) {
-	return color.NRGBA(c).RGBA()
+	return Color(color.RGBAModel.Convert(c).(color.RGBA))
 }
 
 func (p *PixelFormat) Format() uint32       { return uint32(p.fmt.format) }
