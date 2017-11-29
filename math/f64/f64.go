@@ -986,3 +986,55 @@ func (c Circle) InRect(r Rectangle) bool {
 type Rectangle struct {
 	Min, Max Vec2
 }
+
+func (r Rectangle) Empty() bool {
+	return r.Min.X >= r.Max.X || r.Min.Y >= r.Max.Y
+}
+
+func (r Rectangle) Overlaps(s Rectangle) bool {
+	return !r.Empty() && !s.Empty() &&
+		r.Min.X < s.Max.X && s.Min.X < r.Max.X &&
+		r.Min.Y < s.Max.Y && s.Min.Y < r.Max.Y
+}
+
+func (r Rectangle) Intersect(s Rectangle) Rectangle {
+	if r.Min.X < s.Min.X {
+		r.Min.X = s.Min.X
+	}
+	if r.Min.Y < s.Min.Y {
+		r.Min.Y = s.Min.Y
+	}
+	if r.Max.X > s.Max.X {
+		r.Max.X = s.Max.X
+	}
+	if r.Max.Y > s.Max.Y {
+		r.Max.Y = s.Max.Y
+	}
+
+	if r.Empty() {
+		return Rectangle{}
+	}
+	return r
+}
+
+func (r Rectangle) Union(s Rectangle) Rectangle {
+	if r.Empty() {
+		return s
+	}
+	if s.Empty() {
+		return r
+	}
+	if r.Min.X > s.Min.X {
+		r.Min.X = s.Min.X
+	}
+	if r.Min.Y > s.Min.Y {
+		r.Min.Y = s.Min.Y
+	}
+	if r.Max.X < s.Max.X {
+		r.Max.X = s.Max.X
+	}
+	if r.Max.Y < s.Max.Y {
+		r.Max.Y = s.Max.Y
+	}
+	return r
+}
