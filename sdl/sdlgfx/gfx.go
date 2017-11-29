@@ -131,17 +131,27 @@ func SetFontRotation(rotation uint32) {
 }
 
 func FontMetrics() (w, h int) {
-	var cw, ch C.int
-	C.goGfxPrimitivesFontMetric(&cw, &ch)
-	return int(cw), int(ch)
+	return int(C.goCharWidth), int(C.goCharHeight)
 }
 
 func FontSize(str string) (w, h int) {
-	var cw, ch C.int
-	cstr := C.CString(str)
-	C.goGfxPrimitivesFontSize(cstr, &cw, &ch)
-	C.free(unsafe.Pointer(cstr))
-	return int(cw), int(ch)
+	curw := 0
+	maxw := 0
+	line := 0
+	for _, ch := range str {
+		if ch == '\n' {
+			if maxw < curw {
+				maxw = curw
+			}
+			curw = 0
+			line++
+		} else {
+			curw++
+		}
+	}
+	w = maxw * int(C.goCharWidth)
+	h = line * int(C.goCharHeight)
+	return
 }
 
 func Character(re *sdl.Renderer, x, y int, r rune, c sdl.Color) error {
