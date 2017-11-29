@@ -8,6 +8,8 @@ import "C"
 import (
 	"image"
 	"unsafe"
+
+	"github.com/qeedquan/go-media/sdl"
 )
 
 type Point struct {
@@ -67,4 +69,18 @@ func (r Rect) CenterX() int {
 
 func (r Rect) CenterY() int {
 	return int(r.Y + r.H/2)
+}
+
+func (r Rect) Int() image.Rectangle {
+	return image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int32(r.Y+r.H))
+}
+
+func Recti(r image.Rectangle) sdl.Rect {
+	r = r.Canon()
+	return sdl.Rect{
+		int32(r.Min.X),
+		int32(r.Min.Y),
+		int32(r.Dx()),
+		int32(r.Dy()),
+	}
 }

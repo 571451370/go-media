@@ -1043,3 +1043,13 @@ func (r Rectangle) Union(s Rectangle) Rectangle {
 func (r Rectangle) Int() image.Rectangle {
 	return image.Rect(int(r.Min.X), int(r.Min.Y), int(r.Max.X), int(r.Max.Y))
 }
+
+func (r Rectangle) Canon() Rectangle {
+	if r.Max.X < r.Min.X {
+		r.Min.X, r.Max.X = r.Max.X, r.Min.X
+	}
+	if r.Max.Y < r.Min.Y {
+		r.Min.Y, r.Max.Y = r.Max.Y, r.Min.Y
+	}
+	return r
+}
