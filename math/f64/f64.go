@@ -2,6 +2,7 @@ package f64
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"math"
 )
@@ -1037,4 +1038,8 @@ func (r Rectangle) Union(s Rectangle) Rectangle {
 		r.Max.Y = s.Max.Y
 	}
 	return r
+}
+
+func (r Rectangle) Int() image.Rectangle {
+	return image.Rect(int(r.Min.X), int(r.Min.Y), int(r.Max.X), int(r.Max.Y))
 }
