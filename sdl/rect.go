@@ -70,7 +70,7 @@ func (r Rect) CenterY() int {
 }
 
 func (r Rect) Int() image.Rectangle {
-	return image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int32(r.Y+r.H))
+	return image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int(r.Y+r.H))
 }
 
 func Recti(r image.Rectangle) Rect {
