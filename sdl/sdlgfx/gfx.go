@@ -137,7 +137,7 @@ func FontMetrics() (w, h int) {
 func FontSize(str string) (w, h int) {
 	curw := 0
 	maxw := 0
-	line := 0
+	line := 1
 	for _, ch := range str {
 		if ch == '\n' {
 			if maxw < curw {
@@ -148,6 +148,9 @@ func FontSize(str string) (w, h int) {
 		} else {
 			curw++
 		}
+	}
+	if maxw < curw {
+		maxw = curw
 	}
 	w = maxw * int(C.goCharWidth)
 	h = line * int(C.goCharHeight)
