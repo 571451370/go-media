@@ -466,3 +466,43 @@ goBezierRGBA(SDL_Renderer *renderer, const SDL_Point *pts, int n, int s, Uint8 r
 
 	return (result);
 }
+
+static Uint32 charWidth;
+static Uint32 charHeight;
+
+void
+goGfxPrimitivesSetFont(const void *fontdata, Uint32 cw, Uint32 ch)
+{
+	charWidth = cw;
+	charHeight = ch;
+	gfxPrimitivesSetFont(fontdata, cw, ch);
+}
+
+void
+goGfxPrimitivesFontSize(const char *str, int *w, int *h)
+{
+	size_t i;
+	int maxw, curw, line;
+
+	curw = 0;
+	maxw = 0;
+	line = 1;
+	for (i = 0; str[i] != '\0'; i++) {
+		if (str[i] == '\n') {
+			if (maxw < curw)
+				maxw = curw;
+			curw = 0;
+			line++;
+		} else
+			curw++;
+	}
+	*w = maxw * charWidth;
+	*h = line * charHeight;
+}
+
+void
+goGfxPrimitivesFontMetric(int *w, int *h)
+{
+	*w = charWidth;
+	*h = charHeight;
+}

@@ -123,11 +123,25 @@ func Bezier(re *sdl.Renderer, pts []sdl.Point, s int, c sdl.Color) error {
 }
 
 func SetFont(font []byte, cw, ch uint32) {
-	C.gfxPrimitivesSetFont(unsafe.Pointer(&font[0]), C.Uint32(cw), C.Uint32(ch))
+	C.goGfxPrimitivesSetFont(unsafe.Pointer(&font[0]), C.Uint32(cw), C.Uint32(ch))
 }
 
 func SetFontRotation(rotation uint32) {
 	C.gfxPrimitivesSetFontRotation(C.Uint32(rotation))
+}
+
+func FontMetrics() (w, h int) {
+	var cw, ch C.int
+	C.goGfxPrimitivesFontMetric(&cw, &ch)
+	return int(cw), int(ch)
+}
+
+func FontSize(str string) (w, h int) {
+	var cw, ch C.int
+	cstr := C.CString(str)
+	C.goGfxPrimitivesFontSize(cstr, &cw, &ch)
+	C.free(unsafe.Pointer(cstr))
+	return int(cw), int(ch)
 }
 
 func Character(re *sdl.Renderer, x, y int, r rune, c sdl.Color) error {
