@@ -988,6 +988,16 @@ type Rectangle struct {
 	Min, Max Vec2
 }
 
+func Rect(x0, y0, x1, y1 float64) Rectangle {
+	if x0 > x1 {
+		x0, x1 = x1, x0
+	}
+	if y0 > y1 {
+		y0, y1 = y1, y0
+	}
+	return Rectangle{Vec2{x0, y0}, Vec2{x1, y1}}
+}
+
 func (r Rectangle) Empty() bool {
 	return r.Min.X >= r.Max.X || r.Min.Y >= r.Max.Y
 }
