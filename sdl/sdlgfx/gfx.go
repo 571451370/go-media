@@ -157,11 +157,11 @@ func FontSize(str string) (w, h int) {
 	return
 }
 
-func Character(re *sdl.Renderer, x, y int, r rune, c sdl.Color) error {
+func Character(re *sdl.Renderer, x, y int, c sdl.Color, r rune) error {
 	return ek(C.characterRGBA((*C.SDL_Renderer)(re), C.Sint16(x), C.Sint16(y), C.char(r), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
-func String(re *sdl.Renderer, x, y int, s string, c sdl.Color) error {
+func String(re *sdl.Renderer, x, y int, c sdl.Color, s string) error {
 	cs := C.CString(s)
 	defer C.free(unsafe.Pointer(cs))
 	return ek(C.stringRGBA((*C.SDL_Renderer)(re), C.Sint16(x), C.Sint16(y), cs, C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
