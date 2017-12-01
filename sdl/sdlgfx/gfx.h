@@ -9,8 +9,10 @@ int goFilledPolygonRGBA(SDL_Renderer *renderer, const SDL_Point *pts, int n, Uin
 int goTexturedPolygon(SDL_Renderer *renderer, const SDL_Point *pts, int n, SDL_Surface *texture, int texture_dx, int texture_dy);
 int goBezierRGBA(SDL_Renderer *renderer, const SDL_Point *pts, int n, int s, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void goGfxPrimitivesSetFont(const void *fontdata, Uint32 cw, Uint32 ch);
+void goGfxPrimitivesSetFontRotation(Uint32 rotation);
 
 extern Uint32 goCharWidth;
 extern Uint32 goCharHeight;
+extern Uint32 goCharRotation;
 
 #endif

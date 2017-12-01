@@ -127,11 +127,11 @@ func SetFont(font []byte, cw, ch uint32) {
 }
 
 func SetFontRotation(rotation uint32) {
-	C.gfxPrimitivesSetFontRotation(C.Uint32(rotation))
+	C.goGfxPrimitivesSetFontRotation(C.Uint32(rotation))
 }
 
-func FontMetrics() (w, h int) {
-	return int(C.goCharWidth), int(C.goCharHeight)
+func FontMetrics() (w, h, r int) {
+	return int(C.goCharWidth), int(C.goCharHeight), int(C.goCharRotation)
 }
 
 func FontSize(str string) (w, h int) {

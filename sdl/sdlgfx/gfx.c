@@ -467,8 +467,9 @@ goBezierRGBA(SDL_Renderer *renderer, const SDL_Point *pts, int n, int s, Uint8 r
 	return (result);
 }
 
-Uint32 goCharWidth;
-Uint32 goCharHeight;
+Uint32 goCharWidth = 8;
+Uint32 goCharHeight = 8;
+Uint32 goCharRotation = 0;
 
 void
 goGfxPrimitivesSetFont(const void *fontdata, Uint32 cw, Uint32 ch)
@@ -478,3 +479,9 @@ goGfxPrimitivesSetFont(const void *fontdata, Uint32 cw, Uint32 ch)
 	gfxPrimitivesSetFont(fontdata, cw, ch);
 }
 
+void
+goGfxPrimitivesSetFontRotation(Uint32 rotation)
+{
+	goCharRotation = rotation;
+	gfxPrimitivesSetFontRotation(rotation);
+}
