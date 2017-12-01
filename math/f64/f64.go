@@ -1063,3 +1063,11 @@ func (r Rectangle) Canon() Rectangle {
 	}
 	return r
 }
+
+func (r Rectangle) Scale(s Vec2) Rectangle {
+	r.Min.X *= s.X
+	r.Max.X *= s.X
+	r.Min.Y *= s.Y
+	r.Max.Y *= s.Y
+	return r
+}
