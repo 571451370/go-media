@@ -1071,3 +1071,50 @@ func (r Rectangle) Scale(s Vec2) Rectangle {
 	r.Max.Y *= s.Y
 	return r
 }
+
+func (r Rectangle) Add(p Vec2) Rectangle {
+	return Rectangle{
+		Vec2{r.Min.X + p.X, r.Min.Y + p.Y},
+		Vec2{r.Max.X + p.X, r.Max.Y + p.Y},
+	}
+}
+
+func (r Rectangle) Sub(p Vec2) Rectangle {
+	return Rectangle{
+		Vec2{r.Min.X - p.X, r.Min.Y - p.Y},
+		Vec2{r.Max.X - p.X, r.Max.Y - p.Y},
+	}
+}
+
+func (r Rectangle) Size() Vec2 {
+	return Vec2{
+		r.Max.X - r.Min.X,
+		r.Max.Y - r.Min.Y,
+	}
+}
+
+func (r Rectangle) Inset(n float64) Rectangle {
+	if r.Dx() < 2*n {
+		r.Min.X = (r.Min.X + r.Max.X) / 2
+		r.Max.X = r.Min.X
+	} else {
+		r.Min.X += n
+		r.Max.X -= n
+	}
+	if r.Dy() < 2*n {
+		r.Min.Y = (r.Min.Y + r.Max.Y) / 2
+		r.Max.Y = r.Min.Y
+	} else {
+		r.Min.Y += n
+		r.Max.Y -= n
+	}
+	return r
+}
+
+func (r Rectangle) Dx() float64 {
+	return r.Max.X - r.Min.X
+}
+
+func (r Rectangle) Dy() float64 {
+	return r.Max.Y - r.Min.Y
+}
