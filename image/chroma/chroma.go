@@ -42,109 +42,22 @@ func vec4dModel(c color.Color) color.Color {
 }
 
 func hsvModel(c color.Color) color.Color {
-	n := color.RGBAModel.Convert(c).(color.RGBA)
-	r := float64(n.R) / 255
-	g := float64(n.G) / 255
-	b := float64(n.B) / 255
-
-	max := maxf(r, g, b)
-	min := minf(r, g, b)
-	eps := 1e-4
-	d := max - min
-
-	var h, s, v float64
-
-	v = max
-	if max != 0 {
-		s = d / max
-	}
-	if math.Abs(max-min) < eps {
-		h = 0
-	} else {
-		switch {
-		case math.Abs(max-r) < eps:
-			h = (g - b) / d
-			if g < b {
-				h += 6
-			}
-		case math.Abs(max-g) < eps:
-			h = (b-r)/d + 2
-		case math.Abs(max-b) < eps:
-			h = (r-g)/d + 4
-		}
-		h /= 6
-	}
-
-	return HSV{h, s, v}
+	b := color.RGBAModel.Convert(c).(color.RGBA)
+	return rgb2hsv(b)
 }
 
 func hslModel(c color.Color) color.Color {
-	n := color.RGBAModel.Convert(c).(color.RGBA)
-	r := float64(n.R) / 255
-	g := float64(n.G) / 255
-	b := float64(n.B) / 255
-
-	max := maxf(r, g, b)
-	min := minf(r, g, b)
-	eps := 1e-4
-
-	var h, s, l float64
-	l = (max + min) / 2
-	if math.Abs(max-min) < eps {
-		h, s, l = 0, 0, 0
-	} else {
-		d := max - min
-		if l > 0.5 {
-			s = d / (2 - max - min)
-		} else {
-			s = d / (max + min)
-		}
-		switch {
-		case math.Abs(max-r) < eps:
-			h = (g - b) / d
-			if g < b {
-				h += 6
-			}
-		case math.Abs(max-g) < eps:
-			h = (b-r)/d + 2
-		case math.Abs(max-b) < eps:
-			h = (r-g)/d + 4
-		}
-
-		h /= 6
-	}
-
-	return HSL{h, s, l}
+	b := hsvModel(c).(HSV)
+	return hsv2hsl(b)
 }
 
 func (h HSV) RGBA() (r, g, b, a uint32) {
-	hue := (2 - h.S) * h.V
-	if hue >= 1 {
-		hue = 2 - hue
-	}
-	sat := h.S * h.V / hue
-	hsl := HSL{h.H, sat, hue / 2}
-	return hsl.RGBA()
+	c := hsv2rgb(h)
+	return color.RGBA{c.R, c.G, c.B, c.A}.RGBA()
 }
 
 func (h HSL) RGBA() (r, g, b, a uint32) {
-	var c f64.Vec3
-
-	if h.S == 0 {
-		c.X, c.Y, c.Z = h.L, h.L, h.L
-	} else {
-		var q float64
-		if h.L < 0.5 {
-			q = h.L * (1 + h.S)
-		} else {
-			q = h.L + h.S - h.L*h.S
-		}
-		p := 2*h.L - q
-		c.X = hue2rgb(p, q, h.H+1.0/3)
-		c.Y = hue2rgb(p, q, h.H)
-		c.Z = hue2rgb(p, q, h.H-1.0/3)
-	}
-
+	c := hsl2hsv(h)
 	return c.RGBA()
 }
 
@@ -167,18 +80,131 @@ func hue2rgb(p, q, t float64) float64 {
 	return p
 }
 
-func maxf(x ...float64) float64 {
-	m := -math.MaxFloat64
-	for _, x := range x {
-		m = math.Max(m, x)
+func hsv2rgb(c HSV) color.RGBA {
+	h := math.Mod(c.H, 360)
+	s := clampf(c.S, 0, 1)
+	v := clampf(c.V, 0, 1)
+
+	var r color.RGBA
+	if s == 0 {
+		x := uint8(clampf(v*255, 0, 255))
+		r = color.RGBA{x, x, x, 255}
+	} else {
+		b := (1 - s) * v
+		vb := v - b
+		hm := math.Mod(h, 60)
+
+		var cr, cg, cb float64
+		switch int(h / 60) {
+		case 0:
+			cr = v
+			cg = vb*h/60 + b
+			cb = b
+		case 1:
+			cr = vb*(60-hm)/60 + b
+			cg = v
+			cb = b
+		case 2:
+			cr = b
+			cg = v
+			cb = vb*hm/60 + b
+		case 3:
+			cr = b
+			cg = vb*(60-hm)/60 + b
+			cb = v
+		case 4:
+			cr = vb*hm/60 + b
+			cg = b
+			cb = v
+		case 5:
+			cr = v
+			cg = b
+			cb = vb*(60-hm)/60 + b
+		}
+		cr = clampf(cr*255, 0, 255)
+		cg = clampf(cg*255, 0, 255)
+		cb = clampf(cb*255, 0, 255)
+		r = color.RGBA{uint8(cr), uint8(cg), uint8(cb), 255}
 	}
-	return m
+	return r
 }
 
-func minf(x ...float64) float64 {
-	m := math.MaxFloat64
-	for _, x := range x {
-		m = math.Min(m, x)
+func rgb2hsv(c color.RGBA) HSV {
+	r, g, b := c.R, c.G, c.B
+	min := min8(r, min8(g, b))
+	max := max8(r, max8(g, b))
+	delta := max - min
+
+	v := float64(max) / 255.0
+	if delta == 0 {
+		return HSV{0, 0, v}
 	}
-	return m
+
+	s := float64(delta) / float64(max)
+
+	h := 0.0
+	if r == max {
+		h = float64(g-b) / float64(delta)
+	} else if g == max {
+		h = 2 + float64(b-r)/float64(delta)
+	} else {
+		h = 4 + float64(r-g)/float64(delta)
+	}
+
+	h *= 60
+	if h < 0 {
+		h += 360
+	}
+	return HSV{h, s, v}
+}
+
+func hsv2hsl(c HSV) HSL {
+	h := c.H
+	l := (2 - c.S) * c.V
+	s := c.S * c.V
+	if l <= 1 {
+		s /= l
+	} else {
+		s /= 2 - l
+	}
+	l /= 2
+	return HSL{h, s, l}
+}
+
+func hsl2hsv(c HSL) HSV {
+	h := c.H
+	l := c.L * 2
+	s := c.S
+	if l <= 1 {
+		s *= l
+	} else {
+		s *= 2 - l
+	}
+	v := (l + s) / 2
+	s = 2 * s / (l + s)
+	return HSV{h, s, v}
+}
+
+func min8(x, y uint8) uint8 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func max8(x, y uint8) uint8 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func clampf(x, a, b float64) float64 {
+	if x < a {
+		x = a
+	}
+	if x > b {
+		x = b
+	}
+	return x
 }
