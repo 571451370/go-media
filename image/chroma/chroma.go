@@ -1,6 +1,7 @@
 package chroma
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -59,25 +60,6 @@ func (h HSV) RGBA() (r, g, b, a uint32) {
 func (h HSL) RGBA() (r, g, b, a uint32) {
 	c := hsl2hsv(h)
 	return c.RGBA()
-}
-
-func hue2rgb(p, q, t float64) float64 {
-	if t < 0 {
-		t += 1
-	}
-	if t > 1 {
-		t -= 1
-	}
-	if t < 1.0/6 {
-		return p + (q-p)*6*t
-	}
-	if t < 1.0/2 {
-		return q
-	}
-	if t < 2.0/3 {
-		return p + (q-p)*(2.0/3-t)*6
-	}
-	return p
 }
 
 func hsv2rgb(c HSV) color.RGBA {
@@ -207,4 +189,34 @@ func clampf(x, a, b float64) float64 {
 		x = b
 	}
 	return x
+}
+
+func ParseRGBA(s string) (color.RGBA, error) {
+	var r, g, b, a uint8
+	n, _ := fmt.Sscanf(s, "rgb(%v,%v,%v)", &r, &g, &b)
+	if n == 3 {
+		return color.RGBA{r, g, b, 255}, nil
+	}
+
+	n, _ = fmt.Sscanf(s, "rgba(%v,%v,%v,%v)", &r, &g, &b, &a)
+	if n == 4 {
+		return color.RGBA{r, g, b, a}, nil
+	}
+
+	n, _ = fmt.Sscanf(s, "#%02x%02x%02x%02x", &r, &g, &b, &a)
+	if n == 4 {
+		return color.RGBA{r, g, b, a}, nil
+	}
+
+	n, _ = fmt.Sscanf(s, "#%02x%02x%02x", &r, &g, &b)
+	if n == 3 {
+		return color.RGBA{r, g, b, 255}, nil
+	}
+
+	n, _ = fmt.Sscanf(s, "#%02x", &r)
+	if n == 1 {
+		return color.RGBA{r, r, r, 255}, nil
+	}
+
+	return color.RGBA{}, fmt.Errorf("failed to parse color %q, unknown format", s)
 }
