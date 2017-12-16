@@ -112,15 +112,15 @@ func hsv2rgb(c HSV) color.RGBA {
 }
 
 func rgb2hsv(c color.RGBA) HSV {
-	r := float64(c.R) / 255.0
-	g := float64(c.G) / 255.0
-	b := float64(c.B) / 255.0
+	r := float64(c.R)
+	g := float64(c.G)
+	b := float64(c.B)
 	min := minf(r, minf(g, b))
 	max := maxf(r, maxf(g, b))
 	delta := max - min
 
 	v := float64(max) / 255.0
-	if delta == 0 || max == 0 {
+	if delta == 0 {
 		return HSV{0, 0, v}
 	}
 
