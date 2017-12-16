@@ -112,13 +112,15 @@ func hsv2rgb(c HSV) color.RGBA {
 }
 
 func rgb2hsv(c color.RGBA) HSV {
-	r, g, b := c.R, c.G, c.B
-	min := min8(r, min8(g, b))
-	max := max8(r, max8(g, b))
+	r := float64(c.R) / 255.0
+	g := float64(c.G) / 255.0
+	b := float64(c.B) / 255.0
+	min := minf(r, minf(g, b))
+	max := maxf(r, maxf(g, b))
 	delta := max - min
 
 	v := float64(max) / 255.0
-	if delta == 0 {
+	if delta == 0 || max == 0 {
 		return HSV{0, 0, v}
 	}
 
@@ -174,7 +176,21 @@ func min8(x, y uint8) uint8 {
 	return y
 }
 
+func minf(x, y float64) float64 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
 func max8(x, y uint8) uint8 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func maxf(x, y float64) float64 {
 	if x > y {
 		return x
 	}
