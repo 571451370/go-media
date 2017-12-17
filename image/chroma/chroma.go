@@ -44,25 +44,25 @@ func vec4dModel(c color.Color) color.Color {
 
 func hsvModel(c color.Color) color.Color {
 	b := color.RGBAModel.Convert(c).(color.RGBA)
-	return rgb2hsv(b)
+	return RGB2HSV(b)
 }
 
 func hslModel(c color.Color) color.Color {
 	b := hsvModel(c).(HSV)
-	return hsv2hsl(b)
+	return HSV2HSL(b)
 }
 
 func (h HSV) RGBA() (r, g, b, a uint32) {
-	c := hsv2rgb(h)
+	c := HSV2RGB(h)
 	return color.RGBA{c.R, c.G, c.B, c.A}.RGBA()
 }
 
 func (h HSL) RGBA() (r, g, b, a uint32) {
-	c := hsl2hsv(h)
+	c := HSL2HSV(h)
 	return c.RGBA()
 }
 
-func hsv2rgb(c HSV) color.RGBA {
+func HSV2RGB(c HSV) color.RGBA {
 	h := math.Mod(c.H, 360)
 	s := clampf(c.S, 0, 1)
 	v := clampf(c.V, 0, 1)
@@ -111,7 +111,7 @@ func hsv2rgb(c HSV) color.RGBA {
 	return r
 }
 
-func rgb2hsv(c color.RGBA) HSV {
+func RGB2HSV(c color.RGBA) HSV {
 	r := float64(c.R)
 	g := float64(c.G)
 	b := float64(c.B)
@@ -142,7 +142,7 @@ func rgb2hsv(c color.RGBA) HSV {
 	return HSV{h, s, v}
 }
 
-func hsv2hsl(c HSV) HSL {
+func HSV2HSL(c HSV) HSL {
 	h := c.H
 	l := (2 - c.S) * c.V
 	s := c.S * c.V
@@ -155,7 +155,7 @@ func hsv2hsl(c HSV) HSL {
 	return HSL{h, s, l}
 }
 
-func hsl2hsv(c HSL) HSV {
+func HSL2HSV(c HSL) HSV {
 	h := c.H
 	l := c.L * 2
 	s := c.S
