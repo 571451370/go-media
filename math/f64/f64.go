@@ -75,10 +75,10 @@ func (p Vec2) Shearv(q Vec2) Vec2 {
 	return Vec2{p.X + q.X*p.Y, p.Y + q.Y*p.X}
 }
 
-func (p Vec2) Lerp(q Vec2, t float64) Vec2 {
+func (p Vec2) Lerp(t float64, q Vec2) Vec2 {
 	return Vec2{
-		Lerp(p.X, q.X, t),
-		Lerp(p.Y, q.Y, t),
+		Lerp(t, p.X, q.X),
+		Lerp(t, p.Y, q.Y),
 	}
 }
 
@@ -234,11 +234,11 @@ func (p Vec3) Distance(q Vec3) float64 {
 	return p.Sub(q).Len()
 }
 
-func (p Vec3) Lerp(q Vec3, t float64) Vec3 {
+func (p Vec3) Lerp(t float64, q Vec3) Vec3 {
 	return Vec3{
-		Lerp(p.X, q.X, t),
-		Lerp(p.Y, q.Y, t),
-		Lerp(p.Z, q.Z, t),
+		Lerp(t, p.X, q.X),
+		Lerp(t, p.Y, q.Y),
+		Lerp(t, p.Z, q.Z),
 	}
 }
 
@@ -870,7 +870,7 @@ func (q Quat) Axis() (v Vec3, r float64) {
 	return
 }
 
-func (q Quat) Lerp(p Quat, t float64) Quat {
+func (q Quat) Lerp(t float64, p Quat) Quat {
 	return q.Add(p.Sub(q).Scale(t))
 }
 
@@ -919,16 +919,16 @@ func Slerp(v0, v1 Quat, t float64) Quat {
 	return v3.Add(v4)
 }
 
-func Lerp(a, b, t float64) float64 {
+func Lerp(t, a, b float64) float64 {
 	return a + t*(b-a)
 }
 
-func Unlerp(a, b, t float64) float64 {
+func Unlerp(t, a, b float64) float64 {
 	return (t - a) / (b - a)
 }
 
 func LinearRemap(x, a, b, c, d float64) float64 {
-	return Lerp(c, d, Unlerp(a, b, x))
+	return Lerp(c, d, Unlerp(x, a, b))
 }
 
 func Smoothstep(a, b, x float64) float64 {
