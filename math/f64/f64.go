@@ -899,7 +899,7 @@ func Slerp(v0, v1 Quat, t float64) Quat {
 	const threshold = 0.9995
 	dot := v0.Dot(v1)
 	if dot > threshold {
-		return v0.Lerp(v1, t).Normalize()
+		return v0.Lerp(t, v1).Normalize()
 	}
 
 	if dot < 0 {
