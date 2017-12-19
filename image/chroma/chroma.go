@@ -169,6 +169,27 @@ func HSL2HSV(c HSL) HSV {
 	return HSV{h, s, v}
 }
 
+func VEC42RGBA(c f64.Vec4) color.RGBA {
+	if c.X < 1 {
+		c.X = clampf(c.X*255, 0, 255)
+	}
+	if c.Y < 1 {
+		c.Y = clampf(c.Y*255, 0, 255)
+	}
+	if c.Z < 1 {
+		c.Z = clampf(c.Z*255, 0, 255)
+	}
+	if c.W < 1 {
+		c.W = clampf(c.W*255, 0, 255)
+	}
+	return color.RGBA{
+		uint8(c.X),
+		uint8(c.Y),
+		uint8(c.Z),
+		uint8(c.W),
+	}
+}
+
 func min8(x, y uint8) uint8 {
 	if x < y {
 		return x
