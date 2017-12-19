@@ -64,12 +64,12 @@ func (h HSL) RGBA() (r, g, b, a uint32) {
 
 func HSV2RGB(c HSV) color.RGBA {
 	h := math.Mod(c.H, 360)
-	s := clampf(c.S, 0, 1)
-	v := clampf(c.V, 0, 1)
+	s := f64.Clamp(c.S, 0, 1)
+	v := f64.Clamp(c.V, 0, 1)
 
 	var r color.RGBA
 	if s == 0 {
-		x := uint8(clampf(v*255, 0, 255))
+		x := uint8(f64.Clamp(v*255, 0, 255))
 		r = color.RGBA{x, x, x, 255}
 	} else {
 		b := (1 - s) * v
@@ -103,9 +103,9 @@ func HSV2RGB(c HSV) color.RGBA {
 			cg = b
 			cb = vb*(60-hm)/60 + b
 		}
-		cr = clampf(cr*255, 0, 255)
-		cg = clampf(cg*255, 0, 255)
-		cb = clampf(cb*255, 0, 255)
+		cr = f64.Clamp(cr*255, 0, 255)
+		cg = f64.Clamp(cg*255, 0, 255)
+		cb = f64.Clamp(cb*255, 0, 255)
 		r = color.RGBA{uint8(cr), uint8(cg), uint8(cb), 255}
 	}
 	return r
@@ -115,8 +115,8 @@ func RGB2HSV(c color.RGBA) HSV {
 	r := float64(c.R)
 	g := float64(c.G)
 	b := float64(c.B)
-	min := minf(r, minf(g, b))
-	max := maxf(r, maxf(g, b))
+	min := math.Min(r, math.Max(g, b))
+	max := math.Max(r, math.Max(g, b))
 	delta := max - min
 
 	v := float64(max) / 255.0
@@ -183,54 +183,16 @@ func VEC42RGBA(c f64.Vec4) color.RGBA {
 	if c.W <= eps {
 		c.W *= 255
 	}
-	c.X = clampf(c.X, 0, 255)
-	c.Y = clampf(c.Y, 0, 255)
-	c.Z = clampf(c.Z, 0, 255)
-	c.W = clampf(c.W, 0, 255)
+	c.X = f64.Clamp(c.X, 0, 255)
+	c.Y = f64.Clamp(c.Y, 0, 255)
+	c.Z = f64.Clamp(c.Z, 0, 255)
+	c.W = f64.Clamp(c.W, 0, 255)
 	return color.RGBA{
 		uint8(c.X),
 		uint8(c.Y),
 		uint8(c.Z),
 		uint8(c.W),
 	}
-}
-
-func min8(x, y uint8) uint8 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func minf(x, y float64) float64 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max8(x, y uint8) uint8 {
-	if x > y {
-		return x
-	}
-	return y
-}
-
-func maxf(x, y float64) float64 {
-	if x > y {
-		return x
-	}
-	return y
-}
-
-func clampf(x, a, b float64) float64 {
-	if x < a {
-		x = a
-	}
-	if x > b {
-		x = b
-	}
-	return x
 }
 
 func ParseRGBA(s string) (color.RGBA, error) {
