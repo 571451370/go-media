@@ -1118,3 +1118,34 @@ func (r Rectangle) Dx() float64 {
 func (r Rectangle) Dy() float64 {
 	return r.Max.Y - r.Min.Y
 }
+
+func RoundPrec(v float64, prec int) float64 {
+	if prec < 0 {
+		return v
+	}
+
+	tab := [...]float64{
+		1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10,
+	}
+	step := 0.0
+	if prec < len(tab) {
+		step = tab[prec]
+	} else {
+		step = math.Pow(10, float64(-prec))
+	}
+
+	neg := v < 0
+	v = math.Abs(v)
+	rem := math.Mod(v, step)
+	if rem <= step*0.5 {
+		v -= rem
+	} else {
+		v += step - rem
+	}
+
+	if neg {
+		v = -v
+	}
+
+	return v
+}
