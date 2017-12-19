@@ -170,18 +170,23 @@ func HSL2HSV(c HSL) HSV {
 }
 
 func VEC42RGBA(c f64.Vec4) color.RGBA {
-	if c.X < 1 {
-		c.X = clampf(c.X*255, 0, 255)
+	const eps = 1.001
+	if c.X <= eps {
+		c.X *= 255
 	}
-	if c.Y < 1 {
-		c.Y = clampf(c.Y*255, 0, 255)
+	if c.Y <= eps {
+		c.Y *= 255
 	}
-	if c.Z < 1 {
-		c.Z = clampf(c.Z*255, 0, 255)
+	if c.Z <= eps {
+		c.Z *= 255
 	}
-	if c.W < 1 {
-		c.W = clampf(c.W*255, 0, 255)
+	if c.W <= eps {
+		c.W *= 255
 	}
+	c.X = clampf(c.X, 0, 255)
+	c.Y = clampf(c.Y, 0, 255)
+	c.Z = clampf(c.Z, 0, 255)
+	c.W = clampf(c.W, 0, 255)
 	return color.RGBA{
 		uint8(c.X),
 		uint8(c.Y),
