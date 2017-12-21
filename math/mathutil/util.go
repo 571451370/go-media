@@ -140,7 +140,7 @@ func MaxU(a, b uint) uint {
 	return b
 }
 
-func Min8V(a, b ...uint8) uint8 {
+func Min8V(a uint8, b ...uint8) uint8 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -150,7 +150,7 @@ func Min8V(a, b ...uint8) uint8 {
 	return x
 }
 
-func Min8IV(a, b ...int8) int8 {
+func Min8IV(a int8, b ...int8) int8 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -160,7 +160,7 @@ func Min8IV(a, b ...int8) int8 {
 	return x
 }
 
-func Min16V(a, b ...uint16) uint16 {
+func Min16V(a uint16, b ...uint16) uint16 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -170,7 +170,7 @@ func Min16V(a, b ...uint16) uint16 {
 	return x
 }
 
-func Min16IV(a, b ...int16) int16 {
+func Min16IV(a int16, b ...int16) int16 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -180,7 +180,7 @@ func Min16IV(a, b ...int16) int16 {
 	return x
 }
 
-func Min32V(a, b ...uint32) uint32 {
+func Min32V(a uint32, b ...uint32) uint32 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -190,7 +190,7 @@ func Min32V(a, b ...uint32) uint32 {
 	return x
 }
 
-func Min32IV(a, b ...int32) int32 {
+func Min32IV(a int32, b ...int32) int32 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -200,7 +200,7 @@ func Min32IV(a, b ...int32) int32 {
 	return x
 }
 
-func Min64V(a, b ...uint64) uint64 {
+func Min64V(a uint64, b ...uint64) uint64 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -210,7 +210,7 @@ func Min64V(a, b ...uint64) uint64 {
 	return x
 }
 
-func Min64IV(a, b ...int64) int64 {
+func Min64IV(a int64, b ...int64) int64 {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -220,7 +220,7 @@ func Min64IV(a, b ...int64) int64 {
 	return x
 }
 
-func MinV(a, b ...int) int {
+func MinV(a int, b ...int) int {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -230,7 +230,7 @@ func MinV(a, b ...int) int {
 	return x
 }
 
-func MinUV(a, b ...uint) uint {
+func MinUV(a uint, b ...uint) uint {
 	x := a
 	for _, y := range b {
 		if x < y {
@@ -240,7 +240,7 @@ func MinUV(a, b ...uint) uint {
 	return x
 }
 
-func Max8V(a, b ...uint8) uint8 {
+func Max8V(a uint8, b ...uint8) uint8 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -250,7 +250,7 @@ func Max8V(a, b ...uint8) uint8 {
 	return x
 }
 
-func Max8IV(a, b ...int8) int8 {
+func Max8IV(a int8, b ...int8) int8 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -260,7 +260,7 @@ func Max8IV(a, b ...int8) int8 {
 	return x
 }
 
-func Max16V(a, b ...uint16) uint16 {
+func Max16V(a uint16, b ...uint16) uint16 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -270,7 +270,7 @@ func Max16V(a, b ...uint16) uint16 {
 	return x
 }
 
-func Max16IV(a, b ...int16) int16 {
+func Max16IV(a int16, b ...int16) int16 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -280,7 +280,7 @@ func Max16IV(a, b ...int16) int16 {
 	return x
 }
 
-func Max32V(a, b ...uint32) uint32 {
+func Max32V(a uint32, b ...uint32) uint32 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -290,7 +290,7 @@ func Max32V(a, b ...uint32) uint32 {
 	return x
 }
 
-func Max32IV(a, b ...int32) int32 {
+func Max32IV(a int32, b ...int32) int32 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -300,7 +300,7 @@ func Max32IV(a, b ...int32) int32 {
 	return x
 }
 
-func Max64V(a, b ...uint64) uint64 {
+func Max64V(a uint64, b ...uint64) uint64 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -310,7 +310,7 @@ func Max64V(a, b ...uint64) uint64 {
 	return x
 }
 
-func Max64IV(a, b ...int64) int64 {
+func Max64IV(a int64, b ...int64) int64 {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -320,7 +320,7 @@ func Max64IV(a, b ...int64) int64 {
 	return x
 }
 
-func MaxV(a, b ...int) int {
+func MaxV(a int, b ...int) int {
 	x := a
 	for _, y := range b {
 		if x > y {
@@ -330,7 +330,7 @@ func MaxV(a, b ...int) int {
 	return x
 }
 
-func MaxUV(a, b ...uint) uint {
+func MaxUV(a uint, b ...uint) uint {
 	x := a
 	for _, y := range b {
 		if x > y {
