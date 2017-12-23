@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -223,4 +224,13 @@ func ParseRGBA(s string) (color.RGBA, error) {
 	}
 
 	return color.RGBA{}, fmt.Errorf("failed to parse color %q, unknown format", s)
+}
+
+func RandRGB() color.RGBA {
+	return color.RGBA{
+		uint8(rand.Intn(256)),
+		uint8(rand.Intn(256)),
+		uint8(rand.Intn(256)),
+		255,
+	}
 }
