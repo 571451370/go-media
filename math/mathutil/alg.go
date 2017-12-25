@@ -1,15 +1,14 @@
 package mathutil
 
 func GCD(a, b int) int {
-	for a != 0 && b != 0 {
-		if a > b {
-			a %= b
-		} else {
-			b %= a
-		}
+	k := Max(a, b)
+	m := Min(a, b)
+	for m != 0 {
+		r := k % m
+		k = m
+		m = r
 	}
-
-	return Max(a, b)
+	return k
 }
 
 func LCM(a, b int) int {
@@ -47,6 +46,16 @@ func Abs32(x int32) int32 {
 func Abs64(x int64) int64 {
 	if x < 0 {
 		return -x
+	}
+	return x
+}
+
+func Clamp(x, a, b int) int {
+	if x < a {
+		x = a
+	}
+	if x > b {
+		x = b
 	}
 	return x
 }
