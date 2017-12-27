@@ -1,8 +1,8 @@
 // +build windows
 
-package sdl
+package sdlmixer
 
 /*
-#cgo LDFLAGS: -lSDL2_mixer
+#cgo LDFLAGS: -lSDL2 -lSDL2_mixer
 */
 import "C"
