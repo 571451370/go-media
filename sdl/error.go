@@ -1,7 +1,7 @@
 package sdl
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 
 static int setError(const char *str) {
 	return SDL_SetError("%s", str);

@@ -1,7 +1,7 @@
 package sdl
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 */
 import "C"
 import "unsafe"

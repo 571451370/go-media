@@ -4,7 +4,7 @@
 package main
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 */
 import "C"
 

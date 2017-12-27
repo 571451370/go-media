@@ -1,7 +1,7 @@
 package sdl
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 
 Uint32 getPixel(SDL_Surface *surface, size_t x, size_t y) {
 	SDL_LockSurface(surface);

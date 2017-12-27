@@ -1,10 +1,10 @@
 // +build linux darwin openbsd netbsd freebsd dragonfly solaris
 
-package sdl
+package sdlimage
 
 /*
-#include "gosdl.h"
+#include <SDL.h>
 
-#cgo pkg-config: sdl2
+#cgo LDFLAGS: -lSDL2
 */
 import "C"

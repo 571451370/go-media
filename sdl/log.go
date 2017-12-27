@@ -1,7 +1,7 @@
 package sdl
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 
 static void xlog(const char *str) {
 	SDL_Log("%s", str);

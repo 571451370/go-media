@@ -1,7 +1,7 @@
 package sdl
 
 /*
-#include "sdl.h"
+#include "gosdl.h"
 
 static int addMappingsFromFile(const char *file) {
 	return SDL_GameControllerAddMappingsFromFile(file);

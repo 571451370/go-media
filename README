@@ -1,3 +1,13 @@
 Various Go libraries for multimedia stuff.
 
 These libraries is for my personal projects, no API stability at all.
+
+Windows note:
+Install mingw and setup the include paths using the environment
+variable CPATH for include paths.
+
+For libraries, build them or use pre-defined like the ones
+provided by SDL.
+
+http://win-builds.org/doku.php also provides a relatively complete
+set of prebuilt libraries though outdated.
