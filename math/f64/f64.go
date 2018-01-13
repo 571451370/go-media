@@ -1149,3 +1149,7 @@ func RoundPrec(v float64, prec int) float64 {
 
 	return v
 }
+
+func Sinc(x float64) float64 {
+	return math.Sin(math.Pi*x) / (math.Pi * x)
+}
