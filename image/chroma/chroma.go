@@ -223,6 +223,12 @@ func ParseRGBA(s string) (color.RGBA, error) {
 		return color.RGBA{r, r, r, 255}, nil
 	}
 
+	var h HSV
+	n, _ = fmt.Sscanf(s, "hsv(%v,%v,%v)", &h.H, &h.S, &h.V)
+	if n == 3 {
+		return HSV2RGB(h), nil
+	}
+
 	return color.RGBA{}, fmt.Errorf("failed to parse color %q, unknown format", s)
 }
 
@@ -232,5 +238,13 @@ func RandRGB() color.RGBA {
 		uint8(rand.Intn(256)),
 		uint8(rand.Intn(256)),
 		255,
+	}
+}
+
+func RandHSV() HSV {
+	return HSV{
+		H: rand.Float64() * 360,
+		S: rand.Float64(),
+		V: rand.Float64(),
 	}
 }
