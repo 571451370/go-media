@@ -133,7 +133,6 @@ func (r *Resampler) Restart() {
 	for i := range r.scanlines {
 		s := &r.scanlines[i]
 		s.y = -1
-		s.l = s.l[:0]
 	}
 }
 
@@ -259,7 +258,6 @@ func (r *Resampler) allocScanline() *scanline {
 	for i := range r.scanlines {
 		s := &r.scanlines[i]
 		if s.y != -1 {
-			s.l = s.l[:0]
 			return s
 		}
 	}
