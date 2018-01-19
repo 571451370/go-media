@@ -3,6 +3,7 @@ package resampler
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -10,7 +11,7 @@ import (
 
 var (
 	srgb   [256]float64
-	linear [4096]int
+	linear [4096]uint8
 )
 
 func init() {
@@ -22,25 +23,26 @@ func init() {
 	for i := range linear {
 		k := 255 * (math.Pow(float64(i)/float64(len(linear)), 1/gamma) + .5)
 		k = f64.Clamp(k, 0, 255)
-		linear[i] = int(k)
+		linear[i] = uint8(k)
 	}
 }
 
-func ResizeImage(m image.Image, dr image.Rectangle) *image.RGBA {
+func ResizeImage(m image.Image, p draw.Image) {
 	var (
 		resamplers [4]*Resampler
 		samples    [4][]float64
 	)
+	dr := p.Bounds()
 	sr := m.Bounds()
 	sn := image.Pt(sr.Dx(), sr.Dy())
 	dn := image.Pt(dr.Dx(), dr.Dy())
 	for i := range resamplers {
-		resamplers[i] = New(sn, dn, nil)
+		resamplers[i] = New(dn, sn, nil)
 		samples[i] = make([]float64, sn.X)
 	}
 
-	y := 0
 	var n int
+	dy := 0
 	for y := sr.Min.Y; y < sr.Max.Y; y++ {
 		for x := sr.Min.X; x < sr.Max.X; x++ {
 			c := color.RGBAModel.Convert(m.At(x, y)).(color.RGBA)
@@ -54,21 +56,36 @@ func ResizeImage(m image.Image, dr image.Rectangle) *image.RGBA {
 			rp.PutLine(samples[i])
 		}
 
-		for {
-			i := 0
-			for i = range resamplers {
-				out := resamplers[i].GetLine()
-				if out == nil {
-					break
+	loop:
+		for ; ; dy++ {
+			var out [4][]float64
+			for i := range resamplers {
+				out[i] = resamplers[i].GetLine()
+				if out[i] == nil {
+					break loop
 				}
 			}
 
-			if i < len(resamplers) {
-				break
+			for dx := 0; dx < dn.X; dx++ {
+				c := color.RGBA{
+					linear2srgb(out[0][dx], false),
+					linear2srgb(out[1][dx], false),
+					linear2srgb(out[2][dx], false),
+					linear2srgb(out[3][dx], true),
+				}
+				p.Set(dx, dy, c)
 			}
-			y++
 		}
 	}
+}
 
-	return nil
+func linear2srgb(x float64, a bool) uint8 {
+	if a {
+		x = f64.Clamp(255*x+.5, 0, 255)
+		return uint8(x)
+	}
+
+	i := float64(len(linear))*x + .5
+	i = f64.Clamp(i, 0, float64(len(linear)-1))
+	return linear[int(i)]
 }

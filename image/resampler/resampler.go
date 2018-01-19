@@ -1,5 +1,5 @@
 // ported from Separable filtering image rescaler v2.21, Rich Geldreich - richgel99@gmail.com
-// https://github.com/rwohleb/imageresampler
+// https://github.com/richgel999/imageresampler
 package resampler
 
 import (
@@ -56,8 +56,8 @@ type Resampler struct {
 func New(dn, sn image.Point, opt *Options) *Resampler {
 	if opt == nil {
 		opt = &Options{
-			BoundaryOp:  BOUNDARY_WRAP,
-			Filter:      GetFilter("lanczos4"),
+			BoundaryOp:  BOUNDARY_CLAMP,
+			Filter:      GetFilter("blackman"),
 			SampleRange: f64.Vec2{0, 1},
 			FilterScale: f64.Vec2{1, 1},
 			SourceOff:   f64.Vec2{0, 0},
@@ -165,7 +165,7 @@ func (r *Resampler) reflect(x, w, op int) int {
 		case BOUNDARY_WRAP:
 			n = posmod(x, w)
 		default:
-			n = x - 1
+			n = w - 1
 		}
 
 	default:
@@ -195,44 +195,46 @@ func (r *Resampler) makeList(dn, sn int, filterScale float64, sourceOff float64)
 
 	// find source samples that contribute to each destination sample
 	for i := 0; i < dn; i++ {
+		// convert discrete to continuous, scale, and then back to discrete
 		center := (float64(i) + NUDGE) / scale
 		center -= NUDGE
 		center += sourceOff
 
 		left := math.Floor(center - halfWidth)
-		right := math.Floor(center + halfWidth)
+		right := math.Ceil(center + halfWidth)
 
-		contribBounds = append(contribBounds, contribBound{
+		contribBounds[i] = contribBound{
 			Center: center,
 			Left:   int(left),
 			Right:  int(right),
-		})
+		}
 	}
 
 	// create the list of each source samples which
 	// contribute to each destination sample
-	maxWeight := 0.0
-	maxIndex := -1
-	index := 0
 	totalWeight := 0.0
 	for i := 0; i < dn; i++ {
+		maxIndex := -1
+		maxWeight := -1e20
+
 		center := contribBounds[i].Center
 		left := contribBounds[i].Left
 		right := contribBounds[i].Right
 		contribs[i] = make([]contrib, right-left+1)
 
+		totalWeight = 0
 		for j := left; j <= right; j++ {
 			totalWeight += filter.Sample((center - float64(j)) * scaleMul * ooFilterScale)
 		}
 		norm := 1 / totalWeight
 
 		totalWeight = 0
+		index := 0
 		for j := left; j <= right; j++ {
 			weight := filter.Sample((center-float64(j))*scaleMul*ooFilterScale) * norm
 			if weight == 0 {
 				continue
 			}
-
 			contribs[i][index].Pixel = r.reflect(j, sn, r.opt.BoundaryOp)
 			contribs[i][index].Weight = weight
 
@@ -337,6 +339,10 @@ func (r *Resampler) resampleY(samples []float64) {
 	// process each contributor
 	pc := r.pcy[r.dc.Y]
 	for i := range pc {
+
+		// locate the contributor location
+		// in the scan buffer, must always
+		// be found!
 		var src []float64
 		var s *scanline
 		for j := range r.scanlines {
