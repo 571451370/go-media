@@ -108,7 +108,7 @@ func (r *Resampler) chooseSampleAxis() {
 	// check which resample order is better
 	// in case of a tie, choose order which buffers
 	// least amount of data
-	if xops > yops || (xops == yops && r.sn.X < r.dn.X) {
+	if false && xops > yops || (xops == yops && r.sn.X < r.dn.X) {
 		r.xdelay = true
 		r.xintermediate = r.sn.X
 	} else {
@@ -117,7 +117,7 @@ func (r *Resampler) chooseSampleAxis() {
 	}
 
 	if r.xdelay {
-		r.tmpSamples = make([]float64, max(r.sn.X, r.dn.X))
+		r.tmpSamples = make([]float64, r.xintermediate)
 	}
 }
 
