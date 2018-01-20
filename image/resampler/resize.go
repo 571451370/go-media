@@ -67,10 +67,10 @@ func ResizeImage(m image.Image, p draw.Image, o *Options) {
 
 			for dx := 0; dx < dn.X; dx++ {
 				c := color.RGBA{
-					linear2srgb(out[0][dx], false),
-					linear2srgb(out[1][dx], false),
-					linear2srgb(out[2][dx], false),
-					linear2srgb(out[3][dx], true),
+					linear2srgb(out[0][dx]),
+					linear2srgb(out[1][dx]),
+					linear2srgb(out[2][dx]),
+					linear2alpha(out[3][dx]),
 				}
 				p.Set(dx, dy, c)
 			}
@@ -78,13 +78,12 @@ func ResizeImage(m image.Image, p draw.Image, o *Options) {
 	}
 }
 
-func linear2srgb(x float64, a bool) uint8 {
-	if a {
-		x = f64.Clamp(255*x+.5, 0, 255)
-		return uint8(x)
-	}
-
+func linear2srgb(x float64) uint8 {
 	i := float64(len(linear))*x + .5
 	i = f64.Clamp(i, 0, float64(len(linear)-1))
 	return linear[int(i)]
+}
+
+func linear2alpha(x float64) uint8 {
+	return uint8(f64.Clamp(255*x+.5, 0, 255))
 }

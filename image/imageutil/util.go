@@ -58,7 +58,7 @@ func LoadRGBAReader(rd io.Reader) (*image.RGBA, error) {
 	return p, nil
 }
 
-func WriteRGBAFile(img image.Image, name string) error {
+func WriteRGBAFile(name string, img image.Image) error {
 	f, err := os.Create(name)
 	if err != nil {
 		return err
