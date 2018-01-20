@@ -108,7 +108,7 @@ func (r *Resampler) chooseSampleAxis() {
 	// check which resample order is better
 	// in case of a tie, choose order which buffers
 	// least amount of data
-	if false && xops > yops || (xops == yops && r.sn.X < r.dn.X) {
+	if xops > yops || (xops == yops && r.sn.X < r.dn.X) {
 		r.xdelay = true
 		r.xintermediate = r.sn.X
 	} else {
@@ -347,11 +347,9 @@ func (r *Resampler) GetLine() []float64 {
 // for a scanline, it is called when all
 // the contributors to a pixel are present
 func (r *Resampler) resampleY(samples []float64) {
-	var tmp []float64
+	tmp := r.samples
 	if r.xdelay {
 		tmp = r.tmpSamples
-	} else {
-		tmp = r.samples
 	}
 
 	// process each contributor
@@ -373,9 +371,9 @@ func (r *Resampler) resampleY(samples []float64) {
 		}
 
 		if i == 0 {
-			r.scaleYMov(tmp, src, pc[i].Weight)
+			r.scaleYMov(tmp, src, pc[i].Weight, r.xintermediate)
 		} else {
-			r.scaleYAdd(tmp, src, pc[i].Weight)
+			r.scaleYAdd(tmp, src, pc[i].Weight, r.xintermediate)
 		}
 
 		// if this source line doesn't contribute
@@ -406,16 +404,16 @@ func (r *Resampler) resampleY(samples []float64) {
 // scaleYMov initializes a convolution operation against
 // source and a weight value it sets it equal instead of adding
 // to destination to initialize the table
-func (r *Resampler) scaleYMov(dst, src []float64, weight float64) {
-	for i := 0; i < r.dn.X; i++ {
+func (r *Resampler) scaleYMov(dst, src []float64, weight float64, n int) {
+	for i := 0; i < n; i++ {
 		dst[i] = src[i] * weight
 	}
 }
 
 // scaleYAdd does a convolution operation against source and
 // a weight value
-func (r *Resampler) scaleYAdd(dst, src []float64, weight float64) {
-	for i := 0; i < r.dn.X; i++ {
+func (r *Resampler) scaleYAdd(dst, src []float64, weight float64, n int) {
+	for i := 0; i < n; i++ {
 		dst[i] += src[i] * weight
 	}
 }
