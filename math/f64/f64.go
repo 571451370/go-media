@@ -1151,5 +1151,45 @@ func RoundPrec(v float64, prec int) float64 {
 }
 
 func Sinc(x float64) float64 {
-	return math.Sin(math.Pi*x) / (math.Pi * x)
+	x *= math.Pi
+	if x < 0.01 && x > -0.01 {
+		return 1 + x*x*((-1.0/6)+x*x*1.0/120)
+	}
+	return math.Sin(x) / x
+}
+
+func LinearController(curpos *float64, targetpos, acc, deacc, dt float64) {
+	sign := 1.0
+	p := 0.0
+	cp := *curpos
+	if cp == targetpos {
+		return
+	}
+	if targetpos < cp {
+		targetpos = -targetpos
+		cp = -cp
+		sign = -1
+	}
+
+	// first decelerate
+	if cp < 0 {
+		p = cp + deacc*dt
+		if p > 0 {
+			p = 0
+			dt = dt - p/deacc
+			if dt < 0 {
+				dt = 0
+			}
+		} else {
+			dt = 0
+		}
+		cp = p
+	}
+
+	// now accelerate
+	p = cp + acc*dt
+	if p > targetpos {
+		p = targetpos
+	}
+	*curpos = p * sign
 }
