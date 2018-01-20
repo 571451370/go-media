@@ -21,7 +21,7 @@ func init() {
 	}
 
 	for i := range linear {
-		k := 255 * (math.Pow(float64(i)/float64(len(linear)), 1/gamma) + .5)
+		k := 255*math.Pow(float64(i)/float64(len(linear)), 1/gamma) + .5
 		k = f64.Clamp(k, 0, 255)
 		linear[i] = uint8(k)
 	}
@@ -50,6 +50,7 @@ func ResizeImage(m image.Image, p draw.Image, o *Options) {
 			samples[2][x] = srgb[c.B]
 			samples[3][x] = float64(c.A) / 255
 		}
+
 		for i, rp := range resamplers {
 			rp.PutLine(samples[i])
 		}
