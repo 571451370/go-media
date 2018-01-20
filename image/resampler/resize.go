@@ -27,7 +27,7 @@ func init() {
 	}
 }
 
-func ResizeImage(m image.Image, p draw.Image) {
+func ResizeImage(m image.Image, p draw.Image, o *Options) {
 	var (
 		resamplers [4]*Resampler
 		samples    [4][]float64
@@ -37,21 +37,19 @@ func ResizeImage(m image.Image, p draw.Image) {
 	sn := image.Pt(sr.Dx(), sr.Dy())
 	dn := image.Pt(dr.Dx(), dr.Dy())
 	for i := range resamplers {
-		resamplers[i] = New(dn, sn, nil)
+		resamplers[i] = New(dn, sn, o)
 		samples[i] = make([]float64, sn.X)
 	}
 
-	var n int
 	dy := 0
 	for y := sr.Min.Y; y < sr.Max.Y; y++ {
 		for x := sr.Min.X; x < sr.Max.X; x++ {
 			c := color.RGBAModel.Convert(m.At(x, y)).(color.RGBA)
-			samples[0][n] = srgb[c.R]
-			samples[1][n] = srgb[c.G]
-			samples[2][n] = srgb[c.B]
-			samples[3][n] = float64(c.A) / 255
+			samples[0][x] = srgb[c.R]
+			samples[1][x] = srgb[c.G]
+			samples[2][x] = srgb[c.B]
+			samples[3][x] = float64(c.A) / 255
 		}
-
 		for i, rp := range resamplers {
 			rp.PutLine(samples[i])
 		}

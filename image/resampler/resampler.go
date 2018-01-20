@@ -86,7 +86,6 @@ func New(dn, sn image.Point, opt *Options) *Resampler {
 	}
 
 	r.chooseSampleAxis()
-
 	return r
 }
 
@@ -251,6 +250,7 @@ func (r *Resampler) makeList(dn, sn int, filterScale float64, sourceOff float64)
 		if totalWeight != 1 {
 			contribs[i][maxIndex].Weight += 1 - totalWeight
 		}
+		contribs[i] = contribs[i][:index]
 	}
 
 	return contribs
@@ -259,7 +259,7 @@ func (r *Resampler) makeList(dn, sn int, filterScale float64, sourceOff float64)
 func (r *Resampler) allocScanline() *scanline {
 	for i := range r.scanlines {
 		s := &r.scanlines[i]
-		if s.y != -1 {
+		if s.y == -1 {
 			return s
 		}
 	}
@@ -316,7 +316,7 @@ func (r *Resampler) GetLine() []float64 {
 	}
 
 	// check to see if all the required contributors
-	// if not return nil
+	// are present, if not return nil
 	for _, c := range r.pcy[r.dc.Y] {
 		if !r.yflag[c.Pixel] {
 			return nil
@@ -339,12 +339,13 @@ func (r *Resampler) resampleY(samples []float64) {
 	// process each contributor
 	pc := r.pcy[r.dc.Y]
 	for i := range pc {
-
 		// locate the contributor location
 		// in the scan buffer, must always
 		// be found!
-		var src []float64
-		var s *scanline
+		var (
+			src []float64
+			s   *scanline
+		)
 		for j := range r.scanlines {
 			s = &r.scanlines[j]
 			if s.y == pc[i].Pixel {
@@ -433,7 +434,7 @@ func posmod(x, y int) int {
 }
 
 func max(a, b int) int {
-	if a < b {
+	if a > b {
 		return a
 	}
 	return b
