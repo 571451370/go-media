@@ -73,6 +73,14 @@ func QuadraticMix(t float64) float64 {
 	return quadratic(t, .8)
 }
 
+// Mitchell, D. and A. Netravali, "Reconstruction Filters in Computer Graphics."
+// Computer Graphics, Vol. 22, No. 4, pp. 221-228.
+// (B, C)
+// (1/3, 1/3)  - Defaults recommended by Mitchell and Netravali
+// (1, 0)	   - Equivalent to the Cubic B-Spline
+// (0, 0.5)		- Equivalent to the Catmull-Rom Spline
+// (0, C)		- The family of Cardinal Cubic Splines
+// (B, 0)		- Duff's tensioned B-Splines.
 func mitchell(t, B, C float64) float64 {
 	tt := t * t
 	t = math.Abs(t)
@@ -142,6 +150,7 @@ func Gaussian(t float64) float64 {
 	return 0
 }
 
+// Windowed sinc -- see "Jimm Blinn's Corner: Dirty Pixels" pg. 26.
 func Lanczos(a float64) func(float64) float64 {
 	return func(t float64) float64 {
 		t = math.Abs(t)

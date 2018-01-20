@@ -2,6 +2,15 @@
 // https://github.com/richgel999/imageresampler
 package resampler
 
+// outline of how the thing works:
+// its used to sample a 2D plane of values, ie, an image
+// the two main function are putline and getline
+// on init, the function will build a 2d table of all the weights
+// to be convolved with the source for each pixel
+// on every putline it waits it fills up the y source samples
+// it waits until there is enough samples before it does a convolution
+// it keeps a scanline buffer to hold the samples
+
 import (
 	"image"
 	"math"
@@ -267,6 +276,8 @@ func (r *Resampler) allocScanline() *scanline {
 	return &r.scanlines[len(r.scanlines)-1]
 }
 
+// resampleX convolves the x axis for a destination
+// with source and weights
 func (r *Resampler) resampleX(dst, src []float64) {
 	for i := 0; i < r.dn.X; i++ {
 		total := 0.0
@@ -277,6 +288,8 @@ func (r *Resampler) resampleX(dst, src []float64) {
 	}
 }
 
+// PutLine puts the source samples onto a queue
+// for later processing by GetLine
 func (r *Resampler) PutLine(src []float64) bool {
 	if r.sc.Y >= r.sn.Y {
 		return false
@@ -308,6 +321,8 @@ func (r *Resampler) PutLine(src []float64) bool {
 	return true
 }
 
+// GetLine returns the output after convolving for
+// a scanline
 func (r *Resampler) GetLine() []float64 {
 	// if all destination have been generated
 	// always return nil
@@ -328,6 +343,9 @@ func (r *Resampler) GetLine() []float64 {
 	return r.samples
 }
 
+// resampleY does a convolution operation
+// for a scanline, it is called when all
+// the contributors to a pixel are present
 func (r *Resampler) resampleY(samples []float64) {
 	var tmp []float64
 	if r.xdelay {
@@ -385,18 +403,25 @@ func (r *Resampler) resampleY(samples []float64) {
 	}
 }
 
+// scaleYMov initializes a convolution operation against
+// source and a weight value it sets it equal instead of adding
+// to destination to initialize the table
 func (r *Resampler) scaleYMov(dst, src []float64, weight float64) {
 	for i := 0; i < r.dn.X; i++ {
 		dst[i] = src[i] * weight
 	}
 }
 
+// scaleYAdd does a convolution operation against source and
+// a weight value
 func (r *Resampler) scaleYAdd(dst, src []float64, weight float64) {
 	for i := 0; i < r.dn.X; i++ {
 		dst[i] += src[i] * weight
 	}
 }
 
+// clampSamples clamps the sample points between user
+// defined low and high
 func (r *Resampler) clampSamples(samples []float64) {
 	lo := r.opt.SampleRange.X
 	hi := r.opt.SampleRange.Y
@@ -405,6 +430,8 @@ func (r *Resampler) clampSamples(samples []float64) {
 	}
 }
 
+// countOps gives a rough estimate of how many
+// operation an axis takes so we can choose
 func (r *Resampler) countOps(contribs [][]contrib) int {
 	n := 0
 	for i := range contribs {
