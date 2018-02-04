@@ -8,7 +8,6 @@ package nvg
 #include "nanovg.h"
 #include "nanovg_gl.h"
 */
-// #cgo LDFLAGS: -lm -lGLEW -lGL -ldl
 import "C"
 
 import (

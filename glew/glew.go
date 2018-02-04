@@ -21,7 +21,7 @@ func Init() error {
 }
 
 func errorString(rc int) error {
-	cstr := C.glewGetErrorString(C.uint(rc))
+	cstr := C.glewGetErrorString(C.GLenum(rc))
 	str := C.GoString((*C.char)(unsafe.Pointer(cstr)))
 	return errors.New(str)
 }
