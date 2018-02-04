@@ -300,6 +300,14 @@ func (w *Window) SetModal(parent *Window) error {
 	return ek(C.SDL_SetWindowModalFor((*C.SDL_Window)(w), (*C.SDL_Window)(parent)))
 }
 
+func (w *Window) SwapGL() {
+	C.SDL_GL_SwapWindow((*C.SDL_Window)(w))
+}
+
+func GLSetSwapInterval(interval int) {
+	C.SDL_GL_SetSwapInterval(C.int(interval))
+}
+
 func GetDisplayUsableBounds(displayIndex int, rect *Rect) error {
 	return ek(C.SDL_GetDisplayUsableBounds(C.int(displayIndex), (*C.SDL_Rect)(unsafe.Pointer(rect))))
 }

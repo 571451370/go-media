@@ -23,6 +23,7 @@ type (
 	GlyphPosition C.NVGglyphPosition
 	Paint         C.NVGpaint
 
+	CreateFlags C.enum_NVGcreateFlags
 	LineCap     C.enum_NVGlineCap
 	Align       C.enum_NVGalign
 	BlendFactor C.enum_NVGblendFactor
@@ -98,7 +99,13 @@ const (
 	IMAGE_NEAREST          ImageFlags = C.NVG_IMAGE_NEAREST
 )
 
-func CreateGL3(flags int) (*Context, error) {
+const (
+	ANTIALIAS       CreateFlags = C.NVG_ANTIALIAS
+	STENCIL_STROKES CreateFlags = C.NVG_STENCIL_STROKES
+	DEBUG           CreateFlags = C.NVG_DEBUG
+)
+
+func CreateGL3(flags CreateFlags) (*Context, error) {
 	ctx := (*Context)(C.nvgCreateGL3(C.int(flags)))
 	if ctx == nil {
 		return nil, fmt.Errorf("failed to create nvg context")
