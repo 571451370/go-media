@@ -12,6 +12,7 @@ package nvg
 import "C"
 
 import (
+	"fmt"
 	"image/color"
 	"unsafe"
 )
@@ -97,8 +98,12 @@ const (
 	IMAGE_NEAREST          ImageFlags = C.NVG_IMAGE_NEAREST
 )
 
-func CreateGL3(flags int) *Context {
-	return (*Context)(C.nvgCreateGL3(C.int(flags)))
+func CreateGL3(flags int) (*Context, error) {
+	ctx := (*Context)(C.nvgCreateGL3(C.int(flags)))
+	if ctx == nil {
+		return nil, fmt.Errorf("failed to create nvg context")
+	}
+	return ctx, nil
 }
 
 func (c *Context) GlobalAlpha(alpha float64) {
