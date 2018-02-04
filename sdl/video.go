@@ -22,6 +22,7 @@ type (
 	WindowEventID        C.SDL_WindowEventID
 	GLattr               C.SDL_GLattr
 	GLprofile            C.SDL_GLprofile
+	GLContext            C.SDL_GLContext
 	GLcontextFlag        C.SDL_GLcontextFlag
 	GLcontextReleaseFlag C.SDL_GLcontextReleaseFlag
 )
@@ -160,7 +161,13 @@ func GetDisplayBounds(displayIndex int) (Rect, error) {
 }
 
 func CreateWindow(title string, x, y, w, h int, flags WindowFlags) (*Window, error) {
-	return nil, GetError()
+	ctitle := C.CString(title)
+	defer C.free(unsafe.Pointer(ctitle))
+	window := C.SDL_CreateWindow(ctitle, C.int(x), C.int(y), C.int(w), C.int(h), C.Uint32(flags))
+	if window == nil {
+		return nil, GetError()
+	}
+	return (*Window)(window), nil
 }
 
 func (w *Window) Flags() WindowFlags {
@@ -300,12 +307,16 @@ func (w *Window) SetModal(parent *Window) error {
 	return ek(C.SDL_SetWindowModalFor((*C.SDL_Window)(w), (*C.SDL_Window)(parent)))
 }
 
-func (w *Window) CreateContextGL() {
-	C.SDL_GL_CreateContext((*C.SDL_Window)(w))
+func (w *Window) CreateContextGL() GLContext {
+	return GLContext(C.SDL_GL_CreateContext((*C.SDL_Window)(w)))
 }
 
 func (w *Window) SwapGL() {
 	C.SDL_GL_SwapWindow((*C.SDL_Window)(w))
+}
+
+func GLDeleteContext(c GLContext) {
+	C.SDL_GL_DeleteContext(C.SDL_GLContext(c))
 }
 
 func GLSetSwapInterval(interval int) {
