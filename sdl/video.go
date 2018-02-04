@@ -300,6 +300,10 @@ func (w *Window) SetModal(parent *Window) error {
 	return ek(C.SDL_SetWindowModalFor((*C.SDL_Window)(w), (*C.SDL_Window)(parent)))
 }
 
+func (w *Window) CreateContextGL() {
+	C.SDL_GL_CreateContext((*C.SDL_Window)(w))
+}
+
 func (w *Window) SwapGL() {
 	C.SDL_GL_SwapWindow((*C.SDL_Window)(w))
 }
