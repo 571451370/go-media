@@ -189,20 +189,20 @@ func (c *Context) DeleteImage(image_ int) {
 	C.nvgDeleteImage((*C.NVGcontext)(c), C.int(image_))
 }
 
-func (c *Context) LinearGradient(sx, sy, ex, ey float64, icol, ocol color.RGBA) {
-	C.nvgLinearGradient((*C.NVGcontext)(c), C.float(sx), C.float(sy), C.float(ex), C.float(ey), rgba(icol), rgba(ocol))
+func (c *Context) LinearGradient(sx, sy, ex, ey float64, icol, ocol color.RGBA) Paint {
+	return Paint(C.nvgLinearGradient((*C.NVGcontext)(c), C.float(sx), C.float(sy), C.float(ex), C.float(ey), rgba(icol), rgba(ocol)))
 }
 
-func (c *Context) BoxGradient(x, y, w, h, r, f float64, icol, ocol color.RGBA) {
-	C.nvgBoxGradient((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(w), C.float(h), C.float(r), C.float(f), rgba(icol), rgba(ocol))
+func (c *Context) BoxGradient(x, y, w, h, r, f float64, icol, ocol color.RGBA) Paint {
+	return Paint(C.nvgBoxGradient((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(w), C.float(h), C.float(r), C.float(f), rgba(icol), rgba(ocol)))
 }
 
-func (c *Context) RadialGradient(cx, cy, inr, outr float64, icol, ocol color.RGBA) {
-	C.nvgRadialGradient((*C.NVGcontext)(c), C.float(cx), C.float(cy), C.float(inr), C.float(outr), rgba(icol), rgba(ocol))
+func (c *Context) RadialGradient(cx, cy, inr, outr float64, icol, ocol color.RGBA) Paint {
+	return Paint(C.nvgRadialGradient((*C.NVGcontext)(c), C.float(cx), C.float(cy), C.float(inr), C.float(outr), rgba(icol), rgba(ocol)))
 }
 
-func (c *Context) ImagePattern(ox, oy, ex, ey, angle float64, image_ int, alpha float64) {
-	C.nvgImagePattern((*C.NVGcontext)(c), C.float(ox), C.float(oy), C.float(ex), C.float(ey), C.float(angle), C.int(image_), C.float(alpha))
+func (c *Context) ImagePattern(ox, oy, ex, ey, angle float64, image_ int, alpha float64) Paint {
+	return Paint(C.nvgImagePattern((*C.NVGcontext)(c), C.float(ox), C.float(oy), C.float(ex), C.float(ey), C.float(angle), C.int(image_), C.float(alpha)))
 }
 
 func (c *Context) BeginPath() {
