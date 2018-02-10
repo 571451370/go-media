@@ -303,6 +303,48 @@ func (c *Context) FontFace(name string) {
 	C.nvgFontFace((*C.NVGcontext)(c), cname)
 }
 
+func (c *Context) FontFaceID(font int) {
+	C.nvgFontFaceId((*C.NVGcontext)(c), C.int(font))
+}
+
+func (c *Context) Text(x, y float64, str string, end int) float64 {
+	cstr := C.CString(str)
+	if end < 0 {
+		end = len(str)
+	}
+	cend := unsafe.Pointer(uintptr(unsafe.Pointer(cstr)) + uintptr(end))
+	defer C.free(unsafe.Pointer(cstr))
+	return float64(C.nvgText((*C.NVGcontext)(c), C.float(x), C.float(y), cstr, (*C.char)(cend)))
+}
+
+func (c *Context) TextBox(x, y, breakRowWidth float64, str string, end int) {
+	cstr := C.CString(str)
+	if end < 0 {
+		end = len(str)
+	}
+	cend := unsafe.Pointer(uintptr(unsafe.Pointer(cstr)) + uintptr(end))
+	defer C.free(unsafe.Pointer(cstr))
+	C.nvgTextBox((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(breakRowWidth), cstr, (*C.char)(cend))
+}
+
+func (c *Context) TextBounds(x, y float64, str string, end int) (measured, xmin, ymin, xmax, ymax float64) {
+	var cbounds [4]C.float
+	cstr := C.CString(str)
+	if end < 0 {
+		end = len(str)
+	}
+	cend := unsafe.Pointer(uintptr(unsafe.Pointer(cstr)) + uintptr(end))
+	defer C.free(unsafe.Pointer(cstr))
+	cmeasured := C.nvgTextBounds((*C.NVGcontext)(c), C.float(x), C.float(y), cstr, (*C.char)(cend), &cbounds[0])
+	return float64(cmeasured), float64(cbounds[0]), float64(cbounds[1]), float64(cbounds[2]), float64(cbounds[3])
+}
+
+func (c *Context) TextMetrics() (ascender, descender, lineh float64) {
+	var cascender, cdescender, clineh C.float
+	C.nvgTextMetrics((*C.NVGcontext)(c), &cascender, &cdescender, &clineh)
+	return float64(cascender), float64(cdescender), float64(clineh)
+}
+
 func (c *Context) TextAlign(align Align) {
 	C.nvgTextAlign((*C.NVGcontext)(c), C.int(align))
 }
