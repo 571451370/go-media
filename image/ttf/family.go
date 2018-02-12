@@ -2,6 +2,8 @@ package ttf
 
 type Family struct {
 	Normal []byte
+	Light  []byte
+	Bold   []byte
 }
 
 var VGA437 = Family{
@@ -10,4 +12,10 @@ var VGA437 = Family{
 
 var ProggyClean = Family{
 	Normal: proggyClean,
+}
+
+var Roboto = Family{
+	Normal: robotoNormal,
+	Light:  robotoLight,
+	Bold:   robotoBold,
 }
