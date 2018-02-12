@@ -297,6 +297,18 @@ func (c *Context) FontSize(size float64) {
 	C.nvgFontSize((*C.NVGcontext)(c), C.float(size))
 }
 
+func (c *Context) FontBlur(blur float64) {
+	C.nvgFontBlur((*C.NVGcontext)(c), C.float(blur))
+}
+
+func (c *Context) TextLetterSpacing(spacing float64) {
+	C.nvgTextLetterSpacing((*C.NVGcontext)(c), C.float(spacing))
+}
+
+func (c *Context) TextLineHeight(lineHeight float64) {
+	C.nvgTextLineHeight((*C.NVGcontext)(c), C.float(lineHeight))
+}
+
 func (c *Context) FontFace(name string) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
@@ -339,6 +351,18 @@ func (c *Context) TextBounds(x, y float64, str string, end int) (measured, xmin,
 	return float64(cmeasured), float64(cbounds[0]), float64(cbounds[1]), float64(cbounds[2]), float64(cbounds[3])
 }
 
+func (c *Context) TextBoxBounds(x, y, breakRowWidth float64, str string, end int) (xmin, ymin, xmax, ymax float64) {
+	var cbounds [4]C.float
+	cstr := C.CString(str)
+	if end < 0 {
+		end = len(str)
+	}
+	cend := unsafe.Pointer(uintptr(unsafe.Pointer(cstr)) + uintptr(end))
+	defer C.free(unsafe.Pointer(cstr))
+	C.nvgTextBoxBounds((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(breakRowWidth), cstr, (*C.char)(cend), &cbounds[0])
+	return float64(cbounds[0]), float64(cbounds[1]), float64(cbounds[2]), float64(cbounds[3])
+}
+
 func (c *Context) TextMetrics() (ascender, descender, lineh float64) {
 	var cascender, cdescender, clineh C.float
 	C.nvgTextMetrics((*C.NVGcontext)(c), &cascender, &cdescender, &clineh)
@@ -347,6 +371,54 @@ func (c *Context) TextMetrics() (ascender, descender, lineh float64) {
 
 func (c *Context) TextAlign(align Align) {
 	C.nvgTextAlign((*C.NVGcontext)(c), C.int(align))
+}
+
+func (c *Context) CreateFont(name, filename string) error {
+	cname := C.CString(name)
+	cfilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cname))
+	defer C.free(unsafe.Pointer(cfilename))
+	rc := C.nvgCreateFont((*C.NVGcontext)(c), cname, cfilename)
+	if rc < 0 {
+		return fmt.Errorf("failed to create font %s", name)
+	}
+	return nil
+}
+
+func (c *Context) CreateFontMem(name string, data []byte) error {
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	rc := C.nvgCreateFontMem((*C.NVGcontext)(c), cname, (*C.uchar)(unsafe.Pointer(&data[0])), C.int(len(data)), 0)
+	if rc < 0 {
+		return fmt.Errorf("failed to create font %s", name)
+	}
+	return nil
+}
+
+func (c *Context) FindFont(name string) int {
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	return int(C.nvgFindFont((*C.NVGcontext)(c), cname))
+}
+
+func (c *Context) AddFallbackFontID(baseFont, fallbackFont int) error {
+	rc := C.nvgAddFallbackFontId((*C.NVGcontext)(c), C.int(baseFont), C.int(fallbackFont))
+	if rc < 0 {
+		return fmt.Errorf("failed to add fallback font")
+	}
+	return nil
+}
+
+func (c *Context) AddFallbackFont(baseFont, fallbackFont string) error {
+	cbaseFont := C.CString(baseFont)
+	cfallbackFont := C.CString(fallbackFont)
+	defer C.free(unsafe.Pointer(cbaseFont))
+	defer C.free(unsafe.Pointer(cfallbackFont))
+	rc := C.nvgAddFallbackFont((*C.NVGcontext)(c), cbaseFont, cfallbackFont)
+	if rc < 0 {
+		return fmt.Errorf("failed to add fallback font")
+	}
+	return nil
 }
 
 func rgba(c color.RGBA) C.NVGcolor {
