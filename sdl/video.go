@@ -307,8 +307,12 @@ func (w *Window) SetModal(parent *Window) error {
 	return ek(C.SDL_SetWindowModalFor((*C.SDL_Window)(w), (*C.SDL_Window)(parent)))
 }
 
-func (w *Window) CreateContextGL() GLContext {
-	return GLContext(C.SDL_GL_CreateContext((*C.SDL_Window)(w)))
+func (w *Window) CreateContextGL() (GLContext, error) {
+	ctx := GLContext(C.SDL_GL_CreateContext((*C.SDL_Window)(w)))
+	if ctx == nil {
+		return nil, GetError()
+	}
+	return ctx, nil
 }
 
 func (w *Window) SwapGL() {
