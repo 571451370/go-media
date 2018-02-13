@@ -7,6 +7,7 @@ package nvg
 #include <GL/glew.h>
 #include "nanovg.h"
 #include "nanovg_gl.h"
+#include "nanovg_gl_utils.h"
 */
 import "C"
 
@@ -21,6 +22,7 @@ type (
 	TextRow       C.NVGtextRow
 	GlyphPosition C.NVGglyphPosition
 	Paint         C.NVGpaint
+	Framebuffer   C.NVGLUframebuffer
 
 	CreateFlags C.enum_NVGcreateFlags
 	LineCap     C.enum_NVGlineCap
@@ -443,6 +445,22 @@ func (c *Context) GlobalCompositeBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dst
 
 func (c *Context) CancelFrame() {
 	C.nvgCancelFrame((*C.NVGcontext)(c))
+}
+
+func (c *Context) CreateFramebuffer(w, h int, imageFlags ImageFlags) (*Framebuffer, error) {
+	fb := C.nvgluCreateFramebuffer((*C.NVGcontext)(c), C.int(w), C.int(h), C.int(imageFlags))
+	if fb == nil {
+		return nil, fmt.Errorf("could not create frame buffer")
+	}
+	return (*Framebuffer)(fb), nil
+}
+
+func (fb *Framebuffer) Bind() {
+	C.nvgluBindFramebuffer((*C.NVGLUframebuffer)(fb))
+}
+
+func (fb *Framebuffer) Delete() {
+	C.nvgluDeleteFramebuffer((*C.NVGLUframebuffer)(fb))
 }
 
 func rgba(c color.RGBA) C.NVGcolor {
