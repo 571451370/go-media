@@ -172,10 +172,14 @@ func (c *Context) ResetScissor() {
 	C.nvgResetScissor((*C.NVGcontext)(c))
 }
 
-func (c *Context) CreateImage(name string, flags ImageFlags) int {
+func (c *Context) CreateImage(name string, flags ImageFlags) (int, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	return int(C.nvgCreateImage((*C.NVGcontext)(c), cname, C.int(flags)))
+	rc := int(C.nvgCreateImage((*C.NVGcontext)(c), cname, C.int(flags)))
+	if rc <= 0 {
+		return rc, fmt.Errorf("%s: failed to load image", name)
+	}
+	return rc, nil
 }
 
 func (c *Context) ImageSize(image_ int) (w, h int) {
@@ -419,6 +423,26 @@ func (c *Context) AddFallbackFont(baseFont, fallbackFont string) error {
 		return fmt.Errorf("failed to add fallback font")
 	}
 	return nil
+}
+
+func (c *Context) Reset() {
+	C.nvgReset((*C.NVGcontext)(c))
+}
+
+func (c *Context) GlobalCompositeOperation(op int) {
+	C.nvgGlobalCompositeOperation((*C.NVGcontext)(c), C.int(op))
+}
+
+func (c *Context) GlobalCompositeBlendFunc(sfactor, dfactor int) {
+	C.nvgGlobalCompositeBlendFunc((*C.NVGcontext)(c), C.int(sfactor), C.int(dfactor))
+}
+
+func (c *Context) GlobalCompositeBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha int) {
+	C.nvgGlobalCompositeBlendFuncSeparate((*C.NVGcontext)(c), C.int(srcRGB), C.int(dstRGB), C.int(srcAlpha), C.int(dstAlpha))
+}
+
+func (c *Context) CancelFrame() {
+	C.nvgCancelFrame((*C.NVGcontext)(c))
 }
 
 func rgba(c color.RGBA) C.NVGcolor {
