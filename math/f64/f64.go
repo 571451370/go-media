@@ -104,6 +104,11 @@ func (p Vec2) Max(k float64) Vec2 {
 	}
 }
 
+func (p Vec2) In(r Rectangle) bool {
+	return r.Min.X <= p.X && p.X < r.Max.X &&
+		r.Min.Y <= p.Y && p.Y < r.Max.Y
+}
+
 func (p Vec2) Rotate(r float64) Vec2 {
 	si, co := math.Sincos(r)
 	return Vec2{
