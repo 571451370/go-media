@@ -267,6 +267,10 @@ func (c *Context) FillColor(p color.RGBA) {
 	C.nvgFillColor((*C.NVGcontext)(c), rgba(p))
 }
 
+func (c *Context) Stroke() {
+	C.nvgStroke((*C.NVGcontext)(c))
+}
+
 func (c *Context) StrokeColor(p color.RGBA) {
 	C.nvgStrokeColor((*C.NVGcontext)(c), rgba(p))
 }
