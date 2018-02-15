@@ -1124,6 +1124,19 @@ func (r Rectangle) Dy() float64 {
 	return r.Max.Y - r.Min.Y
 }
 
+func (r Rectangle) Center() Vec2 {
+	return Vec2{
+		(r.Min.X + r.Max.X) / 2,
+		(r.Min.Y + r.Max.Y) / 2,
+	}
+}
+
+func (r Rectangle) Diagonal() float64 {
+	x := r.Max.X - r.Min.X
+	y := r.Max.Y - r.Min.Y
+	return math.Sqrt(x*x + y*y)
+}
+
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
 		return v
