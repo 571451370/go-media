@@ -7,6 +7,7 @@ package nvg
 #include <GL/glew.h>
 #include "nanovg.h"
 #include "nanovg_gl.h"
+#include "nanovg_gl_utils.h"
 */
 import "C"
 
@@ -21,6 +22,7 @@ type (
 	TextRow       C.NVGtextRow
 	GlyphPosition C.NVGglyphPosition
 	Paint         C.NVGpaint
+	Framebuffer   C.NVGLUframebuffer
 
 	CreateFlags C.enum_NVGcreateFlags
 	LineCap     C.enum_NVGlineCap
@@ -172,10 +174,14 @@ func (c *Context) ResetScissor() {
 	C.nvgResetScissor((*C.NVGcontext)(c))
 }
 
-func (c *Context) CreateImage(name string, flags ImageFlags) int {
+func (c *Context) CreateImage(name string, flags ImageFlags) (int, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	return int(C.nvgCreateImage((*C.NVGcontext)(c), cname, C.int(flags)))
+	rc := int(C.nvgCreateImage((*C.NVGcontext)(c), cname, C.int(flags)))
+	if rc <= 0 {
+		return rc, fmt.Errorf("%s: failed to load image", name)
+	}
+	return rc, nil
 }
 
 func (c *Context) ImageSize(image_ int) (w, h int) {
@@ -259,6 +265,10 @@ func (c *Context) Circle(cx, cy, r float64) {
 
 func (c *Context) FillColor(p color.RGBA) {
 	C.nvgFillColor((*C.NVGcontext)(c), rgba(p))
+}
+
+func (c *Context) Stroke() {
+	C.nvgStroke((*C.NVGcontext)(c))
 }
 
 func (c *Context) StrokeColor(p color.RGBA) {
@@ -419,6 +429,42 @@ func (c *Context) AddFallbackFont(baseFont, fallbackFont string) error {
 		return fmt.Errorf("failed to add fallback font")
 	}
 	return nil
+}
+
+func (c *Context) Reset() {
+	C.nvgReset((*C.NVGcontext)(c))
+}
+
+func (c *Context) GlobalCompositeOperation(op int) {
+	C.nvgGlobalCompositeOperation((*C.NVGcontext)(c), C.int(op))
+}
+
+func (c *Context) GlobalCompositeBlendFunc(sfactor, dfactor int) {
+	C.nvgGlobalCompositeBlendFunc((*C.NVGcontext)(c), C.int(sfactor), C.int(dfactor))
+}
+
+func (c *Context) GlobalCompositeBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha int) {
+	C.nvgGlobalCompositeBlendFuncSeparate((*C.NVGcontext)(c), C.int(srcRGB), C.int(dstRGB), C.int(srcAlpha), C.int(dstAlpha))
+}
+
+func (c *Context) CancelFrame() {
+	C.nvgCancelFrame((*C.NVGcontext)(c))
+}
+
+func (c *Context) CreateFramebuffer(w, h int, imageFlags ImageFlags) (*Framebuffer, error) {
+	fb := C.nvgluCreateFramebuffer((*C.NVGcontext)(c), C.int(w), C.int(h), C.int(imageFlags))
+	if fb == nil {
+		return nil, fmt.Errorf("could not create frame buffer")
+	}
+	return (*Framebuffer)(fb), nil
+}
+
+func (fb *Framebuffer) Bind() {
+	C.nvgluBindFramebuffer((*C.NVGLUframebuffer)(fb))
+}
+
+func (fb *Framebuffer) Delete() {
+	C.nvgluDeleteFramebuffer((*C.NVGLUframebuffer)(fb))
 }
 
 func rgba(c color.RGBA) C.NVGcolor {
