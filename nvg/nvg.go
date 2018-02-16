@@ -467,6 +467,10 @@ func (fb *Framebuffer) Delete() {
 	C.nvgluDeleteFramebuffer((*C.NVGLUframebuffer)(fb))
 }
 
+func (fb *Framebuffer) Image() int {
+	return int(fb.image)
+}
+
 func rgba(c color.RGBA) C.NVGcolor {
 	return C.nvgRGBA(C.uchar(c.R), C.uchar(c.G), C.uchar(c.B), C.uchar(c.A))
 }
