@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 )
 
@@ -103,4 +104,23 @@ func WriteFile(fs FS, name string, data []byte, perm os.FileMode) error {
 		err = xerr
 	}
 	return err
+}
+
+func ReadAllDir(fs FS, name string) ([]os.FileInfo, error) {
+	f, err := fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	fis, err := f.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(fis, func(i, j int) bool {
+		return fis[i].Name() < fis[j].Name()
+	})
+
+	return fis, nil
 }
