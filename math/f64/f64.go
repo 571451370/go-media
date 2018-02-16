@@ -1137,6 +1137,10 @@ func (r Rectangle) Diagonal() float64 {
 	return math.Sqrt(x*x + y*y)
 }
 
+func (r Rectangle) XYWH() (x, y, w, h float64) {
+	return r.Min.X, r.Min.Y, r.Dx(), r.Dy()
+}
+
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
 		return v
