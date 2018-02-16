@@ -241,6 +241,15 @@ func RandRGB() color.RGBA {
 	}
 }
 
+func RandRGBA() color.RGBA {
+	return color.RGBA{
+		uint8(rand.Intn(256)),
+		uint8(rand.Intn(256)),
+		uint8(rand.Intn(256)),
+		uint8(rand.Intn(256)),
+	}
+}
+
 func RandHSV() HSV {
 	return HSV{
 		H: rand.Float64() * 360,
