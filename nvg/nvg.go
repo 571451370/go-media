@@ -459,7 +459,7 @@ func (c *Context) CreateFramebuffer(w, h int, imageFlags ImageFlags) (*Framebuff
 	return (*Framebuffer)(fb), nil
 }
 
-func (fb *Framebuffer) Bind() {
+func (c *Context) BindFramebuffer(fb *Framebuffer) {
 	C.nvgluBindFramebuffer((*C.NVGLUframebuffer)(fb))
 }
 
