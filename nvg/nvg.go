@@ -242,11 +242,11 @@ func (c *Context) Arc(cx, cy, r, a0, a1 float64, dir int) {
 	C.nvgArc((*C.NVGcontext)(c), C.float(cx), C.float(cy), C.float(r), C.float(a0), C.float(a1), C.int(dir))
 }
 
-func (c *Context) RoundRect(x, y, w, h, r float64) {
+func (c *Context) RoundedRect(x, y, w, h, r float64) {
 	C.nvgRoundedRect((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(w), C.float(h), C.float(r))
 }
 
-func (c *Context) RoundRectVarying(x, y, w, h, radTopLeft, radTopRight, radBottomRight, radBottomLeft float64) {
+func (c *Context) RoundedRectVarying(x, y, w, h, radTopLeft, radTopRight, radBottomRight, radBottomLeft float64) {
 	C.nvgRoundedRectVarying((*C.NVGcontext)(c), C.float(x), C.float(y), C.float(w), C.float(h), C.float(radTopLeft),
 		C.float(radTopRight), C.float(radBottomRight), C.float(radTopLeft))
 }
