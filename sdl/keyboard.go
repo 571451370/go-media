@@ -4,7 +4,9 @@ package sdl
 #include "gosdl.h"
 */
 import "C"
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type (
 	Scancode C.SDL_Scancode
@@ -67,4 +69,14 @@ func HasScreenKeyboardSupport() bool {
 
 func IsScreenKeyboardShown(w *Window) bool {
 	return C.SDL_IsScreenKeyboardShown((*C.SDL_Window)(w)) != 0
+}
+
+func GetKeyFromScancode(scancode Scancode) Keycode {
+	return Keycode(C.SDL_GetKeyFromScancode(C.SDL_Scancode(scancode)))
+}
+
+func GetScancodeFromName(name string) Scancode {
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	return Scancode(C.SDL_GetScancodeFromName(cname))
 }
