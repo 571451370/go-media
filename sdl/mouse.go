@@ -73,6 +73,10 @@ func GetRelativeMouseMode() bool {
 	return C.SDL_GetRelativeMouseMode() != 0
 }
 
+func CreateSystemCursor(id SystemCursor) *Cursor {
+	return (*Cursor)(C.SDL_CreateSystemCursor(C.SDL_SystemCursor(id)))
+}
+
 func (c *Cursor) Free() {
 	C.SDL_FreeCursor((*C.SDL_Cursor)(c))
 }
@@ -92,4 +96,9 @@ const (
 	BUTTON_RMASK  = C.SDL_BUTTON_RMASK
 	BUTTON_X1MASK = C.SDL_BUTTON_X1MASK
 	BUTTON_X2MASK = C.SDL_BUTTON_X2MASK
+)
+
+const (
+	MOUSEWHEEL_NORMAL  MouseWheelDirection = C.SDL_MOUSEWHEEL_NORMAL
+	MOUSEWHEEL_FLIPPED MouseWheelDirection = C.SDL_MOUSEWHEEL_FLIPPED
 )
