@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,8 @@ type FS interface {
 type File interface {
 	io.ReadWriteSeeker
 	io.Closer
+	io.ReaderAt
+	io.WriterAt
 	Stat() (os.FileInfo, error)
 	Readdir(int) ([]os.FileInfo, error)
 }
@@ -45,6 +48,26 @@ type SFS struct {
 func (fs *SFS) Chdir(dir string) error {
 	fs.Root = filepath.Join(fs.Root, dir)
 	return nil
+}
+
+func (fs *SFS) Chmod(name string, mode os.FileMode) error {
+	name = filepath.Join(fs.Root, name)
+	return os.Chmod(name, mode)
+}
+
+func (fs *SFS) Chown(name string, uid, gid int) error {
+	name = filepath.Join(fs.Root, name)
+	return os.Chown(name, uid, gid)
+}
+
+func (fs *SFS) Chtimes(name string, atime, mtime time.Time) error {
+	name = filepath.Join(fs.Root, name)
+	return os.Chtimes(name, atime, mtime)
+}
+
+func (fs *SFS) RemoveAll(path string) error {
+	path = filepath.Join(fs.Root, path)
+	return os.RemoveAll(path)
 }
 
 func (fs *SFS) Open(name string) (File, error) {
@@ -119,7 +142,7 @@ func ReadAllDir(fs FS, name string) ([]os.FileInfo, error) {
 	}
 
 	sort.Slice(fis, func(i, j int) bool {
-		return fis[i].Name() < fis[j].Name()
+		return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
 	})
 
 	return fis, nil
