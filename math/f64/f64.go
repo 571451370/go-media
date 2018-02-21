@@ -1217,5 +1217,5 @@ func LinearController(curpos *float64, targetpos, acc, deacc, dt float64) {
 }
 
 func Multiple(a, m float64) float64 {
-	return ((a + m - 1) / m) * m
+	return float64(int((a+m-1)/m)) * m
 }

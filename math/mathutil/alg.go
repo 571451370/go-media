@@ -15,6 +15,10 @@ func LCM(a, b int) int {
 	return Abs(a*b) / GCD(a, b)
 }
 
+func Multiple(a, m int) int {
+	return ((a + m - 1) / m) * m
+}
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
