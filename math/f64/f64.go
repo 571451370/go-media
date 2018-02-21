@@ -1215,3 +1215,7 @@ func LinearController(curpos *float64, targetpos, acc, deacc, dt float64) {
 	}
 	*curpos = p * sign
 }
+
+func Multiple(a, m float64) float64 {
+	return ((a + m - 1) / m) * m
+}
