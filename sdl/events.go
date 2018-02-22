@@ -292,6 +292,11 @@ type SysWMEvent struct {
 	CommonEvent
 }
 
+type ClipboardEvent struct {
+	CommonEvent
+	Text string
+}
+
 func PollEvent() Event {
 	var ev C.SDL_Event
 	if C.SDL_PollEvent(&ev) == 0 {
@@ -518,6 +523,13 @@ func evCommon(ev C.SDL_Event) Event {
 			C.GoString(pev.file),
 		}
 
+	case C.SDL_CLIPBOARDUPDATE:
+		pev := (*C.SDL_CommonEvent)(unsafe.Pointer(&ev))
+		return ClipboardEvent{
+			CommonEvent{EventType(pev._type), uint32(pev.timestamp)},
+			GetClipboardText(),
+		}
+
 	default:
 		if C.SDL_USEREVENT <= cev._type && cev._type <= C.SDL_LASTEVENT-1 {
 			pev := (*C.SDL_UserEvent)(unsafe.Pointer(&ev))
@@ -629,7 +641,7 @@ func PumpEvents() {
 	C.SDL_PumpEvents()
 }
 
-func EventState(typ uint32, state int) uint8 {
+func EventState(typ EventType, state int) uint8 {
 	return uint8(C.SDL_EventState(C.Uint32(typ), C.int(state)))
 }
 
