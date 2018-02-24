@@ -129,6 +129,12 @@ func (p Vec2) YX() Vec2 {
 	return Vec2{p.Y, p.X}
 }
 
+func (p Vec2) Clamp(s, e float64) Vec2 {
+	p.X = Clamp(p.X, s, e)
+	p.Y = Clamp(p.Y, s, e)
+	return p
+}
+
 func (p Vec2) Equals(q Vec2) bool {
 	const eps = 1e-6
 	return math.Abs(p.X-q.X) <= eps && math.Abs(p.Y-q.Y) <= eps
@@ -319,6 +325,13 @@ func (p Vec3) YX() Vec2 { return Vec2{p.Y, p.X} }
 func (p Vec3) YZ() Vec2 { return Vec2{p.Y, p.Z} }
 func (p Vec3) ZX() Vec2 { return Vec2{p.Z, p.X} }
 func (p Vec3) ZY() Vec2 { return Vec2{p.Z, p.Y} }
+
+func (p Vec3) Clamp(s, e float64) Vec3 {
+	p.X = Clamp(p.X, s, e)
+	p.Y = Clamp(p.Y, s, e)
+	p.Z = Clamp(p.Z, s, e)
+	return p
+}
 
 type Vec4 struct {
 	X, Y, Z, W float64
