@@ -257,3 +257,12 @@ func RandHSV() HSV {
 		V: rand.Float64(),
 	}
 }
+
+func MixRGBA(a, b color.RGBA, t float64) color.RGBA {
+	return color.RGBA{
+		uint8(float64(a.R)*(1-t) + t*float64(b.R)),
+		uint8(float64(a.G)*(1-t) + t*float64(b.G)),
+		uint8(float64(a.B)*(1-t) + t*float64(b.B)),
+		uint8(float64(a.A)*(1-t) + t*float64(b.A)),
+	}
+}
