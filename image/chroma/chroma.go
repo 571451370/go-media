@@ -266,3 +266,11 @@ func MixRGBA(a, b color.RGBA, t float64) color.RGBA {
 		uint8(float64(a.A)*(1-t) + t*float64(b.A)),
 	}
 }
+
+func MixHSL(a, b HSL, t float64) HSL {
+	return HSL{
+		a.H*(1-t) + t*b.H,
+		a.S*(1-t) + t*b.S,
+		a.L*(1-t) + t*b.L,
+	}
+}
