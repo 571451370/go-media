@@ -58,6 +58,36 @@ func LoadRGBAReader(rd io.Reader) (*image.RGBA, error) {
 	return p, nil
 }
 
+func LoadGrayFile(name string) (*image.Gray, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	m, err := LoadGrayReader(f)
+	if err != nil {
+		return nil, &os.PathError{Op: "decode", Path: name, Err: err}
+	}
+	return m, nil
+}
+
+func LoadGrayReader(rd io.Reader) (*image.Gray, error) {
+	m, _, err := image.Decode(rd)
+	if err != nil {
+		return nil, err
+	}
+
+	if p, _ := m.(*image.Gray); p != nil {
+		return p, nil
+	}
+
+	r := m.Bounds()
+	p := image.NewGray(r)
+	draw.Draw(p, p.Bounds(), m, r.Min, draw.Src)
+	return p, nil
+}
+
 func WriteRGBAFile(name string, img image.Image) error {
 	f, err := os.Create(name)
 	if err != nil {
