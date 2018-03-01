@@ -143,3 +143,23 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 	}
 	return p
 }
+
+func Equals(a, b image.Image) bool {
+	r := a.Bounds()
+	s := b.Bounds()
+
+	if r != s {
+		return false
+	}
+
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
+			ar, ag, ab, aa := a.At(x, y).RGBA()
+			br, bg, bb, ba := b.At(x, y).RGBA()
+			if ar != br || ag != bg || ab != bb || aa != ba {
+				return false
+			}
+		}
+	}
+	return true
+}
