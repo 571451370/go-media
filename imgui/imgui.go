@@ -3,6 +3,7 @@ package imgui
 import "github.com/qeedquan/go-media/math/f64"
 
 type Context struct {
+	io *IO
 }
 
 func New() *Context {
@@ -18,10 +19,14 @@ func (c *Context) Render() {
 func (c *Context) EndFrame() {
 }
 
+func (c *Context) GetIO() *IO {
+	return c.io
+}
+
 // Begin push window to the stack and start appending to it. return false when window is collapsed
 // (so you can early out in your code) but you always need to call End() regardless.
 // 'open' creates a widget on the upper-right to close the window (which sets your bool to false).
-func (c *Context) Begin(name string, open bool, flags int) bool {
+func (c *Context) Begin(name string, open bool, flags WindowFlags) bool {
 	return true
 }
 
@@ -52,6 +57,61 @@ func (c *Context) GetScrollMax() f64.Vec2 {
 // Button draws a button
 func (c *Context) Button(label string, size f64.Vec2) bool {
 	return true
+}
+
+type IO struct {
+	//------------------------------------------------------------------
+	// Settings (fill once)                 // Default value:
+	//------------------------------------------------------------------
+	DisplaySize             f64.Vec2    // <unset>              // Display size, in pixels. For clamping windows positions.
+	DeltaTime               float64     // = 1.0f/60.0f         // Time elapsed since last frame, in seconds.
+	ConfigFlags             ConfigFlags // = 0                  // See ImGuiConfigFlags_ enum. Gamepad/keyboard navigation options, etc.
+	IniSavingRate           float64     // = 5.0f               // Maximum time between saving positions/sizes to .ini file, in seconds.
+	IniFilename             string      // = "imgui.ini"        // Path to .ini file. NULL to disable .ini saving.
+	LogFilename             string      // = "imgui_log.txt"    // Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
+	MouseDoubleClickTime    float64     // = 0.30f              // Time for a double-click, in seconds.
+	MouseDoubleClickMaxDist float64     // = 6.0f               // Distance threshold to stay in to validate a double-click, in pixels.
+	MouseDragThreshold      float64     // = 6.0f               // Distance threshold before considering we are dragging.
+	Keymap                  [KeyMax]int // <unset>              // Map of indices into the KeysDown[512] entries array which represent your "native" keyboard state.
+	KeyRepeatDelay          float64     // = 0.250f             // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
+	KeyRepeatRate           float64     // = 0.050f             // When holding a key/button, rate at which it repeats, in seconds.
+	UserData                interface{} // = NULL               // Store your own data for retrieval by callbacks.
+
+	//------------------------------------------------------------------
+	// Input - Fill before calling NewFrame()
+	//------------------------------------------------------------------
+	MousePos        f64.Vec2             // Mouse position, in pixels. Set to ImVec2(-FLT_MAX,-FLT_MAX) if mouse is unavailable (on another screen, etc.)
+	MouseDown       [5]bool              // Mouse buttons: left, right, middle + extras. ImGui itself mostly only uses left button (BeginPopupContext** are using right button). Others buttons allows us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
+	MouseWheel      float64              // Mouse wheel: 1 unit scrolls about 5 lines text.
+	MouseWheelH     float64              // Mouse wheel (Horizontal). Most users don't have a mouse with an horizontal wheel, may not be filled by all back-ends.
+	MouseDrawCursor bool                 // Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor).
+	KeyCtrl         bool                 // Keyboard modifier pressed: Control
+	KeyShift        bool                 // Keyboard modifier pressed: Shift
+	KeyAlt          bool                 // Keyboard modifier pressed: Alt
+	KeySuper        bool                 // Keyboard modifier pressed: Cmd/Super/Windows
+	KeysDown        [512]bool            // Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys).
+	InputCharacters [16 + 1]rune         // List of characters input (translated by user from keypress+keyboard state). Fill using AddInputCharacter() helper.
+	NavInputs       [NavInputMax]float64 // Gamepad inputs (keyboard keys will be auto-mapped and be wr
+
+	//------------------------------------------------------------------
+	// [Internal] ImGui will maintain those fields. Forward compatibility not guaranteed!
+	//------------------------------------------------------------------
+
+	MousePosPrev              f64.Vec2     // Previous mouse position temporary storage (nb: not for public use, set to MousePos in NewFrame())
+	MouseClickedPos           [5]f64.Vec2  // Position at time of clicking
+	MouseClickedTime          [5]float64   // Time of last click (used to figure out double-click)
+	MouseClicked              [5]bool      // Mouse button went from !Down to Down
+	MouseDoubleClicked        [5]bool      // Has mouse button been double-clicked?
+	MouseReleased             [5]bool      // Mouse button went from Down to !Down
+	MouseDownOwned            [5]bool      // Track if button was clicked inside a window. We don't request mouse capture from the application if click started outside ImGui bounds.
+	MouseDownDuration         [5]float64   // Duration the mouse button has been down (0.0f == just clicked)
+	MouseDownDurationPrev     [5]float64   // Previous time the mouse button has been down
+	MouseDragMaxDistanceAbs   [5]f64.Vec2  // Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
+	MouseDragMaxDistanceSqr   [5]float64   // Squared maximum distance of how much mouse has traveled from the clicking point
+	KeysDownDuration          [512]float64 // Duration the keyboard key has been down (0.0f == just pressed)
+	KeysDownDurationPrev      [512]float64 // Previous duration the key has been down
+	NavInputsDownDuration     [NavInputMax]float64
+	NavInputsDownDurationPrev [NavInputMax]float64
 }
 
 type Style struct {
@@ -87,6 +147,46 @@ type Style struct {
 	Colors                 [ColorMax]f64.Vec4
 }
 
+type GuiKey int
+
+const (
+	KeyTab GuiKey = iota
+	KeyLeftArrow
+	KeyRightArrow
+	KeyUpArrow
+	KeyDownArrow
+	KeyPageUp
+	KeyPageDown
+	KeyHome
+	KeyEnd
+	KeyInsert
+	KeyDelete
+	KeyBackspace
+	KeySpace
+	KeyEnter
+	KeyEscape
+	KeyA // for text edit CTRL+A: select all
+	KeyC // for text edit CTRL+C: copy
+	KeyV // for text edit CTRL+V: paste
+	KeyX // for text edit CTRL+X: cut
+	KeyY // for text edit CTRL+Y: redo
+	KeyZ // for text edit CTRL+Z: undo
+	KeyMax
+)
+
+type ConfigFlags int
+
+const (
+	ConfigFlagsNavEnableKeyboard    ConfigFlags = 1 << iota // Master keyboard navigation enable flag. NewFrame() will automatically fill io.NavInputs[] based on io.KeyDown[].
+	ConfigFlagsNavEnableGamepad                             // Master gamepad navigation enable flag. This is mostly to instruct your imgui back-end to fill io.NavInputs[].
+	ConfigFlagsNavMoveMouse                                 // Request navigation to allow moving the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is awkward. Will update io.MousePos and set io.WantMoveMouse=true. If enabled you MUST honor io.WantMoveMouse requests in your binding otherwise ImGui will react as if the mouse is jumping around back and forth.
+	ConfigFlagsNavNoCaptureKeyboard                         // Do not set the io.WantCaptureKeyboard flag with io.NavActive is set.
+
+	// User storage (to allow your back-end/engine to communicate to code that may be shared between multiple projects. Those flags are not used by core ImGui)
+	ConfigFlagsIsSRGB        // Back-end is SRGB-aware.
+	ConfigFlagsIsTouchScreen // Back-end is using a touch screen instead of a mouse.
+
+)
 const (
 	ColorText = iota
 	ColorTextDisabled
@@ -193,7 +293,36 @@ const (
 
 	//	[Internal]
 	inputTextFlagsMultiline // For internal use by InputTextMultiline()
+)
 
+const (
+	// Gamepad Mapping
+	NavInputActivate    = iota // activate / open / toggle / tweak value       // e.g. Circle (PS4) A (Xbox) A (Switch) Space (Keyboard)
+	NavInputCancel             // cancel / close / exit                        // e.g. Cross  (PS4) B (Xbox) B (Switch) Escape (Keyboard)
+	NavInputInput              // text input / on-screen keyboard              // e.g. Triang.(PS4) Y (Xbox) X (Switch) Return (Keyboard)
+	NavInputMenu               // tap: toggle menu / hold: focus move resize // e.g. Square (PS4) X (Xbox) Y (Switch) Alt (Keyboard)
+	NavInputDpadLeft           // move / tweak / resize window (w/ PadMenu)    // e.g. D-pad Left/Right/Up/Down (Gamepads) Arrow keys (Keyboard)
+	NavInputDpadRight          //
+	NavInputDpadUp             //
+	NavInputDpadDown           //
+	NavInputLStickLeft         // scroll / move window (w/ PadMenu)            // e.g. Left Analog Stick Left/Right/Up/Down
+	NavInputLStickRight        //
+	NavInputLStickUp           //
+	NavInputLStickDown         //
+	NavInputFocusPrev          // next window (w/ PadMenu)                     // e.g. L1 or L2 (PS4) LB or LT (Xbox) L or ZL (Switch)
+	NavInputFocusNext          // prev window (w/ PadMenu)                     // e.g. R1 or R2 (PS4) RB or RT (Xbox) R or ZL (Switch)
+	NavInputTweakSlow          // slower tweaks                                // e.g. L1 or L2 (PS4) LB or LT (Xbox) L or ZL (Switch)
+	NavInputTweakFast          // faster tweaks                                // e.g. R1 or R2 (PS4) RB or RT (Xbox) R or ZL (Switch)
+
+	// [Internal] Don't use directly! This is used internally to differentiate keyboard from gamepad inputs for behaviors that require to differentiate them.
+	// Keyboard behavior that have no corresponding gamepad mapping (e.g. CTRL+TAB) may be directly reading from io.KeyDown[] instead of io.NavInputs[].
+	navInputKeyMenu  // toggle menu                                  // = io.KeyAlt
+	navInputKeyLeft  // move left                                    // = Arrow keys
+	navInputKeyRight // move right
+	navInputKeyUp    // move up
+	navInputKeyDown  // move down
+	NavInputMax
+	navInputInternalStart = navInputKeyMenu
 )
 
 func StyleColorsDark(s *Style) {
