@@ -148,15 +148,36 @@ func Equals(a, b image.Image) bool {
 	r := a.Bounds()
 	s := b.Bounds()
 
-	if r != s {
+	if r.Dx() != s.Dx() || r.Dy() != s.Dy() {
 		return false
 	}
 
+	for y := 0; y < r.Dy(); y++ {
+		for x := 0; x < r.Dx(); x++ {
+			ax := x + r.Min.X
+			ay := y + r.Min.Y
+			bx := x + s.Min.X
+			by := y + s.Min.Y
+
+			u := a.At(ax, ay)
+			v := b.At(bx, by)
+
+			c := color.RGBAModel.Convert(u).(color.RGBA)
+			d := color.RGBAModel.Convert(v).(color.RGBA)
+			if c != d {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func IsTransparent(m image.Image) bool {
+	r := m.Bounds()
 	for y := r.Min.Y; y < r.Max.Y; y++ {
 		for x := r.Min.X; x < r.Max.X; x++ {
-			ar, ag, ab, aa := a.At(x, y).RGBA()
-			br, bg, bb, ba := b.At(x, y).RGBA()
-			if ar != br || ag != bg || ab != bb || aa != ba {
+			_, _, _, ca := m.At(x, y).RGBA()
+			if ca != 0 {
 				return false
 			}
 		}
