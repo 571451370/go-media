@@ -9,36 +9,81 @@ func New() *Context {
 	return &Context{}
 }
 
+func (c *Context) NewFrame() {
+}
+
+func (c *Context) Render() {
+}
+
+func (c *Context) EndFrame() {
+}
+
+// Begin push window to the stack and start appending to it. return false when window is collapsed
+// (so you can early out in your code) but you always need to call End() regardless.
+// 'open' creates a widget on the upper-right to close the window (which sets your bool to false).
+func (c *Context) Begin(name string, open bool, flags int) bool {
+	return true
+}
+
+// End pops window off the stack, always call even if Begin() return false (which indicates a collapsed window)!
+func (c *Context) End() {
+}
+
+// GetWindowSize gets the current window size
+func (c *Context) GetWindowSize() f64.Vec2 {
+	return f64.Vec2{}
+}
+
+// GetWindowPos gets the current window position in screen space (useful if you want to do your own drawing via the DrawList api)
+func (c *Context) GetWindowPos() f64.Vec2 {
+	return f64.Vec2{}
+}
+
+// GetScroll gets  the scrolling amount [0..GetScrollMax()]
+func (c *Context) GetScroll() f64.Vec2 {
+	return f64.Vec2{}
+}
+
+// GetScrollMax get the scrolling max
+func (c *Context) GetScrollMax() f64.Vec2 {
+	return f64.Vec2{}
+}
+
+// Button draws a button
+func (c *Context) Button(label string, size f64.Vec2) bool {
+	return true
+}
+
 type Style struct {
-	Alpha                  float64
-	WindowPadding          f64.Vec2
-	WindowRounding         float64
-	WindowBorderSize       float64
-	WindowMinSize          f64.Vec2
-	WindowTitleAlign       f64.Vec2
-	ChildRounding          float64
-	ChildBorderSize        float64
-	PopupRounding          float64
-	PopupBorderSize        float64
-	FramePadding           f64.Vec2
-	FrameRounding          float64
-	FrameBorderSize        float64
-	ItemSpacing            f64.Vec2
-	ItemInnerSpacing       f64.Vec2
-	TouchExtraPadding      f64.Vec2
-	IndentSpacing          float64
-	ColumnsMinSpacing      float64
-	ScrollbarSize          float64
-	ScrollbarRounding      float64
-	GrabMinSize            float64
-	GrabRounding           float64
-	ButtonTextAlign        f64.Vec2
-	DisplayWindowPadding   f64.Vec2
-	DisplaySafeAreaPadding f64.Vec2
-	MouseCursorScale       float64
-	AntiAliasedLines       bool
-	AntiAliasedFill        bool
-	CurveTesselationTol    float64
+	Alpha                  float64  // Global alpha applies to everything in ImGui.
+	WindowPadding          f64.Vec2 // Padding within a window.
+	WindowRounding         float64  // Radius of window corners rounding. Set to 0.0f to have rectangular windows.
+	WindowBorderSize       float64  // Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	WindowMinSize          f64.Vec2 // Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
+	WindowTitleAlign       f64.Vec2 // Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
+	ChildRounding          float64  // Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
+	ChildBorderSize        float64  // Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	PopupRounding          float64  // Radius of popup window corners rounding.
+	PopupBorderSize        float64  // Thickness of border around popup windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	FramePadding           f64.Vec2 // Padding within a framed rectangle (used by most widgets).
+	FrameRounding          float64  // Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
+	FrameBorderSize        float64  // Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+	ItemSpacing            f64.Vec2 // Horizontal and vertical spacing between widgets/lines.
+	ItemInnerSpacing       f64.Vec2 // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
+	TouchExtraPadding      f64.Vec2 // Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+	IndentSpacing          float64  // Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+	ColumnsMinSpacing      float64  // Minimum horizontal spacing between two columns.
+	ScrollbarSize          float64  // Width of the vertical scrollbar, Height of the horizontal scrollbar.
+	ScrollbarRounding      float64  // Radius of grab corners for scrollbar.
+	GrabMinSize            float64  // Minimum width/height of a grab box for slider/scrollbar.
+	GrabRounding           float64  // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+	ButtonTextAlign        f64.Vec2 // Alignment of button text when button is larger than text. Defaults to (0.5f,0.5f) for horizontally+vertically centered.
+	DisplayWindowPadding   f64.Vec2 // Window positions are clamped to be visible within the display area by at least this amount. Only covers regular windows.
+	DisplaySafeAreaPadding f64.Vec2 // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
+	MouseCursorScale       float64  // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
+	AntiAliasedLines       bool     // Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
+	AntiAliasedFill        bool     // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
+	CurveTessellationTol   float64  // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
 	Colors                 [ColorMax]f64.Vec4
 }
 
@@ -89,6 +134,66 @@ const (
 	ColorNavHighlight
 	ColorNavWindowingHighlight
 	ColorMax
+)
+
+type WindowFlags uint
+
+const (
+	WindowFlagsNoTitleBar                WindowFlags = 1 << iota // Disable title-bar
+	WindowFlagsNoResize                                          // Disable user resizing with the lower-right grip
+	WindowFlagsNoMove                                            // Disable user moving the window
+	WindowFlagsNoScrollbar                                       // Disable scrollbars (window can still scroll with mouse or programatically)
+	WindowFlagsNoScrollWithMouse                                 // Disable user vertically scrolling with mouse wheel. On child window mouse wheel will be forwarded to the parent unless NoScrollbar is also set.
+	WindowFlagsNoCollapse                                        // Disable user collapsing window by double-clicking on it
+	WindowFlagsAlwaysAutoResize                                  // Resize every window to its content every frame
+	WindowFlagsNoSavedSettings                                   // Never load/save settings in .ini file
+	WindowFlagsNoInputs                                          // Disable catching mouse or keyboard inputs hovering test with pass through.
+	WindowFlagsMenuBar                                           // Has a menu-bar
+	WindowFlagsHorizontalScrollbar                               // Allow horizontal scrollbar to appear (off by default). You may use SetNextWindowContentSize(ImVec2(width0.0f)); prior to calling Begin() to specify width. Read code in imguidemo in the "Horizontal Scrolling" section.
+	WindowFlagsNoFocusOnAppearing                                // Disable taking focus when transitioning from hidden to visible state
+	WindowFlagsNoBringToFrontOnFocus                             // Disable bringing window to front when taking focus (e.g. clicking on it or programatically giving it focus)
+	WindowFlagsAlwaysVerticalScrollbar                           // Always show vertical scrollbar (even if ContentSize.y < Size.y)
+	WindowFlagsAlwaysHorizontalScrollbar                         // Always show horizontal scrollbar (even if ContentSize.x < Size.x)
+	WindowFlagsAlwaysUseWindowPadding                            // Ensure child windows without border uses style.WindowPadding (ignored by default for non-bordered child windows because more convenient)
+	WindowFlagsResizeFromAnySide                                 // (WIP) Enable resize from any corners and borders. Your back-end needs to honor the different values of io.MouseCursor set by imgui.
+	WindowFlagsNoNavInputs                                       // No gamepad/keyboard navigation within the window
+	WindowFlagsNoNavFocus                                        // No focusing toward this window with gamepad/keyboard navigation (e.g. skipped by CTRL+TAB)
+
+	// [Internal]
+	windowFlagsNavFlattened // (WIP) Allow gamepad/keyboard navigation to cross over parent border to this child (only use on child that have no scrolling!)
+	windowFlagsChildWindow  // Don't use! For internal use by BeginChild()
+	windowFlagsTooltip      // Don't use! For internal use by BeginTooltip()
+	windowFlagsPopup        // Don't use! For internal use by BeginPopup()
+	windowFlagsModal        // Don't use! For internal use by BeginPopupModal()
+	windowFlagsChildMenu    // Don't use! For internal use by BeginMenu()
+
+	WindowFlagsNoNav WindowFlags = WindowFlagsNoNavInputs | WindowFlagsNoNavFocus
+)
+
+type InputTextFlags uint
+
+const (
+	InputTextFlagsCharsDecimal        InputTextFlags = 1 << iota // Allow 0123456789.+-*/
+	InputTextFlagsCharsHexadecimal                               // Allow 0123456789ABCDEFabcdef
+	InputTextFlagsCharsUppercase                                 // Turn a..z into A..Z
+	InputTextFlagsCharsNoBlank                                   // Filter out spaces, tabs
+	InputTextFlagsAutoSelectAll                                  // Select entire text when first taking mouse focus
+	InputTextFlagsEnterReturnsTrue                               // Return 'true' when Enter is pressed (as opposed to when the value was modified)
+	InputTextFlagsCallbackCompletion                             // Call user function on pressing TAB (for completion handling)
+	InputTextFlagsCallbackHistory                                // Call user function on pressing Up/Down arrows (for history handling)
+	InputTextFlagsCallbackAlways                                 // Call user function every time. User code may query cursor position, modify text buffer.
+	InputTextFlagsCallbackCharFilter                             // Call user function to filter character. Modify data->EventChar to replace/filter input, or return 1 to discard character.
+	InputTextFlagsAllowTabInput                                  // Pressing TAB input a '\t' character into the text field
+	InputTextFlagsCtrlEnterForNewLine                            // In multi-line mode, unfocus with Enter, add new line with Ctrl+Enter (default is opposite: unfocus with Ctrl+Enter, add line with Enter).
+	InputTextFlagsNoHorizontalScroll                             // Disable following the cursor horizontally
+	InputTextFlagsAlwaysInsertMode                               // Insert mode
+	InputTextFlagsReadOnly                                       // Read-only mode
+	InputTextFlagsPassword                                       // Password mode, display all characters as '*'
+	InputTextFlagsNoUndoRedo                                     // Disable undo/redo. Note that input text owns the text data while active, if you want to provide your own undo/redo stack you need e.g. to call ClearActiveID().
+
+	//	[Internal]
+	inputTextFlagsMultiline // For internal use by InputTextMultiline()
+
 )
 
 func StyleColorsDark(s *Style) {
