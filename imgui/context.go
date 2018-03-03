@@ -14,6 +14,8 @@ type Context struct {
 
 	DrawDataBuilder DrawDataBuilder
 
+	FontSize float64
+
 	Windows       []*Window
 	CurrentWindow *Window
 	MovingWindow  *Window
@@ -131,6 +133,21 @@ func (c *Context) AddWindowToDrawData(outRenderList *[]*DrawList, window *Window
 }
 
 func (c *Context) AddDrawListToDrawData(outRenderList *[]*DrawList, drawList *DrawList) {
+	n := len(drawList.CmdBuffer)
+	if n == 0 {
+		return
+	}
+
+	// remove trailing command if unused
+	lastCmd := &drawList.CmdBuffer[n-1]
+	if lastCmd.ElemCount == 0 && lastCmd.UserCallback == nil {
+		drawList.CmdBuffer = drawList.CmdBuffer[:n-1]
+		if len(drawList.CmdBuffer) == 0 {
+			return
+		}
+	}
+
+	*outRenderList = append(*outRenderList, drawList)
 }
 
 func (c *Context) GetIO() *IO {

@@ -1,6 +1,17 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
+
+type LayoutType uint
+
+const (
+	LayoutTypeVertical LayoutType = iota
+	LayoutTypeHorizontal
+)
 
 type WindowFlags uint
 
@@ -45,6 +56,7 @@ type Window struct {
 	SizeFull            f64.Vec2
 	SizeFullAtLastBegin f64.Vec2
 	SizeContents        f64.Vec2
+	Scroll              f64.Vec2
 	DC                  DrawContext
 	Active              bool
 	WasActive           bool
@@ -55,6 +67,91 @@ type Window struct {
 
 type DrawContext struct {
 	CursorPos                 f64.Vec2
+	CursorMaxPos              f64.Vec2
+	CursorPosPrevLine         f64.Vec2
+	PrevLineHeight            float64
+	PrevLineTextBaseOffset    float64
 	CurrentLineTextBaseOffset float64
+	CurrentLineHeight         float64
+	IndentX                   float64
+	GroupOffsetX              float64
+	ColumnsOffsetX            float64
 	ChildWindows              []*Window
+	LayoutType                LayoutType
+}
+
+func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	style := c.GetStyle()
+	dc := &window.DC
+
+	// always align ourselves on pixel boundaries
+	lineHeight := math.Max(dc.CurrentLineHeight, size.Y)
+	textBaseOffset := math.Max(dc.CurrentLineTextBaseOffset, textOffsetY)
+
+	dc.CursorPosPrevLine = f64.Vec2{dc.CursorPos.X + size.X, dc.CursorPos.Y}
+	dc.CursorPos = f64.Vec2{
+		window.Pos.X + dc.IndentX + dc.ColumnsOffsetX,
+		dc.CursorPos.Y + lineHeight + style.ItemSpacing.Y,
+	}
+	dc.CursorMaxPos.X = math.Max(dc.CursorMaxPos.X, dc.CursorPosPrevLine.X)
+	dc.CursorMaxPos.Y = math.Max(dc.CursorMaxPos.Y, dc.CursorPos.Y-style.ItemSpacing.Y)
+
+	dc.PrevLineHeight = lineHeight
+	dc.PrevLineTextBaseOffset = textBaseOffset
+	dc.CurrentLineHeight = 0
+	dc.CurrentLineTextBaseOffset = 0
+
+	// horizontal layout mode
+	if dc.LayoutType == LayoutTypeHorizontal {
+		c.SameLine(0, -1)
+	}
+}
+
+// Gets back to previous line and continue with horizontal layout
+//      pos_x == 0      : follow right after previous item
+//      pos_x != 0      : align to specified x position (relative to window/group left)
+//      spacing_w < 0   : use default spacing if pos_x == 0, no spacing if pos_x != 0
+//      spacing_w >= 0  : enforce spacing amount
+func (c *Context) SameLine(posX, spacingW float64) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+	style := c.GetStyle()
+	dc := &window.DC
+
+	if posX != 0 {
+		spacingW = math.Max(spacingW, 0)
+		dc.CursorPos.X = window.Pos.X - window.Scroll.X + posX + spacingW + dc.GroupOffsetX + dc.ColumnsOffsetX
+		dc.CursorPos.Y = dc.CursorPosPrevLine.Y
+	} else {
+		spacingW = math.Max(spacingW, style.ItemSpacing.X)
+		dc.CursorPos.X = dc.CursorPosPrevLine.X + spacingW
+		dc.CursorPos.Y = dc.CursorPosPrevLine.Y
+	}
+	dc.CurrentLineHeight = dc.PrevLineHeight
+	dc.CurrentLineTextBaseOffset = dc.PrevLineTextBaseOffset
+}
+
+func (c *Context) NewLine() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+	dc := &window.DC
+
+	backupLayoutType := dc.LayoutType
+	dc.LayoutType = LayoutTypeVertical
+	// In the event that we are on a line with items that is smaller that FontSize high, we will preserve its height.
+	if dc.CurrentLineHeight > 0 {
+		c.ItemSize(f64.Vec2{}, 0)
+	} else {
+		c.ItemSize(f64.Vec2{}, c.FontSize)
+	}
+	dc.LayoutType = backupLayoutType
 }
