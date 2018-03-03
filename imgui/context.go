@@ -14,7 +14,10 @@ type Context struct {
 
 	DrawDataBuilder DrawDataBuilder
 
-	FontSize float64
+	Font            *Font
+	FontSize        float64
+	FontBaseSize    float64
+	FontGlobalScale float64
 
 	Windows       []*Window
 	CurrentWindow *Window
@@ -70,15 +73,23 @@ type Context struct {
 	HoveredIdAllowOverlap bool
 	HoveredIdTimer        float64
 
-	Time               float64
-	FrameCount         int
-	FrameCountRendered int
-	FrameCountEnded    int
-	WindowsActiveCount int
+	Time                 float64
+	TooltipOverrideCount int
+	FrameCount           int
+	FrameCountRendered   int
+	FrameCountEnded      int
+	WindowsActiveCount   int
+}
+
+func CreateContext() *Context {
+	return &Context{}
 }
 
 func (c *Context) NewFrame() {
+	io := c.GetIO()
+	c.Time += io.DeltaTime
 	c.FrameCount++
+	c.TooltipOverrideCount = 0
 	c.WindowsActiveCount = 0
 }
 

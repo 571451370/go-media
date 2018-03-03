@@ -12,6 +12,13 @@ type IO struct {
 	MetricsRenderVertices int
 	MetricsRenderIndices  int
 	MetricsActiveWindows  int
+
+	KeyRepeatDelay float64
+	KeyRepeatRate  float64
+
+	FontDefault     *Font
+	Fonts           *FontAtlas
+	FontGlobalScale float64
 }
 
 type ConfigFlags uint

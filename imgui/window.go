@@ -155,3 +155,7 @@ func (c *Context) NewLine() {
 	}
 	dc.LayoutType = backupLayoutType
 }
+
+func (w *Window) CalcFontSize() float64 {
+	return 0
+}
