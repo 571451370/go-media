@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"image/color"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type DrawCornerFlags uint
 
@@ -16,14 +20,37 @@ const (
 	DrawCornerFlagsAll      DrawCornerFlags = 0xF                                               // In your function calls you may use ~0 (= all bits sets) instead of DrawCornerFlagsAll, as a convenience
 )
 
+type DrawListFlags uint
+
+const (
+	DrawListFlagsAntiAliasedLines DrawListFlags = 1 << iota
+	DrawListFlagsAntiAliasedFill
+)
+
 type DrawDataBuilder struct {
 	Layers [2][]*DrawList // Global layers for: regular, tooltip
+}
+
+type DrawListSharedData struct {
+	TexUvWhitePixel      f64.Vec2 // UV of white pixel in the atlas
+	Font                 *Font    // Current/default font (optional, for simplified AddText overload)
+	FontSize             float64  // Current/default font size (optional, for simplified AddText overload)
+	CurveTessellationTol float64
+	ClipRectFullscreen   f64.Vec4 // Value for PushClipRectFullscreen()
 }
 
 type DrawList struct {
 	CmdBuffer []DrawCmd // Draw commands. Typically 1 command = 1 GPU draw call, unless the command is a callback.
 	IdxBuffer []DrawCmd // Index buffer. Each command consume ImDrawCmd::ElemCount of those
 	VtxBuffer []DrawCmd // Vertex buffer.
+
+	VtxWritePtr   []DrawCmd
+	VtxCurrentIdx int
+	IdxWritePtr   []DrawCmd
+
+	Flags DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitives
+	Data  *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
+	Path  []f64.Vec2
 }
 
 type DrawCallback func(parentList *DrawList, cmd *DrawCmd)
@@ -38,7 +65,7 @@ type DrawCmd struct {
 type TextureID int
 
 // RenderFrame renders a rectangle shaped with optional rounding and borders
-func (c *Context) RenderFrame(pmin, pmax f64.Vec2, fillCol uint32, border bool, rounding float64) {
+func (c *Context) RenderFrame(pmin, pmax f64.Vec2, fillCol color.RGBA, border bool, rounding float64) {
 	window := c.GetCurrentWindow()
 	style := c.GetStyle()
 
@@ -53,11 +80,83 @@ func (c *Context) RenderFrame(pmin, pmax f64.Vec2, fillCol uint32, border bool, 
 	}
 }
 
-func (d *DrawList) AddLine(pmin, pmax f64.Vec2, col uint32, thickness float64) {
+func (d *DrawList) AddLine(pmin, pmax f64.Vec2, col color.RGBA, thickness float64) {
+	if col.A == 0 {
+		return
+	}
+	half := f64.Vec2{0.5, 0.5}
+	d.PathLineTo(pmin.Add(half))
+	d.PathLineTo(pmax.Add(half))
+	d.PathStroke(col, false, thickness)
 }
 
-func (d *DrawList) AddRectFilled(pmin, pmax f64.Vec2, fillCol uint32, rounding float64) {
+func (d *DrawList) AddRectFilled(pmin, pmax f64.Vec2, fillCol color.RGBA, rounding float64) {
 }
 
-func (d *DrawList) AddRect(pmin, pmax f64.Vec2, col uint32, rounding float64, roundingCornerFlags DrawCornerFlags, thickness float64) {
+func (d *DrawList) AddRect(pmin, pmax f64.Vec2, col color.RGBA, rounding float64, roundingCornerFlags DrawCornerFlags, thickness float64) {
+}
+
+func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, thickness float64) {
+	pointsCount := len(points)
+	if pointsCount < 2 {
+		return
+	}
+
+	count := pointsCount
+	if !closed {
+		count--
+	}
+
+	thickLine := thickness > 1
+	if d.Flags&DrawListFlagsAntiAliasedLines != 0 {
+		// anti-aliased stroke
+
+		idxCount := count * 12
+		vtxCount := pointsCount * 3
+		thickLineCount := 3
+		if thickLine {
+			idxCount = count * 18
+			vtxCount = pointsCount * 4
+			thickLineCount = 5
+		}
+		_, _ = idxCount, vtxCount
+
+		tempNormals := make([]f64.Vec2, pointsCount*thickLineCount)
+
+		for i1 := 0; i1 < count; i1++ {
+			i2 := (i1 + 1) % count
+			diff := points[i2].Sub(points[i1])
+			diff = diff.Normalize()
+			tempNormals[i1].X = diff.Y
+			tempNormals[i1].Y = -diff.X
+		}
+		if !closed {
+			tempNormals[pointsCount-1] = tempNormals[pointsCount-2]
+		}
+
+		if !thickLine {
+		} else {
+		}
+
+	} else {
+		// non anti-aliased stroke
+	}
+}
+
+func (d *DrawList) AddText(pos f64.Vec2, col color.RGBA, text string) {
+}
+
+func (d *DrawList) AddImage(id TextureID, pmin, pmax, uvmin, uvmax f64.Vec2, col color.RGBA) {
+}
+
+func (d *DrawList) PathClear() {
+	d.Path = d.Path[:0]
+}
+
+func (d *DrawList) PathLineTo(pos f64.Vec2) {
+	d.Path = append(d.Path, pos)
+}
+
+func (d *DrawList) PathStroke(col color.RGBA, closed bool, thickness float64) {
+	d.AddPolyline(d.Path, col, closed, thickness)
 }
