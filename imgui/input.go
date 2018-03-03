@@ -1,5 +1,7 @@
 package imgui
 
+import "github.com/qeedquan/go-media/math/f64"
+
 type Key uint
 
 const (
@@ -80,3 +82,23 @@ const (
 	InputReadModeRepeatSlow
 	InputReadModeRepeatFast
 )
+
+type NavForward uint
+
+const (
+	NavForwardNone = iota
+	NavForwardForwardQueued
+	NavForwardForwardActive
+)
+
+type Dir uint
+
+type NavMoveResult struct {
+	Id         ID      // Best candidate
+	ParentId   ID      // Best candidate window->IDStack.back() - to compare context
+	Window     *Window // Best candidate window
+	DistBox    float64 // Best candidate box distance to current NavId
+	DistCenter float64 // Best candidate center distance to current NavId
+	DistAxial  float64
+	RectRel    f64.Rectangle // Best candidate bounding box in window relative space
+}

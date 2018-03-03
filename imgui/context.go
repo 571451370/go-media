@@ -12,6 +12,8 @@ type Context struct {
 	IO    IO
 	Style Style
 
+	DrawDataBuilder DrawDataBuilder
+
 	Windows       []*Window
 	CurrentWindow *Window
 	MovingWindow  *Window
@@ -26,6 +28,40 @@ type Context struct {
 	ActiveIdClickOffset      f64.Vec2
 	ActiveIdSource           InputSource
 
+	NavWindow                  *Window
+	NavId                      ID
+	NavActivateId              ID
+	NavActivateDownId          ID
+	NavActivatePressedId       ID
+	NavInputId                 ID
+	NavJustTabbedId            ID
+	NavNextActivateId          ID
+	NavJustMovedToId           ID
+	NavScoringRectScreen       f64.Rectangle
+	NavScoringCount            int
+	NavWindowingTarget         *Window
+	NavWindowingHighlightTimer float64
+	NavWindowingHighlightAlpha float64
+	NavWindowingToggleLayer    bool
+	NavWindowingInputSource    InputSource
+	NavLayer                   int
+	NavIdTabCounter            int
+	NavIdIsAlive               bool
+	NavMousePosDirty           bool
+	NavDisableHighlight        bool
+	NavDisableMouseHover       bool
+	NavAnyRequest              bool
+	NavInitRequest             bool
+	NavInitRequestFromMove     bool
+	NavInitResultId            ID
+	NavInitResultRectRel       f64.Rectangle
+	NavMoveFromClampedRefRect  bool
+	NavMoveRequest             bool
+	NavMoveRequestForward      NavForward
+	NavMoveDir, NavMoveDirLast Dir
+	NavMoveResultLocal         NavMoveResult
+	NavMoveResultOther         NavMoveResult
+
 	HoveredRootWindow     *Window
 	HoveredWindow         *Window
 	HoveredId             ID
@@ -37,11 +73,6 @@ type Context struct {
 	FrameCountRendered int
 	FrameCountEnded    int
 	WindowsActiveCount int
-}
-
-type DrawContext struct {
-	CursorPos                 f64.Vec2
-	CurrentLineTextBaseOffset float64
 }
 
 func (c *Context) NewFrame() {
@@ -73,12 +104,37 @@ func (c *Context) Render() {
 	var wf *Window
 	for _, w := range c.Windows {
 		if w.Active && w.HiddenFrames <= 0 && w.Flags&WindowFlagsChildWindow == 0 && w != wf {
-			c.AddWindowToDrawSelectLayer(w)
+			c.AddWindowToDrawDataSelectLayer(w)
 		}
 	}
 }
 
-func (c *Context) AddWindowToDrawSelectLayer(w *Window) {
+func (c *Context) AddWindowToDrawDataSelectLayer(window *Window) {
+	io := c.GetIO()
+	io.MetricsActiveWindows++
+	if window.Flags&WindowFlagsTooltip != 0 {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[1], window)
+	} else {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[0], window)
+	}
+}
+
+func (c *Context) AddWindowToDrawData(outRenderList *[]*DrawList, window *Window) {
+	dc := &window.DC
+	c.AddDrawListToDrawData(outRenderList, window.DrawList)
+	for _, child := range dc.ChildWindows {
+		// clipped children may have been marked as not active
+		if child.Active && child.HiddenFrames <= 0 {
+			c.AddWindowToDrawData(outRenderList, child)
+		}
+	}
+}
+
+func (c *Context) AddDrawListToDrawData(outRenderList *[]*DrawList, drawList *DrawList) {
+}
+
+func (c *Context) GetIO() *IO {
+	return &c.IO
 }
 
 func (c *Context) GetCurrentWindow() *Window {
@@ -93,7 +149,23 @@ func (c *Context) GetActiveID() ID {
 	return c.ActiveId
 }
 
-func (c *Context) SetActiveID(id ID, w *Window) {
+func (c *Context) SetActiveID(id ID, window *Window) {
+	c.ActiveIdIsJustActivated = c.ActiveId != id
+	if c.ActiveIdIsJustActivated {
+		c.ActiveIdTimer = 0
+	}
+	c.ActiveId = id
+	c.ActiveIdAllowNavDirFlags = 0
+	c.ActiveIdAllowOverlap = false
+	c.ActiveIdWindow = window
+	if id != 0 {
+		c.ActiveIdIsAlive = true
+		if c.NavActivateId == id || c.NavInputId == id || c.NavJustTabbedId == id || c.NavJustMovedToId == id {
+			c.ActiveIdSource = InputSourceNav
+		} else {
+			c.ActiveIdSource = InputSourceMouse
+		}
+	}
 }
 
 func (c *Context) ClearActiveID() {
