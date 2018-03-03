@@ -102,3 +102,17 @@ type NavMoveResult struct {
 	DistAxial  float64
 	RectRel    f64.Rectangle // Best candidate bounding box in window relative space
 }
+
+type MouseCursor int
+
+const (
+	MouseCursorNone MouseCursor = -1 + iota
+	MouseCursorArrow
+	MouseCursorTextInput  // When hovering over InputText etc.
+	MouseCursorResizeAll  // Unused
+	MouseCursorResizeNS   // When hovering over an horizontal border
+	MouseCursorResizeEW   // When hovering over a vertical border or a column
+	MouseCursorResizeNESW // When hovering over the bottom-left corner of a window
+	MouseCursorResizeNWSE // When hovering over the bottom-right corner of a window
+	MouseCursorCount
+)

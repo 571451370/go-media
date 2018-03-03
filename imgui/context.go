@@ -12,7 +12,11 @@ type Context struct {
 	IO    IO
 	Style Style
 
-	DrawDataBuilder DrawDataBuilder
+	DrawListSharedData        DrawListSharedData
+	DrawDataBuilder           DrawDataBuilder
+	OverlayDrawList           DrawList // Optional software render of mouse cursors, if io.MouseDrawCursor is set + a few debug overlays
+	ModalWindowDarkeningRatio float64
+	MouseCursor               MouseCursor
 
 	Font            *Font
 	FontSize        float64
@@ -87,10 +91,27 @@ func CreateContext() *Context {
 
 func (c *Context) NewFrame() {
 	io := c.GetIO()
+	style := c.GetStyle()
+
 	c.Time += io.DeltaTime
 	c.FrameCount++
 	c.TooltipOverrideCount = 0
 	c.WindowsActiveCount = 0
+
+	c.SetCurrentFont(c.GetDefaultFont())
+	c.DrawListSharedData.ClipRectFullscreen = f64.Vec4{0, 0, io.DisplaySize.X, io.DisplaySize.Y}
+	c.DrawListSharedData.CurveTessellationTol = style.CurveTessellationTol
+
+	c.OverlayDrawList.Clear()
+	c.OverlayDrawList.PushTextureID(io.Fonts.TexId)
+	c.OverlayDrawList.PushClipRectFullScreen()
+	c.OverlayDrawList.Flags = 0
+	if style.AntiAliasedLines {
+		c.OverlayDrawList.Flags |= DrawListFlagsAntiAliasedLines
+	}
+	if style.AntiAliasedFill {
+		c.OverlayDrawList.Flags |= DrawListFlagsAntiAliasedFill
+	}
 }
 
 func (c *Context) EndFrame() {
