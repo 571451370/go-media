@@ -1,6 +1,8 @@
 package imgui
 
 import (
+	"image/color"
+
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -33,6 +35,37 @@ func (c *Context) SmallButton(label string) bool {
 	style.FramePadding.Y = 0
 	pressed := c.ButtonEx(label, f64.Vec2{}, ButtonFlagsAlignTextBaseLine)
 	style.FramePadding.Y = y
+	return pressed
+}
+
+func (c *Context) ArrowButton(strId string, dir Dir) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := c.GetStyle()
+	dc := &window.DC
+	id := window.GetID(strId)
+	sz := c.GetFrameHeight()
+	bb := f64.Rectangle{dc.CursorPos, dc.CursorPos.Add(f64.Vec2{sz, sz})}
+	c.ItemSize(bb.Size(), 0)
+	if !c.ItemAdd(bb, id, nil) {
+		return false
+	}
+
+	hovered, held, pressed := c.ButtonBehavior(bb, id, 0)
+
+	var col color.RGBA
+	if hovered && held {
+	} else if hovered {
+	} else {
+	}
+
+	c.RenderNavHighlight(bb, id)
+	c.RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding)
+	c.RenderArrow(bb.Min.Add(style.FramePadding), dir)
+
 	return pressed
 }
 

@@ -76,6 +76,12 @@ type DrawCmd struct {
 
 type TextureID interface{}
 
+func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
+}
+
+func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
+}
+
 // RenderFrame renders a rectangle shaped with optional rounding and borders
 func (c *Context) RenderFrame(pmin, pmax f64.Vec2, fillCol color.RGBA, border bool, rounding float64) {
 	window := c.GetCurrentWindow()

@@ -47,6 +47,7 @@ const (
 )
 
 type Window struct {
+	Ctx                 *Context
 	Name                string
 	Id                  ID
 	Flags               WindowFlags
@@ -58,6 +59,7 @@ type Window struct {
 	SizeContents        f64.Vec2
 	Scroll              f64.Vec2
 	DC                  DrawContext
+	IdStack             []ID // ID stack. ID are hashes seeded with the value at the top of the stack
 	Active              bool
 	WasActive           bool
 	HiddenFrames        int
@@ -78,6 +80,10 @@ type DrawContext struct {
 	ColumnsOffsetX            float64
 	ChildWindows              []*Window
 	LayoutType                LayoutType
+}
+
+func (c *Context) ItemAdd(bb f64.Rectangle, id ID, navBB *f64.Rectangle) bool {
+	return false
 }
 
 func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
@@ -158,4 +164,11 @@ func (c *Context) NewLine() {
 
 func (w *Window) CalcFontSize() float64 {
 	return 0
+}
+
+func (w *Window) GetID(str string) ID {
+	ctx := w.Ctx
+	id := ID(hash(str))
+	ctx.KeepAliveID(id)
+	return id
 }

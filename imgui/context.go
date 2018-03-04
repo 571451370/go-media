@@ -232,8 +232,28 @@ func (c *Context) KeepAliveID(id ID) {
 	}
 }
 
-func (c *Context) Hash(b []byte) uint32 {
+func (c *Context) GetTextLineHeightWithSpacing() float64 {
+	style := c.GetStyle()
+	return c.FontSize + style.ItemSpacing.Y
+}
+
+func (c *Context) GetFrameHeight() float64 {
+	style := c.GetStyle()
+	return c.FontSize + style.FramePadding.Y*2
+}
+
+func (c *Context) GetFrameHeightWithSpacing() float64 {
+	style := c.GetStyle()
+	return c.FontSize + style.FramePadding.Y*2 + style.ItemSpacing.Y
+}
+
+func (c *Context) GetWindowDrawList() *DrawList {
+	window := c.GetCurrentWindow()
+	return window.DrawList
+}
+
+func hash(str string) uint32 {
 	h := fnv.New32()
-	h.Write(b)
+	h.Sum([]byte(str))
 	return h.Sum32()
 }
