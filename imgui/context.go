@@ -186,7 +186,12 @@ func (c *Context) GetIO() *IO {
 	return &c.IO
 }
 
+func (c *Context) GetCurrentWindowRead() *Window {
+	return c.CurrentWindow
+}
+
 func (c *Context) GetCurrentWindow() *Window {
+	c.CurrentWindow.WriteAccessed = true
 	return c.CurrentWindow
 }
 
@@ -248,7 +253,7 @@ func (c *Context) GetFrameHeightWithSpacing() float64 {
 }
 
 func (c *Context) GetWindowDrawList() *DrawList {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	return window.DrawList
 }
 

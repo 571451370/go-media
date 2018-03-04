@@ -39,7 +39,7 @@ func (c *Context) SmallButton(label string) bool {
 }
 
 func (c *Context) ArrowButton(strId string, dir Dir) bool {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if window.SkipItems {
 		return false
 	}
@@ -75,7 +75,7 @@ func (c *Context) ArrowButton(strId string, dir Dir) bool {
 }
 
 func (c *Context) ButtonEx(label string, size f64.Vec2, flags ButtonFlags) bool {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if window.SkipItems {
 		return false
 	}
@@ -113,7 +113,7 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ou
 		flags |= ButtonFlagsPressedOnClickRelease
 	}
 
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
 		c.HoveredWindow = window
 	}

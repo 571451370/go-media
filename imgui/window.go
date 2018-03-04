@@ -47,24 +47,68 @@ const (
 )
 
 type Window struct {
-	Ctx                 *Context
-	Name                string
-	Id                  ID
-	Flags               WindowFlags
-	PosFloat            f64.Vec2
-	Pos                 f64.Vec2
-	Size                f64.Vec2
-	SizeFull            f64.Vec2
-	SizeFullAtLastBegin f64.Vec2
-	SizeContents        f64.Vec2
-	Scroll              f64.Vec2
-	DC                  DrawContext
-	IdStack             []ID // ID stack. ID are hashes seeded with the value at the top of the stack
-	Active              bool
-	WasActive           bool
-	HiddenFrames        int
-	SkipItems           bool
-	DrawList            *DrawList
+	Ctx                            *Context
+	Name                           string
+	Id                             ID          // == ImHash(Name)
+	Flags                          WindowFlags // See enum ImGuiWindowFlags_
+	PosFloat                       f64.Vec2
+	Pos                            f64.Vec2      // Position rounded-up to nearest pixel
+	Size                           f64.Vec2      // Current size (==SizeFull or collapsed title bar size)
+	SizeFull                       f64.Vec2      // Size when non collapsed
+	SizeFullAtLastBegin            f64.Vec2      // Copy of SizeFull at the end of Begin. This is the reference value we'll use on the next frame to decide if we need scrollbars.
+	SizeContents                   f64.Vec2      // Size of contents (== extents reach of the drawing cursor) from previous frame. Include decoration, window title, border, menu, etc.
+	SizeContentsExplicit           f64.Vec2      // Size of contents explicitly set by the user via SetNextWindowContentSize()
+	ContentsRegionRect             f64.Rectangle // Maximum visible content position in window coordinates. ~~ (SizeContentsExplicit ? SizeContentsExplicit : Size - ScrollbarSizes) - CursorStartPos, per axis
+	WindowPadding                  f64.Vec2      // Window padding at the time of begin.
+	WindowRounding                 float64       // Window rounding at the time of begin.
+	WindowBorderSize               float64       // Window border size at the time of begin.
+	MoveId                         ID            // == window->GetID("#MOVE")
+	ChildId                        ID            // Id of corresponding item in parent window (for child windows)
+	Scroll                         f64.Vec2
+	ScrollTarget                   f64.Vec2 // target scroll position. stored as cursor position with scrolling canceled out, so the highest point is always 0.0f. (FLT_MAX for no change)
+	ScrollTargetCenterRatio        f64.Vec2 // 0.0f = scroll so that target position is at top, 0.5f = scroll so that target position is centered
+	ScrollbarX, ScrollbarY         bool
+	ScrollbarSizes                 f64.Vec2
+	Active                         bool // Set to true on Begin(), unless Collapsed
+	WasActive                      bool
+	WriteAccessed                  bool // Set to true when any widget access the current window
+	Collapsed                      bool // Set when collapsing window to become only title-bar
+	CollapseToggleWanted           bool
+	SkipItems                      bool // Set when items can safely be all clipped (e.g. window not visible or collapsed)
+	Appearing                      bool // Set during the frame where the window is appearing (or re-appearing)
+	CloseButton                    bool // Set when the window has a close button (p_open != NULL)
+	BeginOrderWithinParent         int  // Order within immediate parent window, if we are a child window. Otherwise 0.
+	BeginOrderWithinContext        int  // Order within entire imgui context. This is mostly used for debugging submission order related issues.
+	BeginCount                     int  // Number of Begin() during the current frame (generally 0 or 1, 1+ if appending via multiple Begin/End pairs)
+	PopupId                        ID   // ID in the popup stack when this window is used as a popup/menu (because we use generic Name/ID for recycling)
+	AutoFitFramesX, AutoFitFramesY int
+	AutoFitOnlyGrows               bool
+	AutoFitChildAxises             int
+	AutoPosLastDirection           Dir
+	HiddenFrames                   int
+	SetWindowPosAllowFlags         Cond     // store condition flags for next SetWindowPos() call.
+	SetWindowSizeAllowFlags        Cond     // store condition flags for next SetWindowSize() call.
+	SetWindowCollapsedAllowFlags   Cond     // store condition flags for next SetWindowCollapsed() call.
+	SetWindowPosVal                f64.Vec2 // store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
+	SetWindowPosPivot              f64.Vec2 // store window pivot for positioning. ImVec2(0,0) when positioning from top-left corner; ImVec2(0.5f,0.5f) for centering; ImVec2(1,1) for bottom right.
+
+	DC                             DrawContext
+	IdStack                        []ID          // ID stack. ID are hashes seeded with the value at the top of the stack
+	ClipRect                       f64.Rectangle // = DrawList->clip_rect_stack.back(). Scissoring / clipping rectangle. x1, y1, x2, y2.
+	WindowRectClipped              f64.Rectangle // = WindowRect just after setup in Begin(). == window->Rect() for root window.
+	InnerRect                      f64.Rectangle
+	LastFrameActive                int
+	ItemWidthDefault               float64
+	MenuColumns                    MenuColumns // Simplified columns storage for menu items
+	StateStorage                   Storage
+	ColumnsStorage                 []ColumnsSet
+	FontWindowScale                float64 // Scale multiplier per-window
+	DrawList                       *DrawList
+	ParentWindow                   *Window // If we are a child _or_ popup window, this is pointing to our parent. Otherwise NULL.
+	RootWindow                     *Window // Point to ourself or first ancestor that is not a child window.
+	RootWindowForTitleBarHighlight *Window // Point to ourself or first ancestor which will display TitleBgActive color when this window is active.
+	RootWindowForTabbing           *Window // Point to ourself or first ancestor which can be CTRL-Tabbed into.
+	RootWindowForNav               *Window // Point to ourself or first ancestor which doesn't have the NavFlattened flag.
 }
 
 type DrawContext struct {
@@ -82,12 +126,20 @@ type DrawContext struct {
 	LayoutType                LayoutType
 }
 
+type Cond int
+
+type MenuColumns int
+
+type ColumnsSet int
+
+type Storage int
+
 func (c *Context) ItemAdd(bb f64.Rectangle, id ID, navBB *f64.Rectangle) bool {
 	return false
 }
 
 func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if window.SkipItems {
 		return
 	}
@@ -124,7 +176,7 @@ func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
 //      spacing_w < 0   : use default spacing if pos_x == 0, no spacing if pos_x != 0
 //      spacing_w >= 0  : enforce spacing amount
 func (c *Context) SameLine(posX, spacingW float64) {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if window.SkipItems {
 		return
 	}
@@ -145,7 +197,7 @@ func (c *Context) SameLine(posX, spacingW float64) {
 }
 
 func (c *Context) NewLine() {
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	if window.SkipItems {
 		return
 	}
@@ -173,6 +225,31 @@ func (w *Window) GetID(str string) ID {
 	return id
 }
 
-func (c *Context) CalcItemSize(size f64.Vec2, defaultX, defaultY float64) f64.Vec2 {
+// In window space (not screen space!)
+func (c *Context) GetContentRegionMax() f64.Vec2 {
 	return f64.Vec2{}
+}
+
+func (c *Context) CalcItemSize(size f64.Vec2, defaultX, defaultY float64) f64.Vec2 {
+	var contentMax f64.Vec2
+	window := c.CurrentWindow
+	dc := &window.DC
+
+	if size.X < 0 || size.Y < 0 {
+		contentMax = window.Pos.Add(c.GetContentRegionMax())
+	}
+
+	if size.X == 0 {
+		size.X = defaultX
+	} else {
+		size.X += math.Max(contentMax.X-dc.CursorPos.X, 4)
+	}
+
+	if size.Y == 0 {
+		size.Y = defaultY
+	} else {
+		size.Y += math.Max(contentMax.Y-dc.CursorPos.Y, 4)
+	}
+
+	return size
 }

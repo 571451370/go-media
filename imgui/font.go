@@ -52,7 +52,7 @@ func (c *Context) GetDefaultFont() *Font {
 
 func (c *Context) SetCurrentFont(font *Font) {
 	io := c.GetIO()
-	window := c.GetCurrentWindow()
+	window := c.CurrentWindow
 	c.Font = font
 	c.FontBaseSize = io.FontGlobalScale * c.Font.FontSize * c.Font.Scale
 	c.FontSize = 0
