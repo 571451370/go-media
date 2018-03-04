@@ -1,6 +1,8 @@
 package imgui
 
 import (
+	"image/color"
+
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -135,4 +137,11 @@ func (c *Context) StyleColorsDark(s *Style) {
 	col[ColDragDropTarget] = f64.Vec4{1.00, 1.00, 0.00, 0.90}
 	col[ColNavHighlight] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
 	col[ColNavWindowingHighlight] = f64.Vec4{1.00, 1.00, 1.00, 0.70}
+}
+
+func (c *Context) GetColorFromStyle(idx Col) color.RGBA {
+	style := c.GetStyle()
+	col := style.Colors[idx]
+	col.W *= style.Alpha
+	return col.ToRGBA()
 }

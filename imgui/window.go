@@ -172,3 +172,7 @@ func (w *Window) GetID(str string) ID {
 	ctx.KeepAliveID(id)
 	return id
 }
+
+func (c *Context) CalcItemSize(size f64.Vec2, defaultX, defaultY float64) f64.Vec2 {
+	return f64.Vec2{}
+}
