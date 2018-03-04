@@ -416,7 +416,7 @@ func (p Vec4) Normalize3() Vec4 {
 	}
 }
 
-func (p Vec4) RGBA() (r, g, b, a uint32) {
+func (p Vec4) ToRGBA() color.RGBA {
 	if 0 <= p.X && p.X <= 1 {
 		p.X *= 255
 	}
@@ -432,6 +432,11 @@ func (p Vec4) RGBA() (r, g, b, a uint32) {
 		uint8(Clamp(p.Z, 0, 255)),
 		uint8(Clamp(p.W, 0, 255)),
 	}
+	return c
+}
+
+func (p Vec4) RGBA() (r, g, b, a uint32) {
+	c := p.ToRGBA()
 	return c.RGBA()
 }
 
