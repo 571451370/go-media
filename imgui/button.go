@@ -49,8 +49,8 @@ func (c *Context) ArrowButton(strId string, dir Dir) bool {
 	id := window.GetID(strId)
 	sz := c.GetFrameHeight()
 	bb := f64.Rectangle{dc.CursorPos, dc.CursorPos.Add(f64.Vec2{sz, sz})}
-	c.ItemSize(bb.Size(), 0)
-	if !c.ItemAdd(bb, id, nil) {
+	c.ItemSizeBB(bb)
+	if !c.ItemAdd(bb, id) {
 		return false
 	}
 
@@ -80,20 +80,45 @@ func (c *Context) ButtonEx(label string, size f64.Vec2, flags ButtonFlags) bool 
 		return false
 	}
 
-	style := c.GetStyle()
+	style := c.Style
 	dc := &window.DC
 	id := window.GetID(label)
 	labelSize := c.CalcTextSize(label, true, -1)
 
 	pos := dc.CursorPos
-	sz := c.CalcItemSize(size, labelSize.X+style.FramePadding.X*2, labelSize.Y+style.FramePadding.Y*2)
+	// Try to vertically align buttons that are smaller/have no padding so that text baseline matches
+	// (bit hacky, since it shouldn't be a flag)
+	if flags&ButtonFlagsAlignTextBaseLine != 0 && style.FramePadding.Y < dc.CurrentLineTextBaseOffset {
+		pos.Y += dc.CurrentLineTextBaseOffset - style.FramePadding.Y
+	}
 
+	sz := c.CalcItemSize(size, labelSize.X+style.FramePadding.X*2, labelSize.Y+style.FramePadding.Y*2)
 	bb := f64.Rectangle{pos, pos.Add(sz)}
+	c.ItemSizeBBEx(bb, style.FramePadding.Y)
+	if !c.ItemAdd(bb, id) {
+		return false
+	}
+
+	if dc.ItemFlags&ItemFlagsButtonRepeat != 0 {
+		flags |= ButtonFlagsRepeat
+	}
+	hovered, held, pressed := c.ButtonBehavior(bb, id, flags)
+
+	var col color.RGBA
+	switch {
+	case hovered && held:
+		col = c.GetColorFromStyle(ColButtonActive)
+	case hovered:
+		col = c.GetColorFromStyle(ColButtonHovered)
+	default:
+		col = c.GetColorFromStyle(ColButton)
+	}
 
 	// render
 	c.RenderNavHighlight(bb, id)
+	c.RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding)
 
-	return false
+	return pressed
 }
 
 func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (outHovered, outHeld, pressed bool) {

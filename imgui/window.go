@@ -122,9 +122,22 @@ type DrawContext struct {
 	IndentX                   float64
 	GroupOffsetX              float64
 	ColumnsOffsetX            float64
+	ItemFlags                 ItemFlags
 	ChildWindows              []*Window
 	LayoutType                LayoutType
 }
+
+type ItemFlags int
+
+const (
+	ItemFlagsAllowKeyboardFocus       ItemFlags = 1 << iota // true
+	ItemFlagsButtonRepeat                                   // false    // Button() will return true multiple times based on io.KeyRepeatDelay and io.KeyRepeatRate settings.
+	ItemFlagsDisabled                                       // false    // FIXME-WIP: Disable interactions but doesn't affect visuals. Should be: grey out and disable interactions with widgets that affect data + view widgets (WIP)
+	ItemFlagsNoNav                                          // false
+	ItemFlagsNoNavDefaultFocus                              // false
+	ItemFlagsSelectableDontClosePopup                       // false    // MenuItem/Selectable() automatically closes current Popup window
+	ItemFlagsDefault                  = ItemFlagsAllowKeyboardFocus
+)
 
 type Cond int
 
@@ -134,11 +147,19 @@ type ColumnsSet int
 
 type Storage int
 
-func (c *Context) ItemAdd(bb f64.Rectangle, id ID, navBB *f64.Rectangle) bool {
+func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
+	return c.ItemAddEx(bb, id, nil)
+}
+
+func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, navBB *f64.Rectangle) bool {
 	return false
 }
 
-func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
+func (c *Context) ItemSize(size f64.Vec2) {
+	c.ItemSizeEx(size, 0)
+}
+
+func (c *Context) ItemSizeEx(size f64.Vec2, textOffsetY float64) {
 	window := c.CurrentWindow
 	if window.SkipItems {
 		return
@@ -170,6 +191,14 @@ func (c *Context) ItemSize(size f64.Vec2, textOffsetY float64) {
 	}
 }
 
+func (c *Context) ItemSizeBB(bb f64.Rectangle) {
+	c.ItemSizeBBEx(bb, 0)
+}
+
+func (c *Context) ItemSizeBBEx(bb f64.Rectangle, textOffsetY float64) {
+	c.ItemSizeEx(bb.Size(), textOffsetY)
+}
+
 // Gets back to previous line and continue with horizontal layout
 //      pos_x == 0      : follow right after previous item
 //      pos_x != 0      : align to specified x position (relative to window/group left)
@@ -197,7 +226,7 @@ func (c *Context) SameLine(posX, spacingW float64) {
 }
 
 func (c *Context) NewLine() {
-	window := c.CurrentWindow
+	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return
 	}
@@ -207,9 +236,9 @@ func (c *Context) NewLine() {
 	dc.LayoutType = LayoutTypeVertical
 	// In the event that we are on a line with items that is smaller that FontSize high, we will preserve its height.
 	if dc.CurrentLineHeight > 0 {
-		c.ItemSize(f64.Vec2{}, 0)
+		c.ItemSize(f64.Vec2{0, 0})
 	} else {
-		c.ItemSize(f64.Vec2{}, c.FontSize)
+		c.ItemSize(f64.Vec2{0, c.FontSize})
 	}
 	dc.LayoutType = backupLayoutType
 }
