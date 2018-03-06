@@ -109,6 +109,19 @@ type Window struct {
 	RootWindowForTitleBarHighlight *Window // Point to ourself or first ancestor which will display TitleBgActive color when this window is active.
 	RootWindowForTabbing           *Window // Point to ourself or first ancestor which can be CTRL-Tabbed into.
 	RootWindowForNav               *Window // Point to ourself or first ancestor which doesn't have the NavFlattened flag.
+
+	NavLastChildNavWindow *Window          // When going to the menu bar, we remember the child window we came from. (This could probably be made implicit if we kept g.Windows sorted by last focused including child window.)
+	NavLastIds            [2]ID            // Last known NavId for this window, per layer (0/1)
+	NavRectRel            [2]f64.Rectangle // Reference rectangle, in window relative space
+
+	// Navigation / Focus
+	// FIXME-NAV: Merge all this with the new Nav system, at least the request variables should be moved to ImGuiContext
+	FocusIdxAllCounter        int // Start at -1 and increase as assigned via FocusItemRegister()
+	FocusIdxTabCounter        int // (same, but only count widgets which you can Tab through)
+	FocusIdxAllRequestCurrent int // Item being requested for focus
+	FocusIdxTabRequestCurrent int // Tab-able item being requested for focus
+	FocusIdxAllRequestNext    int // Item being requested for focus, for next update (relies on layout to be stable between the frame pressing TAB and the next frame)
+	FocusIdxTabRequestNext    int // "
 }
 
 type DrawContext struct {
@@ -125,6 +138,18 @@ type DrawContext struct {
 	ItemFlags                 ItemFlags
 	ChildWindows              []*Window
 	LayoutType                LayoutType
+	ColumnsSet                *ColumnsSet // Current columns set
+	LastItemId                ID
+	LastItemStatusFlags       ItemStatusFlags
+	LastItemRect              f64.Rectangle // Interaction rect
+	LastItemDisplayRect       f64.Rectangle // End-user display rect (only valid if LastItemStatusFlags & ImGuiItemStatusFlags_HasDisplayRect)
+	NavHideHighlightOneFrame  bool
+	NavHasScroll              bool // Set when scrolling can be used (ScrollMax > 0.0f)
+	NavLayerCurrent           int  // Current layer, 0..31 (we currently only use 0..1)
+	NavLayerCurrentMask       int  // = (1 << NavLayerCurrent) used by ItemAdd prior to clipping.
+	NavLayerActiveMask        int  // Which layer have been written to (result from previous frame)
+	NavLayerActiveMaskNext    int  // Which layer have been written to (buffer for current frame)
+
 }
 
 type ItemFlags int
@@ -159,7 +184,37 @@ type Cond int
 
 type MenuColumns int
 
-type ColumnsSet int
+type ColumnsFlags int
+
+const (
+	// Default: 0
+	ColumnsFlagsNoBorder               ColumnsFlags = 1 << iota // Disable column dividers
+	ColumnsFlagsNoResize                                        // Disable resizing columns when clicking on the dividers
+	ColumnsFlagsNoPreserveWidths                                // Disable column width preservation when adjusting columns
+	ColumnsFlagsNoForceWithinWindow                             // Disable forcing columns to fit within window
+	ColumnsFlagsGrowParentContentsSize                          // (WIP) Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the columns width at all_. Will eventually remove.
+)
+
+type ColumnData struct {
+	OffsetNorm             float64 // Column start offset, normalized 0.0 (far left) -> 1.0 (far right)
+	OffsetNormBeforeResize float64
+	Flags                  ColumnsFlags // Not exposed
+	ClipRect               f64.Rectangle
+}
+
+type ColumnsSet struct {
+	ID                 ID
+	Flags              ColumnsFlags
+	IsFirstFrame       bool
+	IsBeingResized     bool
+	Current            int
+	Count              int
+	MinX, MaxX         float64
+	StartPosY          float64
+	StartMaxPosX       float64 // Backup of CursorMaxPos
+	CellMinY, CellMaxY float64
+	Columns            []ColumnData
+}
 
 type Storage int
 
@@ -178,12 +233,59 @@ const (
 	HoveredFlagsRootAndChildWindows          HoveredFlags = HoveredFlagsRootWindow | HoveredFlagsChildWindows
 )
 
+type ItemStatusFlags uint
+
+const (
+	ItemStatusFlagsHoveredRect ItemStatusFlags = 1 << iota
+	ItemStatusFlagsHasDisplayRect
+)
+
 func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
 	return c.ItemAddEx(bb, id, nil)
 }
 
+// Declare item bounding box for clipping and interaction.
+// Note that the size can be different than the one provided to ItemSize(). Typically, widgets that spread over available surface
+// declare their minimum size requirement to ItemSize() and then use a larger region for drawing/interaction, which is passed to ItemAdd().
 func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, navBB *f64.Rectangle) bool {
-	return false
+	window := c.CurrentWindow
+
+	if id != 0 {
+		// Navigation processing runs prior to clipping early-out
+		//  (a) So that NavInitRequest can be honored, for newly opened windows to select a default widget
+		//  (b) So that we can scroll up/down past clipped items. This adds a small O(N) cost to regular navigation requests unfortunately, but it is still limited to one window.
+		//      it may not scale very well for windows with ten of thousands of item, but at least NavMoveRequest is only set on user interaction, aka maximum once a frame.
+		//      We could early out with "if (is_clipped && !g.NavInitRequest) return false;" but when we wouldn't be able to reach unclipped widgets. This would work if user had explicit scrolling control (e.g. mapped on a stick)
+		window.DC.NavLayerActiveMaskNext |= window.DC.NavLayerCurrentMask
+		if c.NavId == id || c.NavAnyRequest {
+			if c.NavWindow.RootWindowForNav == window.RootWindowForNav {
+				if window == c.NavWindow || (window.Flags|c.NavWindow.Flags)&WindowFlagsNavFlattened != 0 {
+					if navBB != nil {
+						c.NavProcessItem(window, *navBB, id)
+					} else {
+						c.NavProcessItem(window, bb, id)
+					}
+				}
+			}
+		}
+	}
+
+	window.DC.LastItemId = id
+	window.DC.LastItemRect = bb
+	window.DC.LastItemStatusFlags = 0
+
+	// Clipping test
+	isClipped := c.IsClippedEx(bb, id, false)
+	if isClipped {
+		return false
+	}
+
+	// We need to calculate this now to take account of the current clipping rectangle (as items like Selectable may change them)
+	if c.IsMouseHoveringRect(bb.Min, bb.Max) {
+		window.DC.LastItemStatusFlags |= ItemStatusFlagsHoveredRect
+	}
+
+	return true
 }
 
 func (c *Context) ItemSize(size f64.Vec2) {
@@ -287,7 +389,13 @@ func (w *Window) GetID(str string) ID {
 
 // In window space (not screen space!)
 func (c *Context) GetContentRegionMax() f64.Vec2 {
-	return f64.Vec2{}
+	window := c.GetCurrentWindowRead()
+	dc := &window.DC
+	mx := window.ContentsRegionRect.Max
+	if dc.ColumnsSet != nil {
+		mx.X = c.GetColumnOffset(dc.ColumnsSet.Current+1) - window.WindowPadding.X
+	}
+	return mx
 }
 
 func (c *Context) CalcItemSize(size f64.Vec2, defaultX, defaultY float64) f64.Vec2 {
@@ -389,4 +497,30 @@ func (c *Context) IsWindowContentHoverable(window *Window, flags HoveredFlags) b
 	}
 
 	return true
+}
+
+func (c *Context) GetColumnOffset(columnIndex int) float64 {
+	window := c.GetCurrentWindowRead()
+	dc := &window.DC
+	columns := dc.ColumnsSet
+
+	if columnIndex < 0 {
+		columnIndex = columns.Current
+	}
+
+	t := columns.Columns[columnIndex].OffsetNorm
+	xOffset := f64.Lerp(columns.MinX, columns.MaxX, t)
+	return xOffset
+}
+
+func (c *Context) IsClippedEx(bb f64.Rectangle, id ID, clipEvenWhenLogged bool) bool {
+	window := c.CurrentWindow
+	if !bb.Overlaps(window.ClipRect) {
+		if id == 0 || id != c.ActiveId {
+			if clipEvenWhenLogged || !c.LogEnabled {
+				return true
+			}
+		}
+	}
+	return false
 }

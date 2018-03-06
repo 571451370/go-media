@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"hash/fnv"
+	"os"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -95,6 +96,13 @@ type Context struct {
 	FrameCountRendered   int
 	FrameCountEnded      int
 	WindowsActiveCount   int
+
+	// Logging
+	LogEnabled            bool
+	LogFile               *os.File    // If != NULL log to stdout/ file
+	LogClipboard          *TextBuffer // Else log to clipboard. This is pointer so our GImGui static constructor doesn't call heap allocators.
+	LogStartDepth         int
+	LogAutoExpandMaxDepth int
 }
 
 func CreateContext() *Context {

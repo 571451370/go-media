@@ -7,6 +7,9 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
+type TextBuffer struct {
+}
+
 func (c *Context) CalcTextSize(text string, hideTextAfterDoubleHash bool, wrapWidth float64) f64.Vec2 {
 	if hideTextAfterDoubleHash {
 		n := strings.Index(text, "##")
