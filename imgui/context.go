@@ -184,8 +184,21 @@ func (c *Context) GetStyle() *Style {
 	return &c.Style
 }
 
+func (c *Context) GetCurrentWindow() *Window {
+	c.CurrentWindow.WriteAccessed = true
+	return c.CurrentWindow
+}
+
 func (c *Context) KeepAliveID(id ID) {
 	if c.ActiveId == id {
 		c.ActiveIdIsAlive = true
 	}
+}
+
+func (c *Context) GetFrameHeight() float64 {
+	return c.FontSize + c.Style.FramePadding.Y*2
+}
+
+func (c *Context) GetFrameHeightWithSpacing() float64 {
+	return c.FontSize + c.Style.FramePadding.Y*2 + c.Style.ItemSpacing.Y
 }

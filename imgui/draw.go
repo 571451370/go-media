@@ -1,6 +1,8 @@
 package imgui
 
 import (
+	"image/color"
+
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -75,3 +77,16 @@ const (
 	DrawListFlagsAntiAliasedLines DrawListFlags = 1 << 0
 	DrawListFlagsAntiAliasedFill  DrawListFlags = 1 << 1
 )
+
+func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
+}
+
+func (c *Context) RenderFrame(p_min, p_max f64.Vec2, col color.RGBA) {
+	c.RenderFrameDx(p_min, p_max, col, true, 0)
+}
+
+func (c *Context) RenderFrameDx(p_min, p_max f64.Vec2, col color.RGBA, border bool, rounding float64) {
+}
+
+func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
+}

@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"image/color"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type Col int
 
@@ -179,4 +183,15 @@ func (c *Context) StyleColorsDark(style *Style) {
 	colors[ColDragDropTarget] = f64.Vec4{1.00, 1.00, 0.00, 0.90}
 	colors[ColNavHighlight] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
 	colors[ColNavWindowingHighlight] = f64.Vec4{1.00, 1.00, 1.00, 0.70}
+}
+
+func (c *Context) GetColorFromStyle(idx Col) color.RGBA {
+	return c.GetColorFromStyleWithAlpha(idx, 1)
+}
+
+func (c *Context) GetColorFromStyleWithAlpha(idx Col, alpha_mul float64) color.RGBA {
+	style := &c.Style
+	col := style.Colors[idx]
+	col.W *= style.Alpha * alpha_mul
+	return col.ToRGBA()
 }

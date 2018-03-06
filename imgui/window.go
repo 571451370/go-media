@@ -316,3 +316,26 @@ func (w *Window) GetID(str string) ID {
 	w.Ctx.KeepAliveID(id)
 	return id
 }
+
+func (c *Context) ItemSize(size f64.Vec2) {
+	c.ItemSizeDx(size, 0)
+}
+
+func (c *Context) ItemSizeDx(size f64.Vec2, text_offset_y float64) {
+}
+
+func (c *Context) ItemSizeBB(bb f64.Rectangle) {
+	c.ItemSizeBBDx(bb, 0)
+}
+
+func (c *Context) ItemSizeBBDx(bb f64.Rectangle, text_offset_y float64) {
+	c.ItemSizeDx(bb.Size(), text_offset_y)
+}
+
+func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
+	return c.ItemAddDx(bb, id, nil)
+}
+
+func (c *Context) ItemAddDx(bb f64.Rectangle, id ID, nav_bb *f64.Rectangle) bool {
+	return false
+}
