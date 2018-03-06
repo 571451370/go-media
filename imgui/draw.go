@@ -96,3 +96,15 @@ func (d *DrawList) PopClipRect() {
 
 func (d *DrawList) ChannelsSetCurrent(int) {
 }
+
+func (d *DrawList) PushClipRect(cr_min, cr_max f64.Vec2) {
+	d.PushClipRectEx(cr_min, cr_max, false)
+}
+
+func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_current_clip_rect bool) {
+}
+
+func (d *DrawList) PushClipRectFullscreen() {
+	clipRect := d._Data.ClipRectFullscreen
+	d.PushClipRect(f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W})
+}

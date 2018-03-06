@@ -446,6 +446,30 @@ func (c *Context) NextColumn() {
 }
 
 func (c *Context) PushColumnClipRect() {
+	c.PushColumnClipRectEx(-1)
+}
+
+func (c *Context) PushColumnClipRectEx(column_index int) {
+	window := c.GetCurrentWindowRead()
+	columns := window.DC.ColumnsSet
+	if column_index < 0 {
+		column_index = columns.Current
+	}
+
+	c.PushClipRect(
+		columns.Columns[column_index].ClipRect.Min,
+		columns.Columns[column_index].ClipRect.Max,
+		false,
+	)
+}
+
+// When using this function it is sane to ensure that float are perfectly rounded to integer values, to that e.g. (int)(max.x-min.x) in user's render produce correct result.
+func (c *Context) PushClipRect(clip_rect_min, clip_rect_max f64.Vec2, intersect_with_current_clip_rect bool) {
+	window := c.GetCurrentWindow()
+	window.DrawList.PushClipRectEx(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect)
+	length := len(window.DrawList._ClipRectStack)
+	clipRect := window.DrawList._ClipRectStack[length-1]
+	window.ClipRect = f64.Rectangle{f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W}}
 }
 
 func (c *Context) PushItemWidth(item_width float64) {
@@ -469,7 +493,38 @@ func (c *Context) GetColumnWidthEx(columns *ColumnsSet, column_index int, before
 }
 
 func (c *Context) GetContentRegionAvail() f64.Vec2 {
-	return f64.Vec2{}
+	window := c.GetCurrentWindowRead()
+	regionMax := c.GetContentRegionMax()
+	windowRegion := window.DC.CursorPos.Sub(window.Pos)
+	return regionMax.Sub(windowRegion)
+}
+
+func (c *Context) GetContentRegionMax() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	mx := window.ContentsRegionRect.Max
+	if window.DC.ColumnsSet != nil {
+		mx.X = c.GetColumnOffset(window.DC.ColumnsSet.Current+1) - window.WindowPadding.X
+	}
+	return mx
+}
+
+func (c *Context) GetContentRegionAvailWidth() float64 {
+	return c.GetContentRegionAvail().X
+}
+
+func (c *Context) GetWindowContentRegionMin() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.ContentsRegionRect.Min
+}
+
+func (c *Context) GetWindowContentRegionMax() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.ContentsRegionRect.Max
+}
+
+func (c *Context) GetWindowContentRegionWidth() float64 {
+	window := c.GetCurrentWindowRead()
+	return window.ContentsRegionRect.Max.X - window.ContentsRegionRect.Min.X
 }
 
 func (c *Context) GetColumnOffset(column_index int) float64 {

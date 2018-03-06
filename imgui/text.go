@@ -37,3 +37,11 @@ type TextEditState struct {
 	CursorFollow         bool
 	SelectedAllMouseLock bool
 }
+
+func (c *Context) GetTextLineHeight() float64 {
+	return c.FontSize
+}
+
+func (c *Context) GetTextLineHeightWithSpacing() float64 {
+	return c.FontSize + c.Style.ItemSpacing.Y
+}

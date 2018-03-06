@@ -84,3 +84,11 @@ type FontGlyph struct {
 	X0, Y0, X1, Y1 float64 // Glyph corners
 	U0, V0, U1, V1 float64 // Texture coordinates
 }
+
+func (c *Context) GetFont() *Font {
+	return c.Font
+}
+
+func (c *Context) GetFontSize() float64 {
+	return c.FontSize
+}
