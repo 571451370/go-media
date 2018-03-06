@@ -39,6 +39,23 @@ type FontAtlas struct {
 }
 
 type Font struct {
+	// Members: Hot ~62/78 bytes
+	FontSize         float64     // <user set>   // Height of characters, set during loading (don't change after loading)
+	Scale            float64     // = 1.f        // Base font scale, multiplied by the per-window font scale which you can adjust with SetFontScale()
+	DisplayOffset    f64.Vec2    // = (0.f,1.f)  // Offset font rendering by xx pixels
+	Glyphs           []FontGlyph //              // All glyphs.
+	IndexAdvanceX    []float64   //              // Sparse. Glyphs->AdvanceX in a directly indexable way (more cache-friendly, for CalcTextSize functions which are often bottleneck in large UI).
+	IndexLookup      []int       //              // Sparse. Index glyphs by Unicode code-point.
+	FallbackGlyph    *FontGlyph  // == FindGlyph(FontFallbackChar)
+	FallbackAdvanceX float64     // == FallbackGlyph->AdvanceX
+	FallbackChar     rune        // = '?'        // Replacement glyph if one isn't found. Only set via SetFallbackChar()
+
+	// Members: Cold ~18/26 bytes
+	ConfigDataCount     int         // ~ 1          // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
+	ConfigData          *FontConfig //              // Pointer within ContainerAtlas->ConfigData
+	ContainerAtlas      *FontAtlas  //              // What we has been loaded into
+	Ascent, Descent     float64     //              // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
+	MetricsTotalSurface int         //              // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
 }
 
 type FontConfig struct {
