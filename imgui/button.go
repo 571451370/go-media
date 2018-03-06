@@ -30,7 +30,7 @@ func (c *Context) Button(label string, size f64.Vec2) bool {
 }
 
 func (c *Context) SmallButton(label string) bool {
-	style := c.GetStyle()
+	style := c.Style
 	y := style.FramePadding.Y
 	style.FramePadding.Y = 0
 	pressed := c.ButtonEx(label, f64.Vec2{}, ButtonFlagsAlignTextBaseLine)
@@ -39,12 +39,12 @@ func (c *Context) SmallButton(label string) bool {
 }
 
 func (c *Context) ArrowButton(strId string, dir Dir) bool {
-	window := c.CurrentWindow
+	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
 	}
 
-	style := c.GetStyle()
+	style := c.Style
 	dc := &window.DC
 	id := window.GetID(strId)
 	sz := c.GetFrameHeight()
@@ -75,7 +75,7 @@ func (c *Context) ArrowButton(strId string, dir Dir) bool {
 }
 
 func (c *Context) ButtonEx(label string, size f64.Vec2, flags ButtonFlags) bool {
-	window := c.CurrentWindow
+	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
 	}
@@ -117,11 +117,14 @@ func (c *Context) ButtonEx(label string, size f64.Vec2, flags ButtonFlags) bool 
 	// render
 	c.RenderNavHighlight(bb, id)
 	c.RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding)
+	c.RenderTextClippedEx(bb.Min.Add(style.FramePadding), bb.Max.Sub(style.FramePadding), label, &labelSize, style.ButtonTextAlign, &bb)
 
 	return pressed
 }
 
-func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (outHovered, outHeld, pressed bool) {
+func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (hovered, held, pressed bool) {
+	window := c.GetCurrentWindow()
+
 	if flags&ButtonFlagsDisabled != 0 {
 		if c.ActiveId == id {
 			c.ClearActiveID()
@@ -129,18 +132,25 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ou
 		return
 	}
 
-	// default behavior requires click+release on same spot
-	mask := ButtonFlagsPressedOnClickRelease |
-		ButtonFlagsPressedOnClick |
-		ButtonFlagsPressedOnRelease |
-		ButtonFlagsPressedOnDoubleClick
+	// Default behavior requires click+release on same spot
+	mask := ButtonFlagsPressedOnClickRelease | ButtonFlagsPressedOnClick |
+		ButtonFlagsPressedOnRelease | ButtonFlagsPressedOnDoubleClick
 	if flags&mask == 0 {
 		flags |= ButtonFlagsPressedOnClickRelease
 	}
 
-	window := c.CurrentWindow
+	backupHoveredWindow := c.HoveredWindow
 	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
 		c.HoveredWindow = window
+	}
+	hovered = c.ItemHoverable(bb, id)
+
+	// Special mode for Drag and Drop where holding button pressed for a long time while dragging another item triggers the button
+	if flags&ButtonFlagsPressedOnDragDropHold != 0 && c.DragDropActive && c.DragDropSourceFlags&DragDropFlagsSourceNoHoldToOpenOthers == 0 {
+	}
+
+	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
+		c.HoveredWindow = backupHoveredWindow
 	}
 
 	return

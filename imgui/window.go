@@ -139,6 +139,22 @@ const (
 	ItemFlagsDefault                  = ItemFlagsAllowKeyboardFocus
 )
 
+type DragDropFlags uint
+
+const (
+	// BeginDragDropSource() flags
+	DragDropFlagsSourceNoPreviewTooltip   DragDropFlags = 1 << iota // By default, a successful call to BeginDragDropSource opens a tooltip so you can display a preview or description of the source contents. This flag disable this behavior.
+	DragDropFlagsSourceNoDisableHover                               // By default, when dragging we clear data so that IsItemHovered() will return true, to avoid subsequent user code submitting tooltips. This flag disable this behavior so you can still call IsItemHovered() on the source item.
+	DragDropFlagsSourceNoHoldToOpenOthers                           // Disable the behavior that allows to open tree nodes and collapsing header by holding over them while dragging a source item.
+	DragDropFlagsSourceAllowNullID                                  // Allow items such as Text(), Image() that have no unique identifier to be used as drag source, by manufacturing a temporary identifier based on their window-relative position. This is extremely unusual within the dear imgui ecosystem and so we made it explicit.
+	DragDropFlagsSourceExtern                                       // External source (from outside of imgui), won't attempt to read current item/window info. Will always return true. Only one Extern source can be active simultaneously.
+
+	// AcceptDragDropPayload() flags
+	DragDropFlagsAcceptBeforeDelivery                                                                               // AcceptDragDropPayload() will returns true even before the mouse button is released. You can then call IsDelivery() to test if the payload needs to be delivered.
+	DragDropFlagsAcceptNoDrawDefaultRect                                                                            // Do not draw the default highlight rectangle when hovering over target.
+	DragDropFlagsAcceptPeekOnly          = DragDropFlagsAcceptBeforeDelivery | DragDropFlagsAcceptNoDrawDefaultRect // For peeking ahead and inspecting the payload before delivery.
+)
+
 type Cond int
 
 type MenuColumns int
@@ -146,6 +162,21 @@ type MenuColumns int
 type ColumnsSet int
 
 type Storage int
+
+type HoveredFlags int
+
+const (
+	HoveredFlagsDefault                 HoveredFlags = 0               // Return true if directly over the item/window not obstructed by another window not obstructed by an active popup or modal blocking inputs under them.
+	HoveredFlagsChildWindows            HoveredFlags = 1 << (iota - 1) // IsWindowHovered() only: Return true if any children of the window is hovered
+	HoveredFlagsRootWindow                                             // IsWindowHovered() only: Test from root window (top most parent of the current hierarchy)
+	HoveredFlagsAnyWindow                                              // IsWindowHovered() only: Return true if any window is hovered
+	HoveredFlagsAllowWhenBlockedByPopup                                // Return true even if a popup window is normally blocking access to this item/window
+	//HoveredFlagsAllowWhenBlockedByModal        // Return true even if a modal popup window is normally blocking access to this item/window. FIXME-TODO: Unavailable yet.
+	HoveredFlagsAllowWhenBlockedByActiveItem              // Return true even if an active item is blocking access to this item/window. Useful for Drag and Drop patterns.
+	HoveredFlagsAllowWhenOverlapped                       // Return true even if the position is overlapped by another window
+	HoveredFlagsRectOnly                     HoveredFlags = HoveredFlagsAllowWhenBlockedByPopup | HoveredFlagsAllowWhenBlockedByActiveItem | HoveredFlagsAllowWhenOverlapped
+	HoveredFlagsRootAndChildWindows          HoveredFlags = HoveredFlagsRootWindow | HoveredFlagsChildWindows
+)
 
 func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
 	return c.ItemAddEx(bb, id, nil)
@@ -281,4 +312,81 @@ func (c *Context) CalcItemSize(size f64.Vec2, defaultX, defaultY float64) f64.Ve
 	}
 
 	return size
+}
+
+func (c *Context) ItemHoverable(bb f64.Rectangle, id ID) bool {
+	if c.HoveredId != 0 && c.HoveredId == id && !c.HoveredIdAllowOverlap {
+		return false
+	}
+
+	window := c.CurrentWindow
+	if c.HoveredWindow != window {
+		return false
+	}
+
+	if c.ActiveId != 0 && c.ActiveId != id && !c.ActiveIdAllowOverlap {
+		return false
+	}
+
+	if !c.IsMouseHoveringRect(bb.Min, bb.Max) {
+		return false
+	}
+
+	if c.NavDisableMouseHover || !c.IsWindowContentHoverable(window, HoveredFlagsDefault) {
+		return false
+	}
+
+	if window.DC.ItemFlags&ItemFlagsDisabled != 0 {
+		return false
+	}
+
+	c.SetHoveredID(id)
+	return true
+}
+
+func (c *Context) IsMouseHoveringRect(rmin, rmax f64.Vec2) bool {
+	return c.IsMouseHoveringRectEx(rmin, rmax, true)
+}
+
+func (c *Context) IsMouseHoveringRectEx(rmin, rmax f64.Vec2, clip bool) bool {
+	window := c.CurrentWindow
+	io := &c.IO
+	style := &c.Style
+
+	// Clip
+	rectClipped := f64.Rectangle{rmin, rmax}
+	if clip {
+		rectClipped.Intersect(window.ClipRect)
+	}
+
+	// Expand for touch input
+	rectForTouch := f64.Rectangle{
+		rectClipped.Min.Sub(style.TouchExtraPadding),
+		rectClipped.Max.Add(style.TouchExtraPadding),
+	}
+
+	return io.MousePos.In(rectForTouch)
+}
+
+func (c *Context) IsWindowContentHoverable(window *Window, flags HoveredFlags) bool {
+	// An active popup disable hovering on other windows (apart from its own children)
+	// FIXME-OPT: This could be cached/stored within the window.
+	if c.NavWindow != nil {
+		focusedRootWindow := c.NavWindow.RootWindow
+		if focusedRootWindow != nil {
+			if focusedRootWindow.WasActive && focusedRootWindow != window.RootWindow {
+				// For the purpose of those flags we differentiate "standard popup" from "modal popup"
+				// NB: The order of those two tests is important because Modal windows are also Popups.
+				if focusedRootWindow.Flags&WindowFlagsModal != 0 {
+					return false
+				}
+
+				if focusedRootWindow.Flags&WindowFlagsPopup != 0 && flags&HoveredFlagsAllowWhenBlockedByPopup == 0 {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
 }

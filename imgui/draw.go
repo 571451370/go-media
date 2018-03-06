@@ -76,10 +76,30 @@ type DrawCmd struct {
 
 type TextureID interface{}
 
+// Data payload for Drag and Drop operations
+type Payload struct {
+	Data interface{}
+
+	// [Internal]
+	SourceId       ID   // Source item id
+	SourceParentId ID   // Source parent id (if available)
+	DataFrameCount int  // Data timestamp
+	Preview        bool // Set when AcceptDragDropPayload() was called and mouse has been hovering the target item (nb: handle overlapping drag targets)
+	Delivery       bool // Set when AcceptDragDropPayload() was called and mouse button is released over the target item.
+
+}
+
 func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
 }
 
 func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
+}
+
+func (c *Context) RenderTextClipped(pmin, pmax f64.Vec2, text string, textSizeIfKnown *f64.Vec2) {
+	c.RenderTextClippedEx(pmin, pmax, text, textSizeIfKnown, f64.Vec2{0, 0}, nil)
+}
+
+func (c *Context) RenderTextClippedEx(pmin, pmax f64.Vec2, text string, textSizeIfKnown *f64.Vec2, align f64.Vec2, clipRect *f64.Rectangle) {
 }
 
 // RenderFrame renders a rectangle shaped with optional rounding and borders

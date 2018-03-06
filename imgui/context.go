@@ -77,6 +77,18 @@ type Context struct {
 	HoveredIdAllowOverlap bool
 	HoveredIdTimer        float64
 
+	// Drag and Drop
+	DragDropActive                  bool
+	DragDropSourceFlags             DragDropFlags
+	DragDropMouseButton             int
+	DragDropPayload                 Payload
+	DragDropTargetRect              f64.Rectangle
+	DragDropTargetId                ID
+	DragDropAcceptIdCurrRectSurface float64
+	DragDropAcceptIdCurr            ID  // Target item id (set at the time of accepting the payload)
+	DragDropAcceptIdPrev            ID  // Target item id from previous frame (we need to store this to allow for overlapping drag and drop targets)
+	DragDropAcceptFrameCount        int // Last time a target expressed a desire to accept the source
+
 	Time                 float64
 	TooltipOverrideCount int
 	FrameCount           int
