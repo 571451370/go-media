@@ -1,8 +1,6 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
-
-type Key uint
+type Key int
 
 const (
 	KeyTab Key = iota
@@ -26,53 +24,21 @@ const (
 	KeyX // for text edit CTRL+X: cut
 	KeyY // for text edit CTRL+Y: redo
 	KeyZ // for text edit CTRL+Z: undo
-	KeyCount
+	KeyCOUNT
 )
 
-type NavInput uint
-
-const (
-	// Gamepad Mapping
-	NavInputActivate    NavInput = iota // activate / open / toggle / tweak value       // e.g. Circle (PS4) A (Xbox) A (Switch) Space (Keyboard)
-	NavInputCancel                      // cancel / close / exit                        // e.g. Cross  (PS4) B (Xbox) B (Switch) Escape (Keyboard)
-	NavInputInput                       // text input / on-screen keyboard              // e.g. Triang.(PS4) Y (Xbox) X (Switch) Return (Keyboard)
-	NavInputMenu                        // tap: toggle menu / hold: focus move resize // e.g. Square (PS4) X (Xbox) Y (Switch) Alt (Keyboard)
-	NavInputDpadLeft                    // move / tweak / resize window (w/ PadMenu)    // e.g. D-pad Left/Right/Up/Down (Gamepads) Arrow keys (Keyboard)
-	NavInputDpadRight                   //
-	NavInputDpadUp                      //
-	NavInputDpadDown                    //
-	NavInputLStickLeft                  // scroll / move window (w/ PadMenu)            // e.g. Left Analog Stick Left/Right/Up/Down
-	NavInputLStickRight                 //
-	NavInputLStickUp                    //
-	NavInputLStickDown                  //
-	NavInputFocusPrev                   // next window (w/ PadMenu)                     // e.g. L1 or L2 (PS4) LB or LT (Xbox) L or ZL (Switch)
-	NavInputFocusNext                   // prev window (w/ PadMenu)                     // e.g. R1 or R2 (PS4) RB or RT (Xbox) R or ZL (Switch)
-	NavInputTweakSlow                   // slower tweaks                                // e.g. L1 or L2 (PS4) LB or LT (Xbox) L or ZL (Switch)
-	NavInputTweakFast                   // faster tweaks                                // e.g. R1 or R2 (PS4) RB or RT (Xbox) R or ZL (Switch)
-
-	// [Internal] Don't use directly! This is used internally to differentiate keyboard from gamepad inputs for behaviors that require to differentiate them.
-	// Keyboard behavior that have no corresponding gamepad mapping (e.g. CTRL+TAB) may be directly reading from io.KeyDown[] instead of io.NavInputs[].
-	NavInputKeyMenu  // toggle menu                                  // = io.KeyAlt
-	NavInputKeyLeft  // move left                                    // = Arrow keys
-	NavInputKeyRight // move right
-	NavInputKeyUp    // move up
-	NavInputKeyDown  // move down
-	NavInputCount
-	NavInputInternalStart = NavInputKeyMenu
-)
-
-type InputSource uint
+type InputSource int
 
 const (
 	InputSourceNone InputSource = iota
 	InputSourceMouse
 	InputSourceNav
-	InputSourceNavKeyboard
-	InputSourceNavGamepad
-	InputSourceCount
+	InputSourceNavKeyboard // Only used occasionally for storage, not tested/handled by most code
+	InputSourceNavGamepad  // "
+	InputSourceCOUNT
 )
 
-type InputReadMode uint
+type InputReadMode int
 
 const (
 	InputReadModeDown InputReadMode = iota
@@ -83,36 +49,16 @@ const (
 	InputReadModeRepeatFast
 )
 
-type NavForward uint
-
-const (
-	NavForwardNone = iota
-	NavForwardForwardQueued
-	NavForwardForwardActive
-)
-
-type Dir uint
-
-type NavMoveResult struct {
-	Id         ID      // Best candidate
-	ParentId   ID      // Best candidate window->IDStack.back() - to compare context
-	Window     *Window // Best candidate window
-	DistBox    float64 // Best candidate box distance to current NavId
-	DistCenter float64 // Best candidate center distance to current NavId
-	DistAxial  float64
-	RectRel    f64.Rectangle // Best candidate bounding box in window relative space
-}
-
 type MouseCursor int
 
 const (
 	MouseCursorNone MouseCursor = -1 + iota
 	MouseCursorArrow
-	MouseCursorTextInput  // When hovering over InputText etc.
+	MouseCursorTextInput  // When hovering over InputText, etc.
 	MouseCursorResizeAll  // Unused
 	MouseCursorResizeNS   // When hovering over an horizontal border
 	MouseCursorResizeEW   // When hovering over a vertical border or a column
 	MouseCursorResizeNESW // When hovering over the bottom-left corner of a window
 	MouseCursorResizeNWSE // When hovering over the bottom-right corner of a window
-	MouseCursorCount
+	MouseCursorCOUNT
 )
