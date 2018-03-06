@@ -26,11 +26,7 @@ const (
 )
 
 func (c *Context) Button(label string) bool {
-	return c.ButtonDx(label, f64.Vec2{})
-}
-
-func (c *Context) ButtonDx(label string, size_arg f64.Vec2) bool {
-	return c.ButtonEx(label, size_arg, 0)
+	return c.ButtonEx(label, f64.Vec2{}, 0)
 }
 
 func (c *Context) SmallButton(label string) bool {

@@ -90,3 +90,9 @@ func (c *Context) RenderFrameDx(p_min, p_max f64.Vec2, col color.RGBA, border bo
 
 func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
 }
+
+func (d *DrawList) PopClipRect() {
+}
+
+func (d *DrawList) ChannelsSetCurrent(int) {
+}

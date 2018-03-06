@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"hash/fnv"
+	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -318,24 +319,215 @@ func (w *Window) GetID(str string) ID {
 }
 
 func (c *Context) ItemSize(size f64.Vec2) {
-	c.ItemSizeDx(size, 0)
+	c.ItemSizeEx(size, 0)
 }
 
-func (c *Context) ItemSizeDx(size f64.Vec2, text_offset_y float64) {
+func (c *Context) ItemSizeEx(size f64.Vec2, text_offset_y float64) {
+	window := c.CurrentWindow
+	if window.SkipItems {
+		return
+	}
+
+	// Always align ourselves on pixel boundaries
+	line_height := math.Max(window.DC.CurrentLineHeight, size.Y)
+	text_base_offset := math.Max(window.DC.CurrentLineTextBaseOffset, text_offset_y)
+	window.DC.CursorPosPrevLine = f64.Vec2{window.DC.CursorPos.X + size.X, window.DC.CursorPos.Y}
+	window.DC.CursorPos = f64.Vec2{
+		float64(int(window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX)),
+		float64(int(window.DC.CursorPos.Y + line_height + c.Style.ItemSpacing.Y)),
+	}
+	window.DC.CursorMaxPos.X = math.Max(window.DC.CursorMaxPos.X, window.DC.CursorPosPrevLine.X)
+	window.DC.CursorMaxPos.Y = math.Max(window.DC.CursorMaxPos.Y, window.DC.CursorPos.Y-c.Style.ItemSpacing.Y)
+
+	window.DC.PrevLineHeight = line_height
+	window.DC.PrevLineTextBaseOffset = text_base_offset
+	window.DC.CurrentLineHeight = 0
+	window.DC.CurrentLineTextBaseOffset = 0
+
+	// Horizontal layout mode
+	if window.DC.LayoutType == LayoutTypeHorizontal {
+		c.SameLine()
+	}
 }
 
 func (c *Context) ItemSizeBB(bb f64.Rectangle) {
-	c.ItemSizeBBDx(bb, 0)
+	c.ItemSizeBBEx(bb, 0)
 }
 
-func (c *Context) ItemSizeBBDx(bb f64.Rectangle, text_offset_y float64) {
-	c.ItemSizeDx(bb.Size(), text_offset_y)
+func (c *Context) ItemSizeBBEx(bb f64.Rectangle, text_offset_y float64) {
+	c.ItemSizeEx(bb.Size(), text_offset_y)
 }
 
 func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
-	return c.ItemAddDx(bb, id, nil)
+	return c.ItemAddEx(bb, id, nil)
 }
 
-func (c *Context) ItemAddDx(bb f64.Rectangle, id ID, nav_bb *f64.Rectangle) bool {
+func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, nav_bb *f64.Rectangle) bool {
 	return false
+}
+
+func (c *Context) SameLine() {
+	c.SameLineEx(0, -1)
+}
+
+// Gets back to previous line and continue with horizontal layout
+//      pos_x == 0      : follow right after previous item
+//      pos_x != 0      : align to specified x position (relative to window/group left)
+//      spacing_w < 0   : use default spacing if pos_x == 0, no spacing if pos_x != 0
+//      spacing_w >= 0  : enforce spacing amount
+func (c *Context) SameLineEx(pos_x, spacing_w float64) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	if pos_x != 0 {
+		if spacing_w < 0 {
+			spacing_w = 0
+		}
+		window.DC.CursorPos.X = window.Pos.X - window.Scroll.X + pos_x + spacing_w + window.DC.GroupOffsetX + window.DC.ColumnsOffsetX
+		window.DC.CursorPos.Y = window.DC.CursorPosPrevLine.Y
+	} else {
+		if spacing_w < 0 {
+			spacing_w = c.Style.ItemSpacing.X
+		}
+		window.DC.CursorPos.X = window.DC.CursorPosPrevLine.X + spacing_w
+		window.DC.CursorPos.Y = window.DC.CursorPosPrevLine.Y
+	}
+	window.DC.CurrentLineHeight = window.DC.PrevLineHeight
+	window.DC.CurrentLineTextBaseOffset = window.DC.PrevLineTextBaseOffset
+}
+
+func (c *Context) NewLine() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	backup_layout_type := window.DC.LayoutType
+	window.DC.LayoutType = LayoutTypeVertical
+	if window.DC.CurrentLineHeight > 0.0 { // In the event that we are on a line with items that is smaller that FontSize high, we will preserve its height.
+		c.ItemSizeEx(f64.Vec2{0, 0}, -1)
+	} else {
+		c.ItemSizeEx(f64.Vec2{0, c.FontSize}, -1)
+	}
+	window.DC.LayoutType = backup_layout_type
+}
+
+func (c *Context) NextColumn() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	c.PopItemWidth()
+	c.PopClipRect()
+
+	columns := window.DC.ColumnsSet
+	columns.CellMaxY = math.Max(columns.CellMaxY, window.DC.CursorPos.Y)
+	if columns.Current++; columns.Current < columns.Count {
+		// Columns 1+ cancel out IndentX
+		window.DC.ColumnsOffsetX = c.GetColumnOffset(columns.Current) - window.DC.IndentX + c.Style.ItemSpacing.X
+		window.DrawList.ChannelsSetCurrent(columns.Current)
+	} else {
+		window.DC.ColumnsOffsetX = 0
+		window.DrawList.ChannelsSetCurrent(0)
+		columns.Current = 0
+		columns.CellMinY = columns.CellMaxY
+	}
+
+	window.DC.CursorPos.X = float64(int(window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX))
+	window.DC.CursorPos.Y = columns.CellMinY
+	window.DC.CurrentLineHeight = 0
+	window.DC.CurrentLineTextBaseOffset = 0
+
+	c.PushColumnClipRect()
+	c.PushItemWidth(c.GetColumnWidth() * 0.65) // FIXME: Move on columns setup
+}
+
+func (c *Context) PushColumnClipRect() {
+}
+
+func (c *Context) PushItemWidth(item_width float64) {
+	window := c.GetCurrentWindow()
+	window.DC.ItemWidth = item_width
+	if window.DC.ItemWidth == 0 {
+		window.DC.ItemWidth = window.ItemWidthDefault
+	}
+	window.DC.ItemWidthStack = append(window.DC.ItemWidthStack, window.DC.ItemWidth)
+}
+
+func (c *Context) GetColumnWidth() float64 {
+	return c.GetColumnWidthDx(-1)
+}
+
+func (c *Context) GetColumnWidthDx(column_index int) float64 {
+	return 0
+}
+
+func (c *Context) GetColumnWidthEx(columns *ColumnsSet, column_index int, before_resize bool) {
+}
+
+func (c *Context) GetContentRegionAvail() f64.Vec2 {
+	return f64.Vec2{}
+}
+
+func (c *Context) GetColumnOffset(column_index int) float64 {
+	window := c.GetCurrentWindowRead()
+	columns := window.DC.ColumnsSet
+
+	if column_index < 0 {
+		column_index = columns.Current
+	}
+
+	t := columns.Columns[column_index].OffsetNorm
+	x_offset := f64.Lerp(t, columns.MinX, columns.MaxX)
+	return x_offset
+}
+
+func (c *Context) GetColumnIndex() int {
+	window := c.GetCurrentWindowRead()
+	if window.DC.ColumnsSet != nil {
+		return window.DC.ColumnsSet.Current
+	}
+	return 0
+}
+
+func (c *Context) GetColumnsCount() int {
+	window := c.GetCurrentWindowRead()
+	if window.DC.ColumnsSet != nil {
+		return window.DC.ColumnsSet.Count
+	}
+	return 0
+}
+
+func (c *Context) PopItemWidth() {
+	window := c.GetCurrentWindow()
+	length := len(window.DC.ItemWidthStack)
+	window.DC.ItemWidthStack = window.DC.ItemWidthStack[:length-1]
+	if length--; length == 0 {
+		window.DC.ItemWidth = window.ItemWidthDefault
+	} else {
+		window.DC.ItemWidth = window.DC.ItemWidthStack[length-1]
+	}
+}
+
+func (c *Context) CalcItemWidth() float64 {
+	window := c.GetCurrentWindowRead()
+	w := window.DC.ItemWidth
+	if w < 0 {
+		// Align to a right-side limit. We include 1 frame padding in the calculation because this is how the width is always used (we add 2 frame padding to it), but we could move that responsibility to the widget as well.
+		width_to_right_edge := c.GetContentRegionAvail().X
+		w = math.Max(1, width_to_right_edge+w)
+	}
+	w = float64(int(w))
+	return w
+}
+
+func (c *Context) PopClipRect() {
+	window := c.GetCurrentWindow()
+	window.DrawList.PopClipRect()
+	length := len(window.DrawList._ClipRectStack)
+	clipRect := window.DrawList._ClipRectStack[length-1]
+	window.ClipRect = f64.Rectangle{f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W}}
 }

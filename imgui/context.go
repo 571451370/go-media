@@ -184,6 +184,11 @@ func (c *Context) GetStyle() *Style {
 	return &c.Style
 }
 
+func (c *Context) GetCurrentWindowRead() *Window {
+	c.CurrentWindow.WriteAccessed = true
+	return c.CurrentWindow
+}
+
 func (c *Context) GetCurrentWindow() *Window {
 	c.CurrentWindow.WriteAccessed = true
 	return c.CurrentWindow
