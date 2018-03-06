@@ -168,7 +168,11 @@ const (
 type Storage struct {
 }
 
-func CreateContext(shared_font_atlas *FontAtlas) *Context {
+func CreateContext() *Context {
+	return CreateContextEx(nil)
+}
+
+func CreateContextEx(shared_font_atlas *FontAtlas) *Context {
 	return &Context{}
 }
 
@@ -178,4 +182,10 @@ func (c *Context) GetIO() *IO {
 
 func (c *Context) GetStyle() *Style {
 	return &c.Style
+}
+
+func (c *Context) KeepAliveID(id ID) {
+	if c.ActiveId == id {
+		c.ActiveIdIsAlive = true
+	}
 }

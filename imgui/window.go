@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"hash/fnv"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type WindowFlags int
 
@@ -303,4 +307,12 @@ type Payload struct {
 	DataType       [12 + 1]uint8 // Data type tag (short user-supplied string, 12 characters max)
 	Preview        bool          // Set when AcceptDragDropPayload() was called and mouse has been hovering the target item (nb: handle overlapping drag targets)
 	Delivery       bool          // Set when AcceptDragDropPayload() was called and mouse button is released over the target item.
+}
+
+func (w *Window) GetID(str string) ID {
+	h := fnv.New32()
+	h.Write([]byte(str))
+	id := ID(h.Sum32())
+	w.Ctx.KeepAliveID(id)
+	return id
 }

@@ -71,7 +71,7 @@ type Style struct {
 	WindowRounding         float64  // Radius of window corners rounding. Set to 0.0f to have rectangular windows.
 	WindowBorderSize       float64  // Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
 	WindowMinSize          f64.Vec2 // Minimum window size. This is a global setting. If you want to constraint individual windows, use SetNextWindowSizeConstraints().
-	WindowTitleAlign       f64.Vec2 // Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
+	WindowTitleAlign       f64.Vec2 // Alignment for title bar text. Defaults to (0.0,0.5f) for left-aligned,vertically centered.
 	ChildRounding          float64  // Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
 	ChildBorderSize        float64  // Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
 	PopupRounding          float64  // Radius of popup window corners rounding.
@@ -88,7 +88,7 @@ type Style struct {
 	ScrollbarRounding      float64  // Radius of grab corners for scrollbar.
 	GrabMinSize            float64  // Minimum width/height of a grab box for slider/scrollbar.
 	GrabRounding           float64  // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
-	ButtonTextAlign        f64.Vec2 // Alignment of button text when button is larger than text. Defaults to (0.5f,0.5f) for horizontally+vertically centered.
+	ButtonTextAlign        f64.Vec2 // Alignment of button text when button is larger than text. Defaults to (0.5,0.5f) for horizontally+vertically centered.
 	DisplayWindowPadding   f64.Vec2 // Window positions are clamped to be visible within the display area by at least this amount. Only covers regular windows.
 	DisplaySafeAreaPadding f64.Vec2 // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
 	MouseCursorScale       float64  // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
@@ -127,3 +127,56 @@ const (
 	ColorEditFlags_PickerMask     ColorEditFlags = ColorEditFlagsPickerHueWheel | ColorEditFlagsPickerHueBar
 	ColorEditFlags_OptionsDefault ColorEditFlags = ColorEditFlagsUint8 | ColorEditFlagsRGB | ColorEditFlagsPickerHueBar // Change application default using SetColorEditOptions()
 )
+
+func (c *Context) StyleColorsDark(style *Style) {
+	if style == nil {
+		style = c.GetStyle()
+	}
+	colors := style.Colors[:]
+
+	colors[ColText] = f64.Vec4{1.00, 1.00, 1.00, 1.00}
+	colors[ColTextDisabled] = f64.Vec4{0.50, 0.50, 0.50, 1.00}
+	colors[ColWindowBg] = f64.Vec4{0.06, 0.06, 0.06, 0.94}
+	colors[ColChildBg] = f64.Vec4{1.00, 1.00, 1.00, 0.00}
+	colors[ColPopupBg] = f64.Vec4{0.08, 0.08, 0.08, 0.94}
+	colors[ColBorder] = f64.Vec4{0.43, 0.43, 0.50, 0.50}
+	colors[ColBorderShadow] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
+	colors[ColFrameBg] = f64.Vec4{0.16, 0.29, 0.48, 0.54}
+	colors[ColFrameBgHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.40}
+	colors[ColFrameBgActive] = f64.Vec4{0.26, 0.59, 0.98, 0.67}
+	colors[ColTitleBg] = f64.Vec4{0.04, 0.04, 0.04, 1.00}
+	colors[ColTitleBgActive] = f64.Vec4{0.16, 0.29, 0.48, 1.00}
+	colors[ColTitleBgCollapsed] = f64.Vec4{0.00, 0.00, 0.00, 0.51}
+	colors[ColMenuBarBg] = f64.Vec4{0.14, 0.14, 0.14, 1.00}
+	colors[ColScrollbarBg] = f64.Vec4{0.02, 0.02, 0.02, 0.53}
+	colors[ColScrollbarGrab] = f64.Vec4{0.31, 0.31, 0.31, 1.00}
+	colors[ColScrollbarGrabHovered] = f64.Vec4{0.41, 0.41, 0.41, 1.00}
+	colors[ColScrollbarGrabActive] = f64.Vec4{0.51, 0.51, 0.51, 1.00}
+	colors[ColCheckMark] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColSliderGrab] = f64.Vec4{0.24, 0.52, 0.88, 1.00}
+	colors[ColSliderGrabActive] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColButton] = f64.Vec4{0.26, 0.59, 0.98, 0.40}
+	colors[ColButtonHovered] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColButtonActive] = f64.Vec4{0.06, 0.53, 0.98, 1.00}
+	colors[ColHeader] = f64.Vec4{0.26, 0.59, 0.98, 0.31}
+	colors[ColHeaderHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.80}
+	colors[ColHeaderActive] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColSeparator] = colors[ColBorder]
+	colors[ColSeparatorHovered] = f64.Vec4{0.10, 0.40, 0.75, 0.78}
+	colors[ColSeparatorActive] = f64.Vec4{0.10, 0.40, 0.75, 1.00}
+	colors[ColResizeGrip] = f64.Vec4{0.26, 0.59, 0.98, 0.25}
+	colors[ColResizeGripHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.67}
+	colors[ColResizeGripActive] = f64.Vec4{0.26, 0.59, 0.98, 0.95}
+	colors[ColCloseButton] = f64.Vec4{0.41, 0.41, 0.41, 0.50}
+	colors[ColCloseButtonHovered] = f64.Vec4{0.98, 0.39, 0.36, 1.00}
+	colors[ColCloseButtonActive] = f64.Vec4{0.98, 0.39, 0.36, 1.00}
+	colors[ColPlotLines] = f64.Vec4{0.61, 0.61, 0.61, 1.00}
+	colors[ColPlotLinesHovered] = f64.Vec4{1.00, 0.43, 0.35, 1.00}
+	colors[ColPlotHistogram] = f64.Vec4{0.90, 0.70, 0.00, 1.00}
+	colors[ColPlotHistogramHovered] = f64.Vec4{1.00, 0.60, 0.00, 1.00}
+	colors[ColTextSelectedBg] = f64.Vec4{0.26, 0.59, 0.98, 0.35}
+	colors[ColModalWindowDarkening] = f64.Vec4{0.80, 0.80, 0.80, 0.35}
+	colors[ColDragDropTarget] = f64.Vec4{1.00, 1.00, 0.00, 0.90}
+	colors[ColNavHighlight] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColNavWindowingHighlight] = f64.Vec4{1.00, 1.00, 1.00, 0.70}
+}
