@@ -149,3 +149,25 @@ func (c *Context) GetNavInputAmount(n NavInput, mode InputReadMode) float64 {
 
 	return 0
 }
+
+func (c *Context) GetNavInputAmount2d(dir_sources NavDirSourceFlags, mode InputReadMode, slow_factor, fast_factor float64) f64.Vec2 {
+	delta := f64.Vec2{}
+	if dir_sources&NavDirSourceFlagsKeyboard != 0 {
+	}
+	if dir_sources&NavDirSourceFlagsPadDPad != 0 {
+	}
+	if dir_sources&NavDirSourceFlagsPadLStick != 0 {
+	}
+	if slow_factor != 0.0 && c.IsNavInputDown(NavInputTweakSlow) {
+		delta = delta.Scale(slow_factor)
+	}
+	if fast_factor != 0.0 && c.IsNavInputDown(NavInputTweakFast) {
+		delta = delta.Scale(fast_factor)
+	}
+	return delta
+}
+
+// Equivalent of IsKeyDown() for NavInputs[]
+func (c *Context) IsNavInputDown(n NavInput) bool {
+	return c.IO.NavInputs[n] > 0.0
+}

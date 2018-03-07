@@ -198,6 +198,9 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
 }
 
+func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
+}
+
 func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
 	d.AddImageEx(user_texture_id, a, b, f64.Vec2{0, 0}, f64.Vec2{1, 1}, color.RGBA{0xff, 0xff, 0xff, 0xff})
 }
