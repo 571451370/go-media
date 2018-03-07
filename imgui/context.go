@@ -283,3 +283,10 @@ func (c *Context) SetHoveredID(id ID) {
 		c.HoveredIdTimer = 0
 	}
 }
+
+func (c *Context) LogFinish() {
+	if !c.LogEnabled {
+		return
+	}
+	c.LogEnabled = false
+}

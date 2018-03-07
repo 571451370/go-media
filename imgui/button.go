@@ -282,3 +282,26 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ho
 
 	return
 }
+
+// Tip: use ImGui::PushID()/PopID() to push indices or pointers in the ID stack.
+// Then you can keep 'str_id' empty or the same for all your buttons (instead of creating a string based on a non-string id)
+func (c *Context) InvisibleButton(str_id string, size_arg f64.Vec2) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	id := window.GetID(str_id)
+	size := c.CalcItemSize(size_arg, 0, 0)
+	bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(size),
+	}
+	c.ItemSizeBB(bb)
+	if !c.ItemAdd(bb, id) {
+		return false
+	}
+
+	_, _, pressed := c.ButtonBehavior(bb, id, 0)
+	return pressed
+}

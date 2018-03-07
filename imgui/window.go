@@ -950,3 +950,14 @@ func (c *Context) BringWindowToFront(window *Window) {
 		}
 	}
 }
+
+func (c *Context) EndColumns() {
+}
+
+func (c *Context) SetCurrentWindow(window *Window) {
+	c.CurrentWindow = window
+	if window != nil {
+		c.FontSize = window.CalcFontSize()
+		c.DrawListSharedData.FontSize = c.FontSize
+	}
+}

@@ -100,6 +100,29 @@ func (c *Context) EndFrame() {
 }
 
 func (c *Context) End() {
+	window := c.CurrentWindow
+	if window.DC.ColumnsSet != nil {
+		c.EndColumns()
+	}
+	// Inner window clip rectangle
+	c.PopClipRect()
+
+	// Stop logging
+	// FIXME: add more options for scope of logging
+	if window.Flags&WindowFlagsChildWindow == 0 {
+		c.LogFinish()
+	}
+
+	// Pop from window stack
+	c.CurrentWindowStack = c.CurrentWindowStack[:len(c.CurrentWindowStack)-1]
+	if window.Flags&WindowFlagsPopup != 0 {
+		c.CurrentPopupStack = c.CurrentPopupStack[:len(c.CurrentPopupStack)-1]
+	}
+	if len(c.CurrentWindowStack) == 0 {
+		c.SetCurrentWindow(nil)
+	} else {
+		c.SetCurrentWindow(c.CurrentWindowStack[len(c.CurrentWindowStack)-1])
+	}
 }
 
 func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
@@ -120,6 +143,16 @@ func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text
 }
 
 func (c *Context) RenderTextClippedEx(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2, align f64.Vec2, clip_rect *f64.Rectangle) {
+}
+
+func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
+}
+
+func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
+	d.AddImageEx(user_texture_id, a, b, f64.Vec2{0, 0}, f64.Vec2{1, 1}, color.RGBA{0xff, 0xff, 0xff, 0xff})
+}
+
+func (d *DrawList) AddImageEx(user_texture_id TextureID, a, b, uv_a, uv_b f64.Vec2, col color.RGBA) {
 }
 
 func (d *DrawList) PopClipRect() {
