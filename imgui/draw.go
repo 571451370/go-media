@@ -84,13 +84,20 @@ func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
 }
 
 func (c *Context) RenderFrame(p_min, p_max f64.Vec2, col color.RGBA) {
-	c.RenderFrameDx(p_min, p_max, col, true, 0)
+	c.RenderFrameEx(p_min, p_max, col, true, 0)
 }
 
-func (c *Context) RenderFrameDx(p_min, p_max f64.Vec2, col color.RGBA, border bool, rounding float64) {
+func (c *Context) RenderFrameEx(p_min, p_max f64.Vec2, col color.RGBA, border bool, rounding float64) {
 }
 
 func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
+}
+
+func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2) {
+	c.RenderTextClippedEx(pos_min, pos_max, text, text_size_if_known, f64.Vec2{0, 0}, nil)
+}
+
+func (c *Context) RenderTextClippedEx(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2, align f64.Vec2, clip_rect *f64.Rectangle) {
 }
 
 func (d *DrawList) PopClipRect() {

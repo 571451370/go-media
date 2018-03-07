@@ -176,6 +176,10 @@ func CreateContextEx(shared_font_atlas *FontAtlas) *Context {
 	return &Context{}
 }
 
+func (c *Context) GetVersion() string {
+	return "1.6.0 WIP"
+}
+
 func (c *Context) GetIO() *IO {
 	return &c.IO
 }
@@ -206,4 +210,20 @@ func (c *Context) GetFrameHeight() float64 {
 
 func (c *Context) GetFrameHeightWithSpacing() float64 {
 	return c.FontSize + c.Style.FramePadding.Y*2 + c.Style.ItemSpacing.Y
+}
+
+func (c *Context) GetTime() float64 {
+	return c.Time
+}
+
+func (c *Context) GetFrameCount() int {
+	return c.FrameCount
+}
+
+func (c *Context) GetOverlayDrawList() *DrawList {
+	return &c.OverlayDrawList
+}
+
+func (c *Context) GetDrawListSharedData() *DrawListSharedData {
+	return &c.DrawListSharedData
 }

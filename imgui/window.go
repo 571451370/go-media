@@ -586,3 +586,42 @@ func (c *Context) PopClipRect() {
 	clipRect := window.DrawList._ClipRectStack[length-1]
 	window.ClipRect = f64.Rectangle{f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W}}
 }
+
+func (c *Context) CalcItemSize(size f64.Vec2, default_x, default_y float64) f64.Vec2 {
+	var content_max f64.Vec2
+	if size.X < 0 || size.Y < 0 {
+		content_max = c.CurrentWindow.Pos.Add(c.GetContentRegionMax())
+	}
+	if size.X == 0 {
+		size.X = default_x
+	} else {
+		size.X += math.Max(content_max.X-c.CurrentWindow.DC.CursorPos.X, 4)
+	}
+
+	if size.Y == 0 {
+		size.Y = default_y
+	} else {
+		size.Y += math.Max(content_max.Y-c.CurrentWindow.DC.CursorPos.Y, 4)
+	}
+
+	return size
+}
+
+func (c *Context) CalcWrapWidthForPos(pos f64.Vec2, wrap_pos_x float64) float64 {
+	if wrap_pos_x < 0 {
+		return 0
+	}
+
+	window := c.GetCurrentWindowRead()
+	if wrap_pos_x == 0 {
+		wrap_pos_x = c.GetContentRegionMax().X + window.Pos.X
+	} else if wrap_pos_x > 0 {
+		wrap_pos_x += window.Pos.X - window.Scroll.X // wrap_pos_x is provided is window local space
+	}
+
+	return math.Max(wrap_pos_x-pos.X, 1)
+}
+
+func (w *Window) CalcFontSize() float64 {
+	return w.Ctx.FontBaseSize * w.FontWindowScale
+}

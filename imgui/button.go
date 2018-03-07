@@ -54,7 +54,7 @@ func (c *Context) ArrowButton(str_id string, dir Dir) bool {
 		return false
 	}
 
-	hovered, held, pressed := c.ButtonBehavior(bb, id)
+	hovered, held, pressed := c.ButtonBehavior(bb, id, 0)
 
 	var col color.RGBA
 	switch {
@@ -68,16 +68,65 @@ func (c *Context) ArrowButton(str_id string, dir Dir) bool {
 
 	// Render
 	c.RenderNavHighlight(bb, id)
-	c.RenderFrameDx(bb.Min, bb.Max, col, true, c.Style.FrameRounding)
+	c.RenderFrameEx(bb.Min, bb.Max, col, true, c.Style.FrameRounding)
 	c.RenderArrow(bb.Min.Add(c.Style.FramePadding), dir)
 
 	return pressed
 }
 
 func (c *Context) ButtonEx(label string, size_arg f64.Vec2, flags ButtonFlags) bool {
-	return false
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	id := window.GetID(label)
+	label_size := c.CalcTextSizeEx(label, true, -1)
+
+	pos := window.DC.CursorPos
+	if flags&ButtonFlagsAlignTextBaseLine != 0 && style.FramePadding.Y < window.DC.CurrentLineTextBaseOffset {
+		pos.Y += window.DC.CurrentLineTextBaseOffset - style.FramePadding.Y
+	}
+	size := c.CalcItemSize(size_arg, label_size.X+style.FramePadding.X*2, label_size.Y+style.FramePadding.Y*2)
+
+	bb := f64.Rectangle{pos, pos.Add(size)}
+	c.ItemSizeBBEx(bb, style.FramePadding.Y)
+	if !c.ItemAdd(bb, id) {
+		return false
+	}
+
+	if window.DC.ItemFlags&ItemFlagsButtonRepeat != 0 {
+		flags |= ButtonFlagsRepeat
+	}
+
+	hovered, held, pressed := c.ButtonBehavior(bb, id, flags)
+
+	var col color.RGBA
+	switch {
+	case hovered && held:
+		col = c.GetColorFromStyle(ColButtonActive)
+	case hovered:
+		col = c.GetColorFromStyle(ColButtonHovered)
+	default:
+		col = c.GetColorFromStyle(ColButton)
+	}
+
+	// Render
+	c.RenderNavHighlight(bb, id)
+	c.RenderFrameEx(bb.Min, bb.Max, col, true, style.FrameRounding)
+	c.RenderTextClippedEx(
+		bb.Min.Add(style.FramePadding),
+		bb.Max.Sub(style.FramePadding),
+		label,
+		&label_size,
+		style.ButtonTextAlign,
+		&bb,
+	)
+
+	return pressed
 }
 
-func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID) (hovered, held, pressed bool) {
+func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (hovered, held, pressed bool) {
 	return
 }

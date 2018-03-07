@@ -92,3 +92,10 @@ func (c *Context) GetFont() *Font {
 func (c *Context) GetFontSize() float64 {
 	return c.FontSize
 }
+
+func (c *Context) SetWindowFontScale(scale float64) {
+	window := c.GetCurrentWindow()
+	window.FontWindowScale = scale
+	c.FontSize = window.CalcFontSize()
+	c.DrawListSharedData.FontSize = c.FontSize
+}

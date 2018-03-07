@@ -1,5 +1,7 @@
 package imgui
 
+import "github.com/qeedquan/go-media/math/f64"
+
 type InputTextFlags int
 
 const (
@@ -44,4 +46,12 @@ func (c *Context) GetTextLineHeight() float64 {
 
 func (c *Context) GetTextLineHeightWithSpacing() float64 {
 	return c.FontSize + c.Style.ItemSpacing.Y
+}
+
+func (c *Context) CalcTextSize(text string) f64.Vec2 {
+	return c.CalcTextSizeEx(text, false, -1)
+}
+
+func (c *Context) CalcTextSizeEx(text string, hide_text_after_double_hash bool, wrap_width float64) f64.Vec2 {
+	return f64.Vec2{}
 }
