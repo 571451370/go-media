@@ -80,6 +80,28 @@ const (
 	DrawListFlagsAntiAliasedFill  DrawListFlags = 1 << 1
 )
 
+// This is normally called by Render(). You may want to call it directly if you want to avoid calling Render() but the gain will be very minimal.
+func (c *Context) EndFrame() {
+	// Don't process EndFrame() multiple times.
+	if c.FrameCountEnded == c.FrameCount {
+		return
+	}
+
+	// Notify OS when our Input Method Editor cursor has moved (e.g. CJK inputs using Microsoft IME)
+	if c.IO.ImeSetInputScreenPosFn != nil && c.OsImePosRequest.DistanceSquared(c.OsImePosSet) > 0.0001 {
+		c.IO.ImeSetInputScreenPosFn(int(c.OsImePosRequest.X), int(c.OsImePosRequest.Y))
+		c.OsImePosSet = c.OsImePosRequest
+	}
+
+	// Hide implicit "Debug" window if it hasn't been used
+	if c.CurrentWindow != nil && !c.CurrentWindow.WriteAccessed {
+		c.CurrentWindow.Active = false
+	}
+}
+
+func (c *Context) End() {
+}
+
 func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
 }
 

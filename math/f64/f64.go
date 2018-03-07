@@ -86,6 +86,11 @@ func (p Vec2) Distance(q Vec2) float64 {
 	return p.Sub(q).Len()
 }
 
+func (p Vec2) DistanceSquared(q Vec2) float64 {
+	r := p.Sub(q)
+	return r.Dot(r)
+}
+
 func (p Vec2) Polar() Polar {
 	return Polar{p.Len(), math.Atan2(p.Y, p.X)}
 }
@@ -243,6 +248,11 @@ func (p Vec3) Normalize() Vec3 {
 
 func (p Vec3) Distance(q Vec3) float64 {
 	return p.Sub(q).Len()
+}
+
+func (p Vec3) DistanceSquared(q Vec3) float64 {
+	r := p.Sub(q)
+	return r.Dot(r)
 }
 
 func (p Vec3) Lerp(t float64, q Vec3) Vec3 {
