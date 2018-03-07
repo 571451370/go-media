@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"hash/fnv"
+	"image/color"
 	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -952,6 +953,85 @@ func (c *Context) BringWindowToFront(window *Window) {
 }
 
 func (c *Context) EndColumns() {
+	window := c.GetCurrentWindow()
+	columns := window.DC.ColumnsSet
+
+	c.PopItemWidth()
+	c.PopClipRect()
+	window.DrawList.ChannelsMerge()
+
+	columns.CellMaxY = math.Max(columns.CellMaxY, window.DC.CursorPos.Y)
+	window.DC.CursorPos.Y = columns.CellMaxY
+	if columns.Flags&ColumnsFlagsGrowParentContentsSize == 0 {
+		// Restore cursor max pos, as columns don't grow parent
+		window.DC.CursorMaxPos.X = math.Max(columns.StartMaxPosX, columns.MaxX)
+	}
+
+	// Draw columns borders and handle resize
+	is_being_resized := false
+	if columns.Flags&ColumnsFlagsNoBorder == 0 && !window.SkipItems {
+		y1 := columns.StartPosY
+		y2 := window.DC.CursorPos.Y
+		dragging_column := -1
+		for n := 1; n < columns.Count; n++ {
+			x := window.Pos.X + c.GetColumnOffset(n)
+			column_id := columns.ID + ID(n)
+			column_hw := c.GetColumnsRectHalfWidth() // Half-width for interaction
+			column_rect := f64.Rectangle{f64.Vec2{x - column_hw, y1}, f64.Vec2{x + column_hw, y2}}
+			c.KeepAliveID(column_id)
+			if c.IsClippedEx(column_rect, column_id, false) {
+				continue
+			}
+
+			var hovered, held bool
+			if columns.Flags&ColumnsFlagsNoResize == 0 {
+				hovered, held, _ = c.ButtonBehavior(column_rect, column_id, 0)
+				if hovered || held {
+					c.MouseCursor = MouseCursorResizeEW
+				}
+				if held && columns.Columns[n].Flags&ColumnsFlagsNoResize == 0 {
+					dragging_column = n
+				}
+			}
+
+			// Draw column (we clip the Y boundaries CPU side because very long triangles are mishandled by some GPU drivers.)
+			var col color.RGBA
+			switch {
+			case held:
+				col = c.GetColorFromStyle(ColSeparatorActive)
+			case hovered:
+				col = c.GetColorFromStyle(ColSeparatorHovered)
+			default:
+				col = c.GetColorFromStyle(ColSeparator)
+			}
+			xi := float64(int(x))
+			window.DrawList.AddLine(
+				f64.Vec2{xi, math.Max(y1+1, window.ClipRect.Min.Y)},
+				f64.Vec2{xi, math.Min(y2, window.ClipRect.Max.Y)},
+				col,
+			)
+		}
+
+		// Apply dragging after drawing the column lines, so our rendered lines are in sync
+		// with how items were displayed during the frame.
+		if dragging_column != -1 {
+			if !columns.IsBeingResized {
+				for n := 0; n < columns.Count+1; n++ {
+					columns.Columns[n].OffsetNormBeforeResize = columns.Columns[n].OffsetNorm
+				}
+				columns.IsBeingResized = true
+				is_being_resized = columns.IsBeingResized
+				x := c.GetDraggedColumnOffset(columns, dragging_column)
+				c.SetColumnOffset(dragging_column, x)
+			}
+		}
+	}
+
+	columns.IsBeingResized = is_being_resized
+
+	window.DC.ColumnsSet = nil
+	window.DC.ColumnsOffsetX = 0
+	window.DC.CursorPos.X = float64(int(window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX))
 }
 
 func (c *Context) SetCurrentWindow(window *Window) {
@@ -960,4 +1040,61 @@ func (c *Context) SetCurrentWindow(window *Window) {
 		c.FontSize = window.CalcFontSize()
 		c.DrawListSharedData.FontSize = c.FontSize
 	}
+}
+
+func (c *Context) GetColumnsRectHalfWidth() float64 {
+	return 4
+}
+
+func (c *Context) IsClippedEx(bb f64.Rectangle, id ID, clip_even_when_logged bool) bool {
+	window := c.CurrentWindow
+	if !bb.Overlaps(window.ClipRect) {
+		if id == 0 || id != c.ActiveId {
+			if clip_even_when_logged || !c.LogEnabled {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (c *Context) GetDraggedColumnOffset(columns *ColumnsSet, column_index int) float64 {
+	// Active (dragged) column always follow mouse. The reason we need this is that dragging a column to the right edge of an auto-resizing
+	// window creates a feedback loop because we store normalized positions. So while dragging we enforce absolute positioning.
+	window := c.CurrentWindow
+	x := c.IO.MousePos.X - c.ActiveIdClickOffset.X + c.GetColumnsRectHalfWidth() - window.Pos.X
+	x = math.Max(x, c.GetColumnOffset(column_index-1)+c.Style.ColumnsMinSpacing)
+	if columns.Flags&ColumnsFlagsNoPreserveWidths != 0 {
+		x = math.Min(x, c.GetColumnOffset(column_index+1)-c.Style.ColumnsMinSpacing)
+	}
+
+	return x
+}
+
+func (c *Context) SetColumnOffset(column_index int, offset float64) {
+	window := c.CurrentWindow
+	columns := window.DC.ColumnsSet
+
+	if column_index < 0 {
+		column_index = columns.Current
+	}
+
+	preserve_width := columns.Flags&ColumnsFlagsNoPreserveWidths == 0 && column_index < columns.Count-1
+	width := 0.0
+	if preserve_width {
+		width = c.GetColumnWidthEx(columns, column_index, columns.IsBeingResized)
+	}
+
+	if columns.Flags&ColumnsFlagsNoForceWithinWindow == 0 {
+		offset = math.Min(offset, columns.MaxX-c.Style.ColumnsMinSpacing*float64(columns.Count-column_index))
+	}
+	columns.Columns[column_index].OffsetNorm = c.PixelsToOffsetNorm(columns, offset-columns.MinX)
+
+	if preserve_width {
+		c.SetColumnOffset(column_index+1, offset+math.Max(c.Style.ColumnsMinSpacing, width))
+	}
+}
+
+func (c *Context) PixelsToOffsetNorm(columns *ColumnsSet, offset float64) float64 {
+	return offset / (columns.MaxX - columns.MinX)
 }

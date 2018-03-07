@@ -161,6 +161,40 @@ func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text
 func (c *Context) RenderTextClippedEx(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2, align f64.Vec2, clip_rect *f64.Rectangle) {
 }
 
+func (d *DrawList) PathClear() {
+	d._Path = d._Path[:0]
+}
+
+func (d *DrawList) PathLineTo(pos f64.Vec2) {
+	d._Path = append(d._Path, pos)
+}
+
+func (d *DrawList) PathStroke(col color.RGBA, closed bool) {
+	d.PathStrokeEx(col, closed, 1)
+}
+
+func (d *DrawList) PathStrokeEx(col color.RGBA, closed bool, thickness float64) {
+	d.AddPolyline(d._Path, col, closed, thickness)
+	d.PathClear()
+}
+
+func (d *DrawList) AddLine(a, b f64.Vec2, col color.RGBA) {
+	d.AddLineEx(a, b, col, 1)
+}
+
+func (d *DrawList) AddLineEx(a, b f64.Vec2, col color.RGBA, thickness float64) {
+	if col.A == 0 {
+		return
+	}
+	half := f64.Vec2{0.5, 0.5}
+	d.PathLineTo(a.Add(half))
+	d.PathLineTo(b.Add(half))
+	d.PathStrokeEx(col, false, thickness)
+}
+
+func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, thickness float64) {
+}
+
 func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
 }
 
@@ -307,4 +341,7 @@ func (d *DrawList) AddDrawCmd() {
 	draw_cmd.ClipRect = d.GetCurrentClipRect()
 	draw_cmd.TextureId = d.GetCurrentTextureId()
 	d.CmdBuffer = append(d.CmdBuffer, draw_cmd)
+}
+
+func (d *DrawList) ChannelsMerge() {
 }
