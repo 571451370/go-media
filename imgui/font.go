@@ -89,6 +89,46 @@ func (c *Context) GetFont() *Font {
 	return c.Font
 }
 
+func (c *Context) SetCurrentFont(font *Font) {
+	c.Font = font
+	c.FontBaseSize = c.IO.FontGlobalScale * c.Font.FontSize * c.Font.Scale
+	c.FontSize = 0
+	if c.CurrentWindow != nil {
+		c.FontSize = c.CurrentWindow.CalcFontSize()
+	}
+
+	atlas := c.Font.ContainerAtlas
+	c.DrawListSharedData.TexUvWhitePixel = atlas.TexUvWhitePixel
+	c.DrawListSharedData.Font = c.Font
+	c.DrawListSharedData.FontSize = c.FontSize
+}
+
+func (c *Context) PushFont(font *Font) {
+	if font == nil {
+		font = c.GetDefaultFont()
+	}
+	c.SetCurrentFont(font)
+	c.FontStack = append(c.FontStack, font)
+	c.CurrentWindow.DrawList.PushTextureID(font.ContainerAtlas.TexID)
+}
+
+func (c *Context) PopFont() {
+	c.CurrentWindow.DrawList.PopTextureID()
+	c.FontStack = c.FontStack[:len(c.FontStack)-1]
+	if len(c.FontStack) == 0 {
+		c.SetCurrentFont(c.GetDefaultFont())
+	} else {
+		c.SetCurrentFont(c.FontStack[len(c.FontStack)-1])
+	}
+}
+
+func (c *Context) GetDefaultFont() *Font {
+	if c.IO.FontDefault != nil {
+		return c.IO.FontDefault
+	}
+	return c.IO.Fonts.Fonts[0]
+}
+
 func (c *Context) GetFontSize() float64 {
 	return c.FontSize
 }

@@ -89,6 +89,63 @@ type NavMoveResult struct {
 	RectRel    f64.Rectangle // Best candidate bounding box in window relative space
 }
 
-func (c *Context) IsNavInputPressed(NavInput, InputReadMode) bool {
-	return false
+func (c *Context) IsNavInputPressed(n NavInput, mode InputReadMode) bool {
+	return c.GetNavInputAmount(n, mode) > 0
+}
+
+func (c *Context) GetNavInputAmount(n NavInput, mode InputReadMode) float64 {
+	// Instant, read analog input (0.0f..1.0f, as provided by user)
+	if mode == InputReadModeDown {
+		return c.IO.NavInputs[n]
+	}
+
+	t := c.IO.NavInputsDownDuration[n]
+	// Return 1.0f when just released, no repeat, ignore analog input.
+	if t < 0 && mode == InputReadModeReleased {
+		if c.IO.NavInputsDownDurationPrev[n] >= 0 {
+			return 1
+		}
+		return 0
+	}
+
+	if t < 0 {
+		return 0
+	}
+
+	// Return 1.0f when just pressed, no repeat, ignore analog input.
+	if mode == InputReadModePressed {
+		if t == 0 {
+			return 1
+		}
+		return 0
+	}
+
+	if mode == InputReadModeRepeat {
+		return float64(c.CalcTypematicPressedRepeatAmount(
+			t,
+			t-c.IO.DeltaTime,
+			c.IO.KeyRepeatDelay*0.80,
+			c.IO.KeyRepeatRate*0.80,
+		))
+	}
+
+	if mode == InputReadModeRepeatSlow {
+		return float64(c.CalcTypematicPressedRepeatAmount(
+			t,
+			t-c.IO.DeltaTime,
+			c.IO.KeyRepeatDelay*1,
+			c.IO.KeyRepeatRate*2,
+		))
+	}
+
+	if mode == InputReadModeRepeatFast {
+		return float64(c.CalcTypematicPressedRepeatAmount(
+			t,
+			t-c.IO.DeltaTime,
+			c.IO.KeyRepeatDelay*0.80,
+			c.IO.KeyRepeatRate*0.30,
+		))
+	}
+
+	return 0
 }

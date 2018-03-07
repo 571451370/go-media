@@ -80,6 +80,22 @@ const (
 	DrawListFlagsAntiAliasedFill  DrawListFlags = 1 << 1
 )
 
+func (c *Context) NewFrame() {
+	// Load settings on first frame
+	if !c.SettingsLoaded {
+		c.SettingsLoaded = true
+	}
+
+	c.Time += c.IO.DeltaTime
+	c.FrameCount += 1
+	c.TooltipOverrideCount = 0
+	c.WindowsActiveCount = 0
+
+	c.SetCurrentFont(c.GetDefaultFont())
+	c.DrawListSharedData.ClipRectFullscreen = f64.Vec4{0, 0, c.IO.DisplaySize.X, c.IO.DisplaySize.Y}
+	c.DrawListSharedData.CurveTessellationTol = c.Style.CurveTessellationTol
+}
+
 // This is normally called by Render(). You may want to call it directly if you want to avoid calling Render() but the gain will be very minimal.
 func (c *Context) EndFrame() {
 	// Don't process EndFrame() multiple times.
