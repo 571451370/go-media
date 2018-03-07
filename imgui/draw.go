@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"image/color"
+	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -25,17 +26,18 @@ type DrawList struct {
 	VtxBuffer []DrawVert // Vertex buffer.
 
 	// [Internal, used while building lists]
-	Flags           DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
-	_Data           *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
-	_OwnerName      string              // Pointer to owner window's name for debugging
-	_VtxCurrentIdx  uint                // [Internal] == VtxBuffer.Size
-	_VtxWritePtr    []DrawVert          // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
-	_IdxWritePtr    []DrawIdx           // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
-	_ClipRectStack  []f64.Vec4          // [Internal]
-	_TextureIdStack []TextureID         // [Internal]
-	_Path           []f64.Vec2          // [Internal] current path building                   _ChannelsCurrent int   // [Internal] current channel number (0)
-	_ChannelsCount  int                 // [Internal] number of active channels (1+)
-	_Channels       []DrawChannel       // [Internal] draw channels for columns API (not resized down so _ChannelsCount may be smaller than _Channels.Size)
+	Flags            DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
+	_Data            *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
+	_OwnerName       string              // Pointer to owner window's name for debugging
+	_VtxCurrentIdx   uint                // [Internal] == VtxBuffer.Size
+	_VtxWritePtr     int                 // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
+	_IdxWritePtr     int                 // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
+	_ClipRectStack   []f64.Vec4          // [Internal]
+	_TextureIdStack  []TextureID         // [Internal]
+	_Path            []f64.Vec2          // [Internal] current path building                   _ChannelsCurrent int   // [Internal] current channel number (0)
+	_ChannelsCurrent int                 // [Internal] current channel number (0)
+	_ChannelsCount   int                 // [Internal] number of active channels (1+)
+	_Channels        []DrawChannel       // [Internal] draw channels for columns API (not resized down so _ChannelsCount may be smaller than _Channels.Size)
 }
 
 type DrawCmd struct {
@@ -92,9 +94,57 @@ func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
 }
 
 func (d *DrawList) PopClipRect() {
+	d._ClipRectStack = d._ClipRectStack[:len(d._ClipRectStack)-1]
+	d.UpdateClipRect()
 }
 
-func (d *DrawList) ChannelsSetCurrent(int) {
+func (d *DrawList) PushTextureID(texture_id TextureID) {
+	d._TextureIdStack = append(d._TextureIdStack, texture_id)
+	d.UpdateTextureID()
+}
+
+func (d *DrawList) PopTextureID() {
+	d._TextureIdStack = d._TextureIdStack[:len(d._TextureIdStack)-1]
+	d.UpdateTextureID()
+}
+
+func (d *DrawList) UpdateTextureID() {
+	// If current command is used with different settings we need to add a new command
+	curr_texture_id := d.GetCurrentTextureId()
+	var curr_cmd *DrawCmd
+	if length := len(d.CmdBuffer); length > 0 {
+		curr_cmd = &d.CmdBuffer[length-1]
+	}
+	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.TextureId == curr_texture_id) || curr_cmd.UserCallback != nil {
+		d.AddDrawCmd()
+		return
+	}
+
+	// Try to merge with previous command if it matches, else use current command
+	var prev_cmd *DrawCmd
+	if length := len(d.CmdBuffer); length > 1 {
+		prev_cmd = &d.CmdBuffer[length-2]
+	}
+	if curr_cmd.ElemCount == 0 && prev_cmd != nil && prev_cmd.TextureId == curr_texture_id &&
+		prev_cmd.ClipRect == d.GetCurrentClipRect() && prev_cmd.UserCallback == nil {
+		d.CmdBuffer = d.CmdBuffer[:len(d.CmdBuffer)-1]
+	} else {
+		curr_cmd.TextureId = curr_texture_id
+	}
+}
+
+func (d *DrawList) ChannelsSetCurrent(idx int) {
+	if d._ChannelsCurrent == idx {
+		return
+	}
+	d._Channels[d._ChannelsCurrent].CmdBuffer = d.CmdBuffer
+	d._Channels[d._ChannelsCurrent].IdxBuffer = d.IdxBuffer
+
+	d._ChannelsCurrent = idx
+
+	d.CmdBuffer = d._Channels[d._ChannelsCurrent].CmdBuffer
+	d.IdxBuffer = d._Channels[d._ChannelsCurrent].IdxBuffer
+	d._IdxWritePtr = len(d.IdxBuffer)
 }
 
 func (d *DrawList) PushClipRect(cr_min, cr_max f64.Vec2) {
@@ -102,9 +152,81 @@ func (d *DrawList) PushClipRect(cr_min, cr_max f64.Vec2) {
 }
 
 func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_current_clip_rect bool) {
+	cr := f64.Vec4{cr_min.X, cr_min.Y, cr_max.X, cr_max.Y}
+	length := len(d._ClipRectStack)
+	if intersect_with_current_clip_rect && length > 0 {
+		current := d._ClipRectStack[length-1]
+		if cr.X < current.X {
+			cr.X = current.X
+		}
+		if cr.Y < current.Y {
+			cr.Y = current.Y
+		}
+		if cr.Z > current.Z {
+			cr.Z = current.Z
+		}
+		if cr.W > current.W {
+			cr.W = current.W
+		}
+	}
+	cr.Z = math.Max(cr.X, cr.Z)
+	cr.W = math.Max(cr.Y, cr.W)
+
+	d._ClipRectStack = append(d._ClipRectStack, cr)
+	d.UpdateClipRect()
+}
+
+// Our scheme may appears a bit unusual, basically we want the most-common calls AddLine AddRect etc. to not have to perform any check so we always have a command ready in the stack.
+func (d *DrawList) UpdateClipRect() {
+	// If current command is used with different settings we need to add a new command
+	curr_clip_rect := d.GetCurrentClipRect()
+	var curr_cmd *DrawCmd
+	if length := len(d.CmdBuffer); length > 0 {
+		curr_cmd = &d.CmdBuffer[length-1]
+	}
+	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.ClipRect == curr_clip_rect) || curr_cmd.UserCallback != nil {
+		d.AddDrawCmd()
+		return
+	}
+
+	// Try to merge with previous command if it matches, else use current command
+	var prev_cmd *DrawCmd
+	if length := len(d.CmdBuffer); length > 1 {
+		prev_cmd = &d.CmdBuffer[length-2]
+	}
+
+	if curr_cmd.ElemCount == 0 && prev_cmd != nil && prev_cmd.ClipRect == curr_clip_rect &&
+		prev_cmd.TextureId == d.GetCurrentTextureId() && prev_cmd.UserCallback == nil {
+		d.CmdBuffer = d.CmdBuffer[:len(d.CmdBuffer)-1]
+	} else {
+		curr_cmd.ClipRect = curr_clip_rect
+	}
 }
 
 func (d *DrawList) PushClipRectFullscreen() {
 	clipRect := d._Data.ClipRectFullscreen
 	d.PushClipRect(f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W})
+}
+
+func (d *DrawList) GetCurrentClipRect() f64.Vec4 {
+	length := len(d._ClipRectStack)
+	if length > 0 {
+		return d._ClipRectStack[length-1]
+	}
+	return d._Data.ClipRectFullscreen
+}
+
+func (d *DrawList) GetCurrentTextureId() TextureID {
+	length := len(d._TextureIdStack)
+	if length > 0 {
+		return d._TextureIdStack[length-1]
+	}
+	return nil
+}
+
+func (d *DrawList) AddDrawCmd() {
+	var draw_cmd DrawCmd
+	draw_cmd.ClipRect = d.GetCurrentClipRect()
+	draw_cmd.TextureId = d.GetCurrentTextureId()
+	d.CmdBuffer = append(d.CmdBuffer, draw_cmd)
 }
