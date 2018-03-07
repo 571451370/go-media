@@ -204,6 +204,28 @@ func (c *Context) KeepAliveID(id ID) {
 	}
 }
 
+func (c *Context) ClearActiveID() {
+	c.SetActiveID(0, nil)
+}
+
+func (c *Context) SetActiveID(id ID, window *Window) {
+	c.ActiveIdIsJustActivated = c.ActiveId != id
+	if c.ActiveIdIsJustActivated {
+		c.ActiveIdTimer = 0
+	}
+	c.ActiveId = id
+	c.ActiveIdAllowNavDirFlags = 0
+	c.ActiveIdAllowOverlap = false
+	c.ActiveIdWindow = window
+	if id != 0 {
+		c.ActiveIdIsAlive = true
+		c.ActiveIdSource = InputSourceMouse
+		if c.NavActivateId == id || c.NavInputId == id || c.NavJustTabbedId == id || c.NavJustMovedToId == id {
+			c.ActiveIdSource = InputSourceNav
+		}
+	}
+}
+
 func (c *Context) GetFrameHeight() float64 {
 	return c.FontSize + c.Style.FramePadding.Y*2
 }
@@ -226,4 +248,14 @@ func (c *Context) GetOverlayDrawList() *DrawList {
 
 func (c *Context) GetDrawListSharedData() *DrawListSharedData {
 	return &c.DrawListSharedData
+}
+
+func (c *Context) SetHoveredID(id ID) {
+	c.HoveredId = id
+	c.HoveredIdAllowOverlap = false
+	if id != 0 && c.HoveredIdPreviousFrame == id {
+		c.HoveredIdTimer = c.IO.DeltaTime
+	} else {
+		c.HoveredIdTimer = 0
+	}
 }

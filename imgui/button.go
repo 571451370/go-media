@@ -128,5 +128,35 @@ func (c *Context) ButtonEx(label string, size_arg f64.Vec2, flags ButtonFlags) b
 }
 
 func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (hovered, held, pressed bool) {
+	window := c.GetCurrentWindow()
+
+	if flags&ButtonFlagsDisabled != 0 {
+		if c.ActiveId == id {
+			c.ClearActiveID()
+		}
+		return
+	}
+
+	// Default behavior requires click+release on same spot
+	if flags&(ButtonFlagsPressedOnClickRelease|ButtonFlagsPressedOnClick|ButtonFlagsPressedOnRelease|ButtonFlagsPressedOnDoubleClick) == 0 {
+		flags |= ButtonFlagsPressedOnClickRelease
+	}
+
+	backup_hovered_window := c.HoveredWindow
+	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
+		c.HoveredWindow = window
+	}
+	_ = backup_hovered_window
+
+	hovered = c.ItemHoverable(bb, id)
+
+	// Special mode for Drag and Drop where holding button pressed for a long time while dragging another item triggers the button
+	if flags&ButtonFlagsPressedOnDragDropHold != 0 && c.DragDropActive && c.DragDropSourceFlags&DragDropFlagsSourceNoHoldToOpenOthers == 0 {
+		if c.IsItemHovered(HoveredFlagsAllowWhenBlockedByActiveItem) {
+			hovered = true
+			c.SetHoveredID(id)
+		}
+	}
+
 	return
 }

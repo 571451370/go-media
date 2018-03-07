@@ -234,13 +234,6 @@ const (
 	ItemFlagsDefault_                 ItemFlags = ItemFlagsAllowKeyboardFocus
 )
 
-type ItemStatusFlags int
-
-const (
-	ItemStatusFlags_HoveredRect    ItemStatusFlags = 1 << 0
-	ItemStatusFlags_HasDisplayRect ItemStatusFlags = 1 << 1
-)
-
 type LayoutType int
 
 const (
@@ -300,6 +293,21 @@ const (
 	DragDropFlagsAcceptPeekOnly          DragDropFlags = DragDropFlagsAcceptBeforeDelivery | DragDropFlagsAcceptNoDrawDefaultRect // For peeking ahead and inspecting the payload before delivery.
 )
 
+type HoveredFlags int
+
+const (
+	HoveredFlagsDefault                 HoveredFlags = 0      // Return true if directly over the item/window not obstructed by another window not obstructed by an active popup or modal blocking inputs under them.
+	HoveredFlagsChildWindows            HoveredFlags = 1 << 0 // IsWindowHovered() only: Return true if any children of the window is hovered
+	HoveredFlagsRootWindow              HoveredFlags = 1 << 1 // IsWindowHovered() only: Test from root window (top most parent of the current hierarchy)
+	HoveredFlagsAnyWindow               HoveredFlags = 1 << 2 // IsWindowHovered() only: Return true if any window is hovered
+	HoveredFlagsAllowWhenBlockedByPopup HoveredFlags = 1 << 3 // Return true even if a popup window is normally blocking access to this item/window
+	//HoveredFlagsAllowWhenBlockedByModal     HoveredFlags= 1 << 4   // Return true even if a modal popup window is normally blocking access to this item/window. FIXME-TODO: Unavailable yet.
+	HoveredFlagsAllowWhenBlockedByActiveItem HoveredFlags = 1 << 5 // Return true even if an active item is blocking access to this item/window. Useful for Drag and Drop patterns.
+	HoveredFlagsAllowWhenOverlapped          HoveredFlags = 1 << 6 // Return true even if the position is overlapped by another window
+	HoveredFlagsRectOnly                     HoveredFlags = HoveredFlagsAllowWhenBlockedByPopup | HoveredFlagsAllowWhenBlockedByActiveItem | HoveredFlagsAllowWhenOverlapped
+	HoveredFlagsRootAndChildWindows          HoveredFlags = HoveredFlagsRootWindow | HoveredFlagsChildWindows
+)
+
 type Payload struct {
 	Data           interface{}
 	SourceId       ID            // Source item id
@@ -309,6 +317,13 @@ type Payload struct {
 	Preview        bool          // Set when AcceptDragDropPayload() was called and mouse has been hovering the target item (nb: handle overlapping drag targets)
 	Delivery       bool          // Set when AcceptDragDropPayload() was called and mouse button is released over the target item.
 }
+
+type ItemStatusFlags int
+
+const (
+	ItemStatusFlagsHoveredRect    ItemStatusFlags = 1 << 0
+	ItemStatusFlagsHasDisplayRect ItemStatusFlags = 1 << 1
+)
 
 func (w *Window) GetID(str string) ID {
 	h := fnv.New32()
@@ -486,10 +501,34 @@ func (c *Context) GetColumnWidth() float64 {
 }
 
 func (c *Context) GetColumnWidthDx(column_index int) float64 {
-	return 0
+	window := c.GetCurrentWindowRead()
+	columns := window.DC.ColumnsSet
+	if column_index < 0 {
+		column_index = columns.Current
+	}
+	return c.OffsetNormToPixels(
+		columns,
+		columns.Columns[column_index+1].OffsetNorm-columns.Columns[column_index].OffsetNorm,
+	)
 }
 
-func (c *Context) GetColumnWidthEx(columns *ColumnsSet, column_index int, before_resize bool) {
+func (c *Context) OffsetNormToPixels(columns *ColumnsSet, offset_norm float64) float64 {
+	return offset_norm * (columns.MaxX - columns.MinX)
+}
+
+func (c *Context) GetColumnWidthEx(columns *ColumnsSet, column_index int, before_resize bool) float64 {
+	if column_index < 0 {
+		column_index = columns.Current
+	}
+
+	var offset_norm float64
+	if before_resize {
+		offset_norm = columns.Columns[column_index+1].OffsetNormBeforeResize - columns.Columns[column_index].OffsetNormBeforeResize
+	} else {
+		offset_norm = columns.Columns[column_index+1].OffsetNorm - columns.Columns[column_index].OffsetNorm
+	}
+
+	return c.OffsetNormToPixels(columns, offset_norm)
 }
 
 func (c *Context) GetContentRegionAvail() f64.Vec2 {
@@ -624,4 +663,201 @@ func (c *Context) CalcWrapWidthForPos(pos f64.Vec2, wrap_pos_x float64) float64 
 
 func (w *Window) CalcFontSize() float64 {
 	return w.Ctx.FontBaseSize * w.FontWindowScale
+}
+
+func (c *Context) ItemHoverable(bb f64.Rectangle, id ID) bool {
+	if c.HoveredId != 0 && c.HoveredId != id && !c.HoveredIdAllowOverlap {
+		return false
+	}
+
+	window := c.CurrentWindow
+	if c.HoveredWindow != window {
+		return false
+	}
+
+	if c.ActiveId != 0 && c.ActiveId != id && !c.ActiveIdAllowOverlap {
+		return false
+	}
+
+	if !c.IsMouseHoveringRect(bb.Min, bb.Max) {
+		return false
+	}
+
+	if c.NavDisableMouseHover || !c.IsWindowContentHoverable(window, HoveredFlagsDefault) {
+		return false
+	}
+
+	if window.DC.ItemFlags&ItemFlagsDisabled != 0 {
+		return false
+	}
+
+	c.SetHoveredID(id)
+	return true
+}
+
+func (c *Context) IsItemHovered(flags HoveredFlags) bool {
+	window := c.CurrentWindow
+	if c.NavDisableMouseHover && !c.NavDisableHighlight {
+		return c.IsItemFocused()
+	}
+
+	// Test for bounding box overlap, as updated as ItemAdd()
+	if window.DC.LastItemStatusFlags&ItemStatusFlagsHoveredRect != 0 {
+		return false
+	}
+
+	if c.HoveredRootWindow != window.RootWindow && flags&HoveredFlagsAllowWhenOverlapped == 0 {
+		return false
+	}
+
+	// Test if another item is active (e.g. being dragged)
+	if flags&HoveredFlagsAllowWhenBlockedByActiveItem == 0 {
+		if c.ActiveId != 0 && c.ActiveId != window.DC.LastItemId && !c.ActiveIdAllowOverlap && c.ActiveId != window.MoveId {
+			return false
+		}
+	}
+
+	// Test if interactions on this window are blocked by an active popup or modal
+	if !c.IsWindowContentHoverable(window, flags) {
+		return false
+	}
+
+	// Test if the item is disabled
+	if window.DC.ItemFlags&ItemFlagsDisabled != 0 {
+		return false
+	}
+
+	// Special handling for the 1st item after Begin() which represent the title bar. When the window is collapsed (SkipItems==true) that last item will never be overwritten so we need to detect tht case.
+	if window.DC.LastItemId == window.MoveId && window.WriteAccessed {
+		return false
+	}
+
+	return true
+}
+
+func (c *Context) IsMouseHoveringRect(r_min, r_max f64.Vec2) bool {
+	return c.IsMouseHoveringRectEx(r_min, r_max, true)
+}
+
+// Test if mouse cursor is hovering given rectangle
+// NB- Rectangle is clipped by our current clip setting
+// NB- Expand the rectangle to be generous on imprecise inputs systems (g.Style.TouchExtraPadding)
+func (c *Context) IsMouseHoveringRectEx(r_min, r_max f64.Vec2, clip bool) bool {
+	window := c.CurrentWindow
+
+	rect_clipped := f64.Rectangle{r_min, r_max}
+	if clip {
+		rect_clipped.Intersect(window.ClipRect)
+	}
+
+	// Expand for touch input
+	rect_for_touch := f64.Rectangle{
+		rect_clipped.Min.Sub(c.Style.TouchExtraPadding),
+		rect_clipped.Max.Add(c.Style.TouchExtraPadding),
+	}
+	return c.IO.MousePos.In(rect_for_touch)
+}
+
+func (c *Context) IsWindowContentHoverable(window *Window, flags HoveredFlags) bool {
+	if c.NavWindow != nil {
+		focused_root_window := c.NavWindow.RootWindow
+		if focused_root_window != nil {
+			if focused_root_window.WasActive && focused_root_window != window.RootWindow {
+				// For the purpose of those flags we differentiate "standard popup" from "modal popup"
+				// NB: The order of those two tests is important because Modal windows are also Popups.
+				if focused_root_window.Flags&WindowFlagsModal != 0 {
+					return false
+				}
+				if focused_root_window.Flags&WindowFlagsPopup != 0 && flags&HoveredFlagsAllowWhenBlockedByPopup == 0 {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (c *Context) IsItemFocused() bool {
+	return c.NavId != 0 && !c.NavDisableHighlight && c.NavId == c.CurrentWindow.DC.LastItemId
+}
+
+func (c *Context) IsItemClicked(mouse_button int) bool {
+	return c.IsMouseClicked(mouse_button, false) && c.IsItemHovered(HoveredFlagsDefault)
+}
+
+func (c *Context) IsAnyItemHovered() bool {
+	return c.HoveredId != 0 || c.HoveredIdPreviousFrame != 0
+}
+
+func (c *Context) IsMouseClicked(button int, repeat bool) bool {
+	t := c.IO.MouseDownDuration[button]
+	if t == 0 {
+		return true
+	}
+
+	if repeat && t > c.IO.KeyRepeatDelay {
+		delay := c.IO.KeyRepeatDelay
+		rate := c.IO.KeyRepeatRate
+		mod1 := math.Mod(t-delay, rate) > rate*0.5
+		mod2 := math.Mod(t-delay-c.IO.DeltaTime, rate) > rate*0.5
+		if mod1 != mod2 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *Context) IsMouseReleased(button int) bool {
+	return c.IO.MouseReleased[button]
+}
+
+func (c *Context) IsMouseDoubleClicked(button int) bool {
+	return c.IO.MouseDoubleClicked[button]
+}
+
+func (c *Context) IsMouseDragging(button int, lock_threshold float64) bool {
+	if !c.IO.MouseDown[button] {
+		return false
+	}
+	if lock_threshold < 0.0 {
+		lock_threshold = c.IO.MouseDragThreshold
+	}
+	return c.IO.MouseDragMaxDistanceSqr[button] >= lock_threshold*lock_threshold
+}
+
+func (c *Context) GetMousePos() f64.Vec2 {
+	return c.IO.MousePos
+}
+
+func (c *Context) IsMousePosValid(mouse_pos *f64.Vec2) bool {
+	if mouse_pos == nil {
+		mouse_pos = &c.IO.MousePos
+	}
+	const MOUSE_INVALID = -256000.0
+	return mouse_pos.X >= MOUSE_INVALID && mouse_pos.Y >= MOUSE_INVALID
+}
+
+func (c *Context) GetMouseDragDelta(button int, lock_threshold float64) f64.Vec2 {
+	if lock_threshold < 0 {
+		lock_threshold = c.IO.MouseDragThreshold
+	}
+	if c.IO.MouseDown[button] {
+		if c.IO.MouseDragMaxDistanceSqr[button] >= lock_threshold*lock_threshold {
+			return c.IO.MousePos.Sub(c.IO.MouseClickedPos[button]) // Assume we can only get active with left-mouse button (at the moment).
+		}
+	}
+	return f64.Vec2{0, 0}
+}
+
+func (c *Context) ResetMouseDragDelta(button int) {
+	c.IO.MouseClickedPos[button] = c.IO.MousePos
+}
+
+func (c *Context) GetMouseCursor() MouseCursor {
+	return c.MouseCursor
+}
+
+func (c *Context) SetMouseCursor(cursor_type MouseCursor) {
+	c.MouseCursor = cursor_type
 }
