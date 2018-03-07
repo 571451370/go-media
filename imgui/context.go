@@ -198,6 +198,30 @@ func (c *Context) GetCurrentWindow() *Window {
 	return c.CurrentWindow
 }
 
+func (c *Context) SetFocusID(id ID, window *Window) {
+	// Assume that SetFocusID() is called in the context where its NavLayer is the current layer, which is the case everywhere we call it.
+	nav_layer := window.DC.NavLayerCurrent
+	if c.NavWindow != window {
+		c.NavInitRequest = false
+	}
+	c.NavId = id
+	c.NavWindow = window
+	c.NavLayer = nav_layer
+	window.NavLastIds[nav_layer] = id
+	if window.DC.LastItemId == id {
+		window.NavRectRel[nav_layer] = f64.Rectangle{
+			window.DC.LastItemRect.Min.Sub(window.Pos),
+			window.DC.LastItemRect.Max.Sub(window.Pos),
+		}
+	}
+
+	if c.ActiveIdSource == InputSourceNav {
+		c.NavDisableMouseHover = true
+	} else {
+		c.NavDisableHighlight = true
+	}
+}
+
 func (c *Context) KeepAliveID(id ID) {
 	if c.ActiveId == id {
 		c.ActiveIdIsAlive = true

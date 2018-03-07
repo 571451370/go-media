@@ -62,3 +62,19 @@ const (
 	MouseCursorResizeNWSE // When hovering over the bottom-right corner of a window
 	MouseCursorCOUNT
 )
+
+func (c *Context) CalcTypematicPressedRepeatAmount(t, t_prev, repeat_delay, repeat_rate float64) int {
+	if t == 0 {
+		return 1
+	}
+	if t <= repeat_delay || repeat_rate <= 0 {
+		return 0
+	}
+
+	count := int((t-repeat_delay)/repeat_rate) - int((t_prev-repeat_delay)/repeat_rate)
+
+	if count > 0 {
+		return count
+	}
+	return 0
+}

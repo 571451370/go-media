@@ -861,3 +861,92 @@ func (c *Context) GetMouseCursor() MouseCursor {
 func (c *Context) SetMouseCursor(cursor_type MouseCursor) {
 	c.MouseCursor = cursor_type
 }
+
+func (c *Context) IsItemActive() bool {
+	if c.ActiveId != 0 {
+		window := c.CurrentWindow
+		return c.ActiveId == window.DC.LastItemId
+	}
+	return false
+}
+
+func (c *Context) IsAnyItemFocused() bool {
+	return c.NavId != 0 && !c.NavDisableHighlight
+}
+
+func (c *Context) IsItemVisible() bool {
+	window := c.GetCurrentWindowRead()
+	return window.ClipRect.Overlaps(window.DC.LastItemRect)
+}
+
+// Allow last item to be overlapped by a subsequent item. Both may be activated during the same frame before the later one takes priority.
+func (c *Context) SetItemAllowOverlap() {
+	if c.HoveredId == c.CurrentWindow.DC.LastItemId {
+		c.HoveredIdAllowOverlap = true
+	}
+	if c.ActiveId == c.CurrentWindow.DC.LastItemId {
+		c.ActiveIdAllowOverlap = true
+	}
+}
+
+func (c *Context) GetViewportRect() f64.Rectangle {
+	if c.IO.DisplayVisibleMin.X != c.IO.DisplayVisibleMax.X && c.IO.DisplayVisibleMin.Y != c.IO.DisplayVisibleMax.Y {
+		return f64.Rectangle{c.IO.DisplayVisibleMin, c.IO.DisplayVisibleMax}
+	}
+	return f64.Rect(0, 0, c.IO.DisplaySize.X, c.IO.DisplaySize.Y)
+}
+
+// Moving window to front of display and set focus (which happens to be back of our sorted list)
+func (c *Context) FocusWindow(window *Window) {
+	if c.NavWindow != window {
+		c.NavWindow = window
+		if window != nil && c.NavDisableMouseHover {
+			c.NavMousePosDirty = true
+		}
+		c.NavInitRequest = false
+		c.NavId = 0
+		if window != nil {
+			c.NavId = window.NavLastIds[0]
+		}
+		c.NavIdIsAlive = false
+		c.NavLayer = 0
+	}
+
+	// Passing NULL allow to disable keyboard focus
+	if window == nil {
+		return
+	}
+
+	// Move the root window to the top of the pile
+	if window.RootWindow != nil {
+		window = window.RootWindow
+	}
+
+	// Steal focus on active widgets
+	// FIXME: This statement should be unnecessary. Need further testing before removing it..
+	if window.Flags&WindowFlagsPopup != 0 {
+		if c.ActiveId != 0 && c.ActiveIdWindow != nil && c.ActiveIdWindow.RootWindow != window {
+			c.ClearActiveID()
+		}
+	}
+
+	// Bring to front
+	if window.Flags&WindowFlagsNoBringToFrontOnFocus == 0 {
+		c.BringWindowToFront(window)
+	}
+}
+
+func (c *Context) BringWindowToFront(window *Window) {
+	current_front_window := c.Windows[len(c.Windows)-1]
+	if current_front_window == window || current_front_window.RootWindow == window {
+		return
+	}
+	// We can ignore the front most window
+	for i := len(c.Windows) - 2; i >= 0; i-- {
+		if c.Windows[i] == window {
+			c.Windows = append(c.Windows[:i], c.Windows[i+1:]...)
+			c.Windows = append(c.Windows, window)
+			break
+		}
+	}
+}

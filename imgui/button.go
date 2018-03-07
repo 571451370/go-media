@@ -146,7 +146,6 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ho
 	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
 		c.HoveredWindow = window
 	}
-	_ = backup_hovered_window
 
 	hovered = c.ItemHoverable(bb, id)
 
@@ -155,6 +154,129 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ho
 		if c.IsItemHovered(HoveredFlagsAllowWhenBlockedByActiveItem) {
 			hovered = true
 			c.SetHoveredID(id)
+			// FIXME: Our formula for CalcTypematicPressedRepeatAmount() is fishy
+			if c.CalcTypematicPressedRepeatAmount(c.HoveredIdTimer+0.0001, c.HoveredIdTimer+0.0001-c.IO.DeltaTime, 0.01, 0.70) != 0 {
+				pressed = true
+				c.FocusWindow(window)
+			}
+		}
+	}
+
+	if flags&ButtonFlagsFlattenChildren != 0 && c.HoveredRootWindow == window {
+		c.HoveredWindow = backup_hovered_window
+	}
+
+	// AllowOverlap mode (rarely used) requires previous frame HoveredId to be null or to match. This allows using patterns where a later submitted widget overlaps a previous one.
+	if hovered && flags&ButtonFlagsAllowItemOverlap != 0 && (c.HoveredIdPreviousFrame != id && c.HoveredIdPreviousFrame != 0) {
+		hovered = false
+	}
+
+	// Mouse
+	if hovered {
+		if flags&ButtonFlagsNoKeyModifiers == 0 || (!c.IO.KeyCtrl && !c.IO.KeyShift && !c.IO.KeyAlt) {
+			//                        | CLICKING        | HOLDING with ImGuiButtonFlags_Repeat
+			// PressedOnClickRelease  |  <on release>*  |  <on repeat> <on repeat> .. (NOT on release)  <-- MOST COMMON! (*) only if both click/release were over bounds
+			// PressedOnClick         |  <on click>     |  <on click> <on repeat> <on repeat> ..
+			// PressedOnRelease       |  <on release>   |  <on repeat> <on repeat> .. (NOT on release)
+			// PressedOnDoubleClick   |  <on dclick>    |  <on dclick> <on repeat> <on repeat> ..
+			// FIXME-NAV: We don't honor those different behaviors.
+			if flags&ButtonFlagsPressedOnClickRelease != 0 && c.IO.MouseClicked[0] {
+				c.SetActiveID(id, window)
+				if flags&ButtonFlagsNoNavFocus == 0 {
+					c.SetFocusID(id, window)
+				}
+				c.FocusWindow(window)
+			}
+
+			if (flags&ButtonFlagsPressedOnClick != 0 && c.IO.MouseClicked[0]) || (flags&ButtonFlagsPressedOnDoubleClick != 0 && c.IO.MouseDoubleClicked[0]) {
+				pressed = true
+				if flags&ButtonFlagsNoHoldingActiveID != 0 {
+					c.ClearActiveID()
+				} else {
+					c.SetActiveID(id, window) // Hold on ID
+				}
+				c.FocusWindow(window)
+			}
+
+			if flags&ButtonFlagsPressedOnRelease != 0 && c.IO.MouseReleased[0] {
+				// Repeat mode trumps <on release>
+				if !(flags&ButtonFlagsRepeat == 0 && c.IO.MouseDownDurationPrev[0] >= c.IO.KeyRepeatDelay) {
+					pressed = true
+				}
+				c.ClearActiveID()
+			}
+
+			// 'Repeat' mode acts when held regardless of _PressedOn flags (see table above).
+			// Relies on repeat logic of IsMouseClicked() but we may as well do it ourselves if we end up exposing finer RepeatDelay/RepeatRate settings.
+			if flags&ButtonFlagsRepeat != 0 && c.ActiveId == id && c.IO.MouseDownDuration[0] > 0 && c.IsMouseClicked(0, true) {
+				pressed = true
+			}
+		}
+
+		if pressed {
+			c.NavDisableHighlight = true
+		}
+	}
+
+	// Gamepad/Keyboard navigation
+	// We report navigated item as hovered but we don't set g.HoveredId to not interfere with mouse.
+	if c.NavId == id && !c.NavDisableHighlight && c.NavDisableMouseHover && (c.ActiveId == 0 || c.ActiveId == id || c.ActiveId == window.MoveId) {
+		hovered = true
+	}
+
+	if c.NavActivateDownId == id {
+		var nav_activated_by_inputs bool
+		nav_activated_by_code := c.NavActivateId == id
+
+		if flags&ButtonFlagsRepeat != 0 {
+			nav_activated_by_inputs = c.IsNavInputPressed(NavInputActivate, InputReadModeRepeat)
+		} else {
+			nav_activated_by_inputs = c.IsNavInputPressed(NavInputActivate, InputReadModePressed)
+		}
+
+		if nav_activated_by_code || nav_activated_by_inputs {
+			pressed = true
+		}
+
+		if nav_activated_by_code || nav_activated_by_inputs || c.ActiveId == id {
+			// Set active id so it can be queried by user via IsItemActive(), equivalent of holding the mouse button.
+			c.NavActivateId = id
+			c.SetActiveID(id, window)
+			if flags&ButtonFlagsNoNavFocus == 0 {
+				c.SetFocusID(id, window)
+			}
+			c.ActiveIdAllowNavDirFlags = 1<<uint(DirLeft) | 1<<uint(DirRight) | 1<<uint(DirUp) | 1<<uint(DirDown)
+		}
+	}
+
+	if c.ActiveId == id {
+		if c.ActiveIdSource == InputSourceMouse {
+			if c.ActiveIdIsJustActivated {
+				c.ActiveIdClickOffset = c.IO.MousePos.Sub(bb.Min)
+			}
+
+			if c.IO.MouseDown[0] {
+				held = true
+			} else {
+				if hovered && flags&ButtonFlagsPressedOnClickRelease != 0 {
+					// Repeat mode trumps <on release>
+					if !(flags&ButtonFlagsRepeat != 0 && c.IO.MouseDownDurationPrev[0] >= c.IO.KeyRepeatDelay) {
+						if !c.DragDropActive {
+							pressed = true
+						}
+					}
+				}
+
+				c.ClearActiveID()
+			}
+
+			if flags&ButtonFlagsNoNavFocus == 0 {
+				c.NavDisableHighlight = true
+			}
+		} else if c.ActiveIdSource == InputSourceNav {
+			if c.NavActivateDownId != id {
+				c.ClearActiveID()
+			}
 		}
 	}
 

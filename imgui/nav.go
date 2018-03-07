@@ -88,3 +88,7 @@ type NavMoveResult struct {
 	DistAxial  float64
 	RectRel    f64.Rectangle // Best candidate bounding box in window relative space
 }
+
+func (c *Context) IsNavInputPressed(NavInput, InputReadMode) bool {
+	return false
+}
