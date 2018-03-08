@@ -1346,3 +1346,106 @@ func (d *DrawData) Clear() {
 	d.TotalVtxCount = 0
 	d.TotalIdxCount = 0
 }
+
+func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags) *Window {
+	window := &Window{}
+	window.Ctx = c
+	window.Flags = flags
+
+	// User can disable loading and saving of settings. Tooltip and child windows also don't store settings.
+	if flags&WindowFlagsNoSavedSettings == 0 {
+		// Retrieve settings from .ini file
+		// Use SetWindowPos() or SetNextWindowPos() with the appropriate condition flag to change the initial position of a window.
+		window.Pos = f64.Vec2{60, 60}
+		window.PosFloat = window.Pos
+	}
+	window.Size = size
+	window.SizeFull = size
+	window.SizeFullAtLastBegin = size
+
+	if flags&WindowFlagsAlwaysAutoResize != 0 {
+		window.AutoFitFramesX = 2
+		window.AutoFitFramesY = 2
+		window.AutoFitOnlyGrows = false
+	} else {
+		if window.Size.X <= 0 {
+			window.AutoFitFramesX = 2
+		}
+		if window.Size.Y <= 0 {
+			window.AutoFitFramesY = 2
+		}
+		window.AutoFitOnlyGrows = window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0
+	}
+
+	if flags&WindowFlagsNoBringToFrontOnFocus != 0 {
+		// Quite slow but rare and only once
+		c.Windows = append([]*Window{window}, c.Windows...)
+	} else {
+		c.Windows = append(c.Windows, window)
+	}
+
+	return window
+}
+
+func (c *Context) CalcSizeContents(window *Window) f64.Vec2 {
+	sz := window.SizeContentsExplicit
+	if window.SizeContentsExplicit.X == 0 {
+		sz.X = window.DC.CursorMaxPos.X - window.Pos.X + window.Scroll.X
+	}
+	if window.SizeContentsExplicit.Y == 0 {
+		sz.Y = window.DC.CursorMaxPos.Y - window.Pos.Y + window.Scroll.Y
+	}
+	sz = sz.Add(window.WindowPadding)
+	return sz
+}
+
+func (c *Context) GetScrollMaxX(window *Window) float64 {
+	return math.Max(0, window.SizeContents.X-(window.SizeFull.X-window.ScrollbarSizes.X))
+}
+
+func (c *Context) GetScrollMaxY(window *Window) float64 {
+	return math.Max(0, window.SizeContents.Y-(window.SizeFull.Y-window.ScrollbarSizes.Y))
+}
+
+func (c *Context) GetWindowBgColorIdxFromFlags(flags WindowFlags) Col {
+	if flags&(WindowFlagsTooltip|WindowFlagsPopup) != 0 {
+		return ColPopupBg
+	}
+	if flags&WindowFlagsChildWindow != 0 {
+		return ColChildBg
+	}
+	return ColWindowBg
+}
+
+type ResizeGripDef struct {
+	CornerPos              f64.Vec2
+	InnerDir               f64.Vec2
+	AngleMin12, AngleMax12 int
+}
+
+var resize_grip_def = [4]ResizeGripDef{
+	{f64.Vec2{1, 1}, f64.Vec2{-1, -1}, 0, 3},  // Lower right
+	{f64.Vec2{0, 1}, f64.Vec2{+1, -1}, 3, 6},  // Lower left
+	{f64.Vec2{0, 0}, f64.Vec2{+1, +1}, 6, 9},  // Upper left
+	{f64.Vec2{1, 0}, f64.Vec2{-1, +1}, 9, 12}, // Upper right
+}
+
+func (c *Context) PushItemFlag(option ItemFlags, enabled bool) {
+	window := c.GetCurrentWindow()
+	if enabled {
+		window.DC.ItemFlags |= option
+	} else {
+		window.DC.ItemFlags &^= option
+	}
+	window.DC.ItemFlagsStack = append(window.DC.ItemFlagsStack, window.DC.ItemFlags)
+}
+
+func (c *Context) PopItemFlag() {
+	window := c.GetCurrentWindow()
+	length := len(window.DC.ItemFlagsStack) - 1
+	window.DC.ItemFlagsStack = window.DC.ItemFlagsStack[:length]
+	window.DC.ItemFlags = ItemFlagsDefault_
+	if length > 0 {
+		window.DC.ItemFlags = window.DC.ItemFlagsStack[length-1]
+	}
+}

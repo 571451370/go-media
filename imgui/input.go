@@ -78,3 +78,44 @@ func (c *Context) CalcTypematicPressedRepeatAmount(t, t_prev, repeat_delay, repe
 	}
 	return 0
 }
+
+// Note that imgui doesn't know the semantic of each entry of io.KeyDown[]. Use your own indices/enums according to how your back-end/engine stored them into KeyDown[]!
+func (c *Context) IsKeyDown(user_key_index int) bool {
+	if user_key_index < 0 {
+		return false
+	}
+	return c.IO.KeysDown[user_key_index]
+}
+
+func (c *Context) IsKeyPressed(user_key_index int, repeat bool) bool {
+	if user_key_index < 0 {
+		return false
+	}
+	t := c.IO.KeysDownDuration[user_key_index]
+	if t == 0 {
+		return true
+	}
+	if repeat && t > c.IO.KeyRepeatDelay {
+		return c.GetKeyPressedAmount(user_key_index, c.IO.KeyRepeatDelay, c.IO.KeyRepeatRate) > 0
+	}
+	return false
+}
+
+func (c *Context) IsKeyReleased(user_key_index int) bool {
+	if user_key_index < 0 {
+		return false
+	}
+	return c.IO.KeysDownDurationPrev[user_key_index] >= 0 && !c.IO.KeysDown[user_key_index]
+}
+
+func (c *Context) IsMouseDown(button int) bool {
+	return c.IO.MouseDown[button]
+}
+
+func (c *Context) GetKeyPressedAmount(key_index int, repeat_delay, repeat_rate float64) int {
+	if key_index < 0 {
+		return 0
+	}
+	t := c.IO.KeysDownDuration[key_index]
+	return c.CalcTypematicPressedRepeatAmount(t, t-c.IO.DeltaTime, repeat_delay, repeat_rate)
+}

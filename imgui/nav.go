@@ -247,4 +247,34 @@ func (n *NavMoveResult) Clear() {
 }
 
 func (c *Context) NavUpdate() {
+	c.IO.WantMoveMouse = false
+
+	// Update Keyboard->Nav inputs mapping
+	for i := int(NavInputInternalStart_); i < len(c.IO.NavInputs); i++ {
+		c.IO.NavInputs[i] = 0
+	}
+	if c.IO.ConfigFlags&ConfigFlagsNavEnableKeyboard != 0 {
+		c.navMapKey(KeySpace, NavInputActivate)
+		c.navMapKey(KeyEnter, NavInputInput)
+		c.navMapKey(KeyEscape, NavInputCancel)
+		c.navMapKey(KeyLeftArrow, NavInputKeyLeft_)
+		c.navMapKey(KeyRightArrow, NavInputKeyRight_)
+		c.navMapKey(KeyUpArrow, NavInputKeyUp_)
+		c.navMapKey(KeyDownArrow, NavInputKeyDown_)
+		if c.IO.KeyCtrl {
+			c.IO.NavInputs[NavInputTweakSlow] = 1
+		}
+		if c.IO.KeyShift {
+			c.IO.NavInputs[NavInputTweakFast] = 1
+		}
+		if c.IO.KeyAlt {
+			c.IO.NavInputs[NavInputKeyMenu_] = 1
+		}
+	}
+}
+
+func (c *Context) navMapKey(key Key, nav_input NavInput) {
+	if c.IO.KeyMap[key] != -1 && c.IsKeyDown(c.IO.KeyMap[key]) {
+		c.IO.NavInputs[nav_input] = 1
+	}
 }
