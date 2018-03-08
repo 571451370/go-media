@@ -235,3 +235,16 @@ func (c *Context) NavUpdateWindowingHighlightWindow(focus_change_dir int) {
 func (c *Context) IsNavInputDown(n NavInput) bool {
 	return c.IO.NavInputs[n] > 0.0
 }
+
+func (n *NavMoveResult) Clear() {
+	n.ID = 0
+	n.ParentID = 0
+	n.Window = nil
+	n.DistBox = math.MaxFloat32
+	n.DistCenter = math.MaxFloat32
+	n.DistAxial = math.MaxFloat32
+	n.RectRel = f64.Rectangle{}
+}
+
+func (c *Context) NavUpdate() {
+}

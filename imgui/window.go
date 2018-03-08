@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"image/color"
 	"math"
+	"sort"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -1291,4 +1292,57 @@ func (c *Context) TreePush(str_id string) {
 		str_id = "#TreePush"
 	}
 	c.PushID(str_id)
+}
+
+func (c *Context) AddWindowToSortedBuffer(out_sorted_windows *[]*Window, window *Window) {
+	*out_sorted_windows = append(*out_sorted_windows, window)
+	if window.Active {
+		if len(window.DC.ChildWindows) > 1 {
+			sort.Slice(window.DC.ChildWindows, func(i, j int) bool {
+				// FIXME: Add a more explicit sort order in the window structure.
+				a := window.DC.ChildWindows[i]
+				b := window.DC.ChildWindows[j]
+				d := (a.Flags & WindowFlagsPopup) - (b.Flags & WindowFlagsPopup)
+				if d != 0 {
+					return d < 0
+				}
+				d = (a.Flags & WindowFlagsTooltip) - (b.Flags & WindowFlagsTooltip)
+				if d != 0 {
+					return d < 0
+				}
+				return a.BeginOrderWithinParent < b.BeginOrderWithinParent
+			})
+		}
+
+		for _, child := range window.DC.ChildWindows {
+			if child.Active {
+				c.AddWindowToSortedBuffer(out_sorted_windows, child)
+			}
+		}
+	}
+}
+
+func (c *Context) ClearDragDrop() {
+	c.DragDropActive = false
+	c.DragDropPayload.Clear()
+	c.DragDropAcceptIdCurr = 0
+	c.DragDropAcceptIdPrev = 0
+	c.DragDropAcceptIdCurrRectSurface = math.MaxFloat32
+	c.DragDropAcceptFrameCount = -1
+}
+
+func (p *Payload) Clear() {
+	p.SourceId = 0
+	p.SourceParentId = 0
+	p.Data = nil
+	p.DataFrameCount = -1
+	p.Preview = false
+	p.Delivery = false
+}
+
+func (d *DrawData) Clear() {
+	d.Valid = false
+	d.CmdLists = nil
+	d.TotalVtxCount = 0
+	d.TotalIdxCount = 0
 }

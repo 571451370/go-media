@@ -94,6 +94,73 @@ func (c *Context) NewFrame() {
 	c.SetCurrentFont(c.GetDefaultFont())
 	c.DrawListSharedData.ClipRectFullscreen = f64.Vec4{0, 0, c.IO.DisplaySize.X, c.IO.DisplaySize.Y}
 	c.DrawListSharedData.CurveTessellationTol = c.Style.CurveTessellationTol
+
+	c.OverlayDrawList.Clear()
+	c.OverlayDrawList.PushTextureID(c.IO.Fonts.TexID)
+	c.OverlayDrawList.PushClipRectFullScreen()
+	c.OverlayDrawList.Flags = 0
+	if c.Style.AntiAliasedLines {
+		c.OverlayDrawList.Flags |= DrawListFlagsAntiAliasedLines
+	}
+	if c.Style.AntiAliasedFill {
+		c.OverlayDrawList.Flags |= DrawListFlagsAntiAliasedFill
+	}
+
+	// Mark rendering data as invalid to prevent user who may have a handle on it to use it
+	c.DrawData.Clear()
+
+	// Clear reference to active widget if the widget isn't alive anymore
+	if c.HoveredIdPreviousFrame == 0 {
+		c.HoveredIdTimer = 0
+	}
+	c.HoveredIdPreviousFrame = c.HoveredId
+	c.HoveredId = 0
+	c.HoveredIdAllowOverlap = false
+	if !c.ActiveIdIsAlive && c.ActiveIdPreviousFrame == c.ActiveId && c.ActiveId != 0 {
+		c.ClearActiveID()
+	}
+	if c.ActiveId != 0 {
+		c.ActiveIdTimer += c.IO.DeltaTime
+	}
+	c.ActiveIdPreviousFrame = c.ActiveId
+	c.ActiveIdIsAlive = false
+	c.ActiveIdIsJustActivated = false
+	if c.ScalarAsInputTextId != 0 && c.ActiveId != c.ScalarAsInputTextId {
+		c.ScalarAsInputTextId = 0
+	}
+
+	// Elapse drag & drop payload
+	if c.DragDropActive && c.DragDropPayload.DataFrameCount+1 < c.FrameCount {
+		c.ClearDragDrop()
+		for i := range c.DragDropPayloadBufHeap {
+			c.DragDropPayloadBufHeap[i] = 0
+		}
+		for i := range c.DragDropPayloadBufLocal {
+			c.DragDropPayloadBufLocal[i] = 0
+		}
+	}
+	c.DragDropAcceptIdPrev = c.DragDropAcceptIdCurr
+	c.DragDropAcceptIdCurr = 0
+	c.DragDropAcceptIdCurrRectSurface = math.MaxFloat32
+
+	// Update keyboard input state
+	copy(c.IO.KeysDownDurationPrev[:], c.IO.KeysDownDuration[:])
+	for i := range c.IO.KeysDown {
+		c.IO.KeysDownDuration[i] = -1
+		if c.IO.KeysDown[i] {
+			if c.IO.KeysDownDuration[i] < 0 {
+				c.IO.KeysDownDuration[i] = 0
+			} else {
+				c.IO.KeysDownDuration[i] = c.IO.KeysDownDuration[i] + c.IO.DeltaTime
+			}
+		}
+	}
+
+	// Update gamepad/keyboard directional navigation
+	c.NavUpdate()
+
+	// Update mouse input state
+	// If mouse just appeared or disappeared (usually denoted by -FLT_MAX component, but in reality we test for -256000.0f) we cancel out movement in MouseDelta
 }
 
 func (c *Context) Render() {
@@ -197,6 +264,28 @@ func (c *Context) EndFrame() {
 		}
 	}
 
+	// Sort the window list so that all child windows are after their parent
+	// We cannot do that on FocusWindow() because childs may not exist yet
+	c.WindowsSortBuffer = c.WindowsSortBuffer[:0]
+	for _, window := range c.Windows {
+		if window.Active && window.Flags&WindowFlagsChildWindow != 0 {
+			continue
+		}
+		c.AddWindowToSortedBuffer(&c.WindowsSortBuffer, window)
+	}
+	c.Windows, c.WindowsSortBuffer = c.WindowsSortBuffer, c.Windows
+
+	// Clear Input data for next frame
+	c.IO.MouseWheel = 0
+	c.IO.MouseWheelH = 0
+	for i := range c.IO.InputCharacters {
+		c.IO.InputCharacters[i] = 0
+	}
+	for i := range c.IO.NavInputs {
+		c.IO.NavInputs[i] = 0
+	}
+
+	c.FrameCountEnded = c.FrameCount
 }
 
 func (c *Context) End() {
@@ -418,7 +507,7 @@ func (d *DrawList) UpdateClipRect() {
 	}
 }
 
-func (d *DrawList) PushClipRectFullscreen() {
+func (d *DrawList) PushClipRectFullScreen() {
 	clipRect := d._Data.ClipRectFullscreen
 	d.PushClipRect(f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W})
 }
