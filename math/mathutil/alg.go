@@ -19,6 +19,10 @@ func Multiple(a, m int) int {
 	return ((a + m - 1) / m) * m
 }
 
+func IsPow2(v int) bool {
+	return v&(v-1) == 0
+}
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
