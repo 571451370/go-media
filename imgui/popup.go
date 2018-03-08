@@ -3,8 +3,8 @@ package imgui
 type PopupPositionPolicy int
 
 const (
-	ImGuiPopupPositionPolicy_Default PopupPositionPolicy = iota
-	ImGuiPopupPositionPolicy_ComboBox
+	PopupPositionPolicyDefault PopupPositionPolicy = iota
+	PopupPositionPolicyComboBox
 )
 
 func (c *Context) IsPopupOpen(str_id string) bool {
