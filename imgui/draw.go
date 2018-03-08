@@ -492,10 +492,43 @@ func (d *DrawList) ChannelsMerge() {
 }
 
 func (d *DrawDataBuilder) FlattenIntoSingleLayer() {
+	for n := 1; n < len(d.Layers); n++ {
+		d.Layers[0] = append(d.Layers[0], d.Layers[n]...)
+		d.Layers[n] = d.Layers[n][:0]
+	}
 }
 
 func (d *DrawDataBuilder) Clear() {
+	for i := range d.Layers {
+		d.Layers[i] = d.Layers[i][:0]
+	}
 }
 
 func (c *Context) AddWindowToDrawData(out_render_list *[]*DrawList, window *Window) {
+	c.AddDrawListToDrawData(out_render_list, window.DrawList)
+	for i := 0; i < len(window.DC.ChildWindows); i++ {
+		child := window.DC.ChildWindows[i]
+		// clipped children may have been marked not active
+		if child.Active && child.HiddenFrames <= 0 {
+			c.AddWindowToDrawData(out_render_list, child)
+		}
+	}
+}
+
+func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list *DrawList) {
+	if len(draw_list.CmdBuffer) == 0 {
+		return
+	}
+
+	// Remove trailing command if unused
+	last_cmd := &draw_list.CmdBuffer[len(draw_list.CmdBuffer)-1]
+	if last_cmd.ElemCount == 0 && last_cmd.UserCallback == nil {
+		length := len(draw_list.CmdBuffer) - 1
+		draw_list.CmdBuffer = draw_list.CmdBuffer[:length]
+		if length == 0 {
+			return
+		}
+	}
+
+	*out_render_list = append(*out_render_list, draw_list)
 }
