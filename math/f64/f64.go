@@ -47,6 +47,20 @@ func (p Vec2) MaxComp() float64 {
 	return math.Max(p.X, p.Y)
 }
 
+func (p Vec2) Max(q Vec2) Vec2 {
+	return Vec2{
+		math.Max(p.X, q.X),
+		math.Max(p.Y, q.Y),
+	}
+}
+
+func (p Vec2) Min(q Vec2) Vec2 {
+	return Vec2{
+		math.Min(p.X, q.X),
+		math.Min(p.Y, q.Y),
+	}
+}
+
 func (p Vec2) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
@@ -95,14 +109,14 @@ func (p Vec2) Polar() Polar {
 	return Polar{p.Len(), math.Atan2(p.Y, p.X)}
 }
 
-func (p Vec2) Min(k float64) Vec2 {
+func (p Vec2) MinScalar(k float64) Vec2 {
 	return Vec2{
 		math.Min(p.X, k),
 		math.Min(p.Y, k),
 	}
 }
 
-func (p Vec2) Max(k float64) Vec2 {
+func (p Vec2) MaxScalar(k float64) Vec2 {
 	return Vec2{
 		math.Max(p.X, k),
 		math.Max(p.Y, k),
@@ -271,7 +285,7 @@ func (p Vec3) Abs() Vec3 {
 	}
 }
 
-func (p Vec3) Max(k float64) Vec3 {
+func (p Vec3) MaxScalar(k float64) Vec3 {
 	return Vec3{
 		math.Max(p.X, k),
 		math.Max(p.Y, k),
@@ -279,11 +293,27 @@ func (p Vec3) Max(k float64) Vec3 {
 	}
 }
 
-func (p Vec3) Min(k float64) Vec3 {
+func (p Vec3) MinScalar(k float64) Vec3 {
 	return Vec3{
 		math.Min(p.X, k),
 		math.Min(p.Y, k),
 		math.Min(p.Z, k),
+	}
+}
+
+func (p Vec3) Max(q Vec3) Vec3 {
+	return Vec3{
+		math.Max(p.X, q.X),
+		math.Max(p.Y, q.Y),
+		math.Max(p.Z, q.Z),
+	}
+}
+
+func (p Vec3) Min(q Vec3) Vec3 {
+	return Vec3{
+		math.Min(p.X, q.X),
+		math.Min(p.Y, q.Y),
+		math.Min(p.Z, q.Z),
 	}
 }
 
