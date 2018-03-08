@@ -290,3 +290,9 @@ func (c *Context) LogFinish() {
 	}
 	c.LogEnabled = false
 }
+
+func (c *Context) PushID(str_id string) {
+	window := c.GetCurrentWindowRead()
+	window.IDStack = append(window.IDStack, window.GetID(str_id))
+
+}

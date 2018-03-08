@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"encoding/binary"
 	"hash/fnv"
 	"image/color"
 	"math"
@@ -327,7 +328,12 @@ const (
 )
 
 func (w *Window) GetID(str string) ID {
+	var seed [4]byte
+	seedId := w.IDStack[len(w.IDStack)-1]
+	binary.LittleEndian.PutUint32(seed[:], uint32(seedId))
+
 	h := fnv.New32()
+	h.Write(seed[:])
 	h.Write([]byte(str))
 	id := ID(h.Sum32())
 	w.Ctx.KeepAliveID(id)
@@ -1175,4 +1181,114 @@ func (c *Context) AddWindowToDrawDataSelectLayer(window *Window) {
 	} else {
 		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[0], window)
 	}
+}
+
+func (c *Context) IsRectVisible(rect_min, rect_max f64.Vec2) bool {
+	window := c.GetCurrentWindowRead()
+	return window.ClipRect.Overlaps(f64.Rectangle{rect_min, rect_max})
+}
+
+// Lock horizontal starting position + capture group bounding box into one "item" (so you can use IsItemHovered() or layout primitives such as SameLine() on whole group, etc.)
+func (c *Context) BeginGroup() {
+	window := c.GetCurrentWindow()
+
+	group_data := GroupData{
+		BackupCursorPos:                 window.DC.CursorPos,
+		BackupCursorMaxPos:              window.DC.CursorMaxPos,
+		BackupIndentX:                   window.DC.IndentX,
+		BackupGroupOffsetX:              window.DC.GroupOffsetX,
+		BackupCurrentLineHeight:         window.DC.CurrentLineHeight,
+		BackupCurrentLineTextBaseOffset: window.DC.CurrentLineTextBaseOffset,
+		BackupLogLinePosY:               window.DC.LogLinePosY,
+		BackupActiveIdIsAlive:           c.ActiveIdIsAlive,
+		AdvanceCursor:                   true,
+	}
+	window.DC.GroupStack = append(window.DC.GroupStack, group_data)
+
+	window.DC.GroupOffsetX = window.DC.CursorPos.X - window.Pos.X - window.DC.ColumnsOffsetX
+	window.DC.IndentX = window.DC.GroupOffsetX
+	window.DC.CursorMaxPos = window.DC.CursorPos
+	window.DC.CurrentLineHeight = 0
+	window.DC.LogLinePosY = window.DC.CursorPos.Y - 9999
+}
+
+func (c *Context) EndGroup() {
+	window := c.GetCurrentWindow()
+	length := len(window.DC.GroupStack)
+	group_data := &window.DC.GroupStack[length-1]
+
+	group_bb := f64.Rectangle{group_data.BackupCursorPos, window.DC.CursorMaxPos}
+	group_bb.Max = f64.Vec2{
+		math.Max(group_bb.Min.X, group_bb.Max.X),
+		math.Max(group_bb.Min.Y, group_bb.Max.Y),
+	}
+
+	window.DC.CursorPos = group_data.BackupCursorPos
+	window.DC.CursorMaxPos = f64.Vec2{
+		math.Max(group_data.BackupCursorMaxPos.X, window.DC.CursorMaxPos.X),
+		math.Max(group_data.BackupCursorMaxPos.Y, window.DC.CursorMaxPos.Y),
+	}
+	window.DC.CurrentLineHeight = group_data.BackupCurrentLineHeight
+	window.DC.CurrentLineTextBaseOffset = group_data.BackupCurrentLineTextBaseOffset
+	window.DC.IndentX = group_data.BackupIndentX
+	window.DC.GroupOffsetX = group_data.BackupGroupOffsetX
+	window.DC.LogLinePosY = window.DC.CursorPos.Y - 9999
+
+	if group_data.AdvanceCursor {
+		// FIXME: Incorrect, we should grab the base offset from the *first line* of the group but it is hard to obtain now.
+		window.DC.CurrentLineTextBaseOffset = math.Max(
+			window.DC.PrevLineTextBaseOffset,
+			group_data.BackupCurrentLineTextBaseOffset,
+		)
+		c.ItemSizeEx(group_bb.Size(), group_data.BackupCurrentLineTextBaseOffset)
+		c.ItemAdd(group_bb, 0)
+	}
+
+	// If the current ActiveId was declared within the boundary of our group, we copy it to LastItemId so IsItemActive() will be functional on the entire group.
+	// It would be be neater if we replaced window.DC.LastItemId by e.g. 'bool LastItemIsActive', but if you search for LastItemId you'll notice it is only used in that context.
+	active_id_within_group := !group_data.BackupActiveIdIsAlive && c.ActiveIdIsAlive && c.ActiveId != 0 && c.ActiveIdWindow.RootWindow == window.RootWindow
+	if active_id_within_group {
+		window.DC.LastItemId = c.ActiveId
+	}
+	window.DC.LastItemRect = group_bb
+
+	window.DC.GroupStack = window.DC.GroupStack[:len(window.DC.GroupStack)-1]
+}
+
+func (c *Context) Indent() {
+	c.IndentEx(0)
+}
+
+func (c *Context) Unindent() {
+	c.UnindentEx(0)
+}
+
+func (c *Context) IndentEx(indent_w float64) {
+	window := c.GetCurrentWindow()
+	if indent_w != 0 {
+		window.DC.IndentX = indent_w
+	} else {
+		window.DC.IndentX = c.Style.IndentSpacing
+	}
+	window.DC.CursorPos.X = window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX
+}
+
+func (c *Context) UnindentEx(indent_w float64) {
+	window := c.GetCurrentWindow()
+	if indent_w != 0 {
+		window.DC.IndentX -= indent_w
+	} else {
+		window.DC.IndentX -= c.Style.IndentSpacing
+	}
+	window.DC.CursorPos.X = window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX
+}
+
+func (c *Context) TreePush(str_id string) {
+	window := c.GetCurrentWindow()
+	c.Indent()
+	window.DC.TreeDepth++
+	if str_id == "" {
+		str_id = "#TreePush"
+	}
+	c.PushID(str_id)
 }
