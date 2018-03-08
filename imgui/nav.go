@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type NavInput int
 
@@ -153,10 +157,28 @@ func (c *Context) GetNavInputAmount(n NavInput, mode InputReadMode) float64 {
 func (c *Context) GetNavInputAmount2d(dir_sources NavDirSourceFlags, mode InputReadMode, slow_factor, fast_factor float64) f64.Vec2 {
 	delta := f64.Vec2{}
 	if dir_sources&NavDirSourceFlagsKeyboard != 0 {
+		right := c.GetNavInputAmount(NavInputKeyRight_, mode)
+		left := c.GetNavInputAmount(NavInputKeyLeft_, mode)
+		down := c.GetNavInputAmount(NavInputKeyRight_, mode)
+		up := c.GetNavInputAmount(NavInputKeyRight_, mode)
+		dir := f64.Vec2{right - left, down - up}
+		delta = delta.Add(dir)
 	}
 	if dir_sources&NavDirSourceFlagsPadDPad != 0 {
+		right := c.GetNavInputAmount(NavInputDpadRight, mode)
+		left := c.GetNavInputAmount(NavInputDpadLeft, mode)
+		down := c.GetNavInputAmount(NavInputDpadDown, mode)
+		up := c.GetNavInputAmount(NavInputDpadUp, mode)
+		dir := f64.Vec2{right - left, down - up}
+		delta = delta.Add(dir)
 	}
 	if dir_sources&NavDirSourceFlagsPadLStick != 0 {
+		right := c.GetNavInputAmount(NavInputLStickRight, mode)
+		left := c.GetNavInputAmount(NavInputLStickLeft, mode)
+		down := c.GetNavInputAmount(NavInputLStickDown, mode)
+		up := c.GetNavInputAmount(NavInputLStickUp, mode)
+		dir := f64.Vec2{right - left, down - up}
+		delta = delta.Add(dir)
 	}
 	if slow_factor != 0.0 && c.IsNavInputDown(NavInputTweakSlow) {
 		delta = delta.Scale(slow_factor)
@@ -165,6 +187,48 @@ func (c *Context) GetNavInputAmount2d(dir_sources NavDirSourceFlags, mode InputR
 		delta = delta.Scale(fast_factor)
 	}
 	return delta
+}
+
+// FIXME-OPT O(N)
+func (c *Context) FindWindowIndex(window *Window) int {
+	for i := len(c.Windows) - 1; i >= 0; i-- {
+		if c.Windows[i] == window {
+			return i
+		}
+	}
+	return -1
+}
+
+// FIXME-OPT O(N)
+func (c *Context) FindWindowNavigable(i_start, i_stop, dir int) *Window {
+	for i := i_start; i >= 0 && i < len(c.Windows) && i != i_stop; i += dir {
+		if c.IsWindowNavFocusable(c.Windows[i]) {
+			return c.Windows[i]
+		}
+	}
+	return nil
+}
+
+func (c *Context) IsWindowNavFocusable(window *Window) bool {
+	return window.Active && window == window.RootWindowForTabbing && window.Flags&WindowFlagsNoNavFocus == 0 || window == c.NavWindow
+}
+
+func (c *Context) NavUpdateWindowingHighlightWindow(focus_change_dir int) {
+	if c.NavWindowingTarget.Flags&WindowFlagsModal != 0 {
+		return
+	}
+
+	i_current := c.FindWindowIndex(c.NavWindowingTarget)
+	window_target := c.FindWindowNavigable(i_current+focus_change_dir, -math.MinInt32, focus_change_dir)
+	if window_target == nil {
+		if focus_change_dir < 0 {
+			window_target = c.FindWindowNavigable(len(c.Windows)-1, i_current, focus_change_dir)
+		} else {
+			window_target = c.FindWindowNavigable(0, i_current, focus_change_dir)
+		}
+	}
+	c.NavWindowingTarget = window_target
+	c.NavWindowingToggleLayer = false
 }
 
 // Equivalent of IsKeyDown() for NavInputs[]

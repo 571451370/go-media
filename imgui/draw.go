@@ -113,6 +113,56 @@ func (c *Context) EndFrame() {
 	if c.CurrentWindow != nil && !c.CurrentWindow.WriteAccessed {
 		c.CurrentWindow.Active = false
 	}
+	c.End()
+
+	if c.ActiveId == 0 && c.HoveredId == 0 {
+		// Unless we just made a window/popup appear
+		if c.NavWindow == nil || !c.NavWindow.Appearing {
+			// Click to focus window and start moving (after we're done with all our widgets)
+			if c.IO.MouseClicked[0] {
+				if c.HoveredRootWindow != nil {
+					// Set ActiveId even if the _NoMove flag is set, without it dragging away from a window with _NoMove would activate hover on other windows.
+					c.FocusWindow(c.HoveredWindow)
+					c.SetActiveID(c.HoveredWindow.MoveId, c.HoveredWindow)
+					c.NavDisableHighlight = true
+					c.ActiveIdClickOffset = c.IO.MousePos.Sub(c.HoveredRootWindow.Pos)
+					if c.HoveredWindow.Flags&WindowFlagsNoMove == 0 && c.HoveredRootWindow.Flags&WindowFlagsNoMove == 0 {
+						c.MovingWindow = c.HoveredWindow
+					}
+				} else if c.NavWindow != nil && c.GetFrontMostModalRootWindow() == nil {
+					// Clicking on void disable focus
+					c.FocusWindow(nil)
+				}
+			}
+
+			// With right mouse button we close popups without changing focus
+			// (The left mouse button path calls FocusWindow which will lead NewFrame->ClosePopupsOverWindow to trigger)
+			if c.IO.MouseClicked[1] {
+				// Find the top-most window between HoveredWindow and the front most Modal Window.
+				// This is where we can trim the popup stack.
+				modal := c.GetFrontMostModalRootWindow()
+				hovered_window_above_modal := false
+				if modal == nil {
+					hovered_window_above_modal = true
+				}
+				for i := len(c.Windows) - 1; i >= 0 && hovered_window_above_modal == false; i-- {
+					window := c.Windows[i]
+					if window == modal {
+						break
+					}
+					if window == c.HoveredWindow {
+						hovered_window_above_modal = true
+					}
+				}
+				if hovered_window_above_modal {
+					c.ClosePopupsOverWindow(c.HoveredWindow)
+				} else {
+					c.ClosePopupsOverWindow(modal)
+				}
+			}
+		}
+	}
+
 }
 
 func (c *Context) End() {
@@ -347,4 +397,46 @@ func (d *DrawList) AddDrawCmd() {
 }
 
 func (d *DrawList) ChannelsMerge() {
+	// Note that we never use or rely on channels.Size because it is merely a buffer that we never shrink back to 0 to keep all sub-buffers ready for use.
+	if d._ChannelsCount <= 1 {
+		return
+	}
+
+	d.ChannelsSetCurrent(0)
+
+	length := len(d.CmdBuffer)
+	if length > 0 && d.CmdBuffer[length-1].ElemCount == 0 {
+		d.CmdBuffer = d.CmdBuffer[:length-1]
+	}
+
+	new_cmd_buffer_count := 0
+	new_idx_buffer_count := 0
+	for i := 1; i < d._ChannelsCount; i++ {
+		ch := &d._Channels[i]
+		length := len(d.CmdBuffer)
+		if length > 0 && ch.CmdBuffer[length-1].ElemCount == 0 {
+			ch.CmdBuffer = ch.CmdBuffer[:length-1]
+		}
+		new_cmd_buffer_count += len(ch.CmdBuffer)
+		new_idx_buffer_count += len(ch.IdxBuffer)
+	}
+
+	d.CmdBuffer = append(d.CmdBuffer, make([]DrawCmd, new_cmd_buffer_count)...)
+	d.IdxBuffer = append(d.IdxBuffer, make([]DrawIdx, new_idx_buffer_count)...)
+	cmd_write := len(d.CmdBuffer) - new_cmd_buffer_count
+	d._IdxWritePtr = len(d.IdxBuffer) - new_idx_buffer_count
+	for i := 1; i < d._ChannelsCount; i++ {
+		ch := &d._Channels[i]
+		if length := len(ch.CmdBuffer); length > 0 {
+			copy(d.CmdBuffer[cmd_write:], ch.CmdBuffer[:])
+			cmd_write += length
+		}
+		if length := len(ch.IdxBuffer); length > 0 {
+			copy(d.IdxBuffer[d._IdxWritePtr:], ch.IdxBuffer[:])
+			d._IdxWritePtr += length
+		}
+	}
+
+	d.UpdateClipRect() // We call this instead of AddDrawCmd(), so that empty channels won't produce an extra draw call.
+	d._ChannelsCount = 1
 }
