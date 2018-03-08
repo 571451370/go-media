@@ -1167,3 +1167,12 @@ func (c *Context) NavRestoreLastChildNavWindow(window *Window) *Window {
 	}
 	return window
 }
+
+func (c *Context) AddWindowToDrawDataSelectLayer(window *Window) {
+	c.IO.MetricsActiveWindows++
+	if window.Flags&WindowFlagsTooltip != 0 {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[1], window)
+	} else {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[0], window)
+	}
+}

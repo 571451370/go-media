@@ -62,7 +62,7 @@ type DrawChannel struct {
 }
 
 type DrawDataBuilder struct {
-	Layers [2]*DrawList
+	Layers [2][]*DrawList
 }
 
 type DrawData struct {
@@ -94,6 +94,40 @@ func (c *Context) NewFrame() {
 	c.SetCurrentFont(c.GetDefaultFont())
 	c.DrawListSharedData.ClipRectFullscreen = f64.Vec4{0, 0, c.IO.DisplaySize.X, c.IO.DisplaySize.Y}
 	c.DrawListSharedData.CurveTessellationTol = c.Style.CurveTessellationTol
+}
+
+func (c *Context) Render() {
+	if c.FrameCountEnded != c.FrameCount {
+		c.EndFrame()
+	}
+	c.FrameCountRendered = c.FrameCount
+
+	// Gather windows to render
+	c.IO.MetricsRenderVertices = 0
+	c.IO.MetricsRenderIndices = 0
+	c.IO.MetricsActiveWindows = 0
+	c.DrawDataBuilder.Clear()
+
+	var window_to_render_front_most *Window
+	if c.NavWindowingTarget != nil && c.NavWindowingTarget.Flags&WindowFlagsNoBringToFrontOnFocus == 0 {
+		window_to_render_front_most = c.NavWindowingTarget
+	}
+
+	for _, window := range c.Windows {
+		if window.Active && window.HiddenFrames <= 0 && window.Flags&WindowFlagsChildWindow == 0 &&
+			window != window_to_render_front_most {
+			c.AddWindowToDrawDataSelectLayer(window)
+		}
+	}
+
+	// NavWindowingTarget is always temporarily displayed as the front-most window
+	if window_to_render_front_most != nil && window_to_render_front_most.Active &&
+		window_to_render_front_most.HiddenFrames <= 0 {
+		c.AddWindowToDrawDataSelectLayer(window_to_render_front_most)
+	}
+	c.DrawDataBuilder.FlattenIntoSingleLayer()
+
+	// Draw software mouse cursor if requested
 }
 
 // This is normally called by Render(). You may want to call it directly if you want to avoid calling Render() but the gain will be very minimal.
@@ -256,6 +290,22 @@ func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
 }
 
 func (d *DrawList) AddImageEx(user_texture_id TextureID, a, b, uv_a, uv_b f64.Vec2, col color.RGBA) {
+}
+
+func (d *DrawList) Clear() {
+	d.CmdBuffer = d.CmdBuffer[:0]
+	d.IdxBuffer = d.IdxBuffer[:0]
+	d.VtxBuffer = d.VtxBuffer[:0]
+	d.Flags = DrawListFlagsAntiAliasedLines | DrawListFlagsAntiAliasedFill
+	d._VtxCurrentIdx = 0
+	d._VtxWritePtr = 0
+	d._IdxWritePtr = 0
+	d._ClipRectStack = d._ClipRectStack[:0]
+	d._TextureIdStack = d._TextureIdStack[:0]
+	d._Path = d._Path[:0]
+	d._ChannelsCurrent = 0
+	d._ChannelsCount = 1
+	// NB: Do not clear channels so our allocations are re-used after the first frame.
 }
 
 func (d *DrawList) PopClipRect() {
@@ -439,4 +489,13 @@ func (d *DrawList) ChannelsMerge() {
 
 	d.UpdateClipRect() // We call this instead of AddDrawCmd(), so that empty channels won't produce an extra draw call.
 	d._ChannelsCount = 1
+}
+
+func (d *DrawDataBuilder) FlattenIntoSingleLayer() {
+}
+
+func (d *DrawDataBuilder) Clear() {
+}
+
+func (c *Context) AddWindowToDrawData(out_render_list *[]*DrawList, window *Window) {
 }
