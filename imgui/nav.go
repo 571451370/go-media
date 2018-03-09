@@ -278,3 +278,175 @@ func (c *Context) navMapKey(key Key, nav_input NavInput) {
 		c.IO.NavInputs[nav_input] = 1
 	}
 }
+
+// We get there when either NavId == id, or when g.NavAnyRequest is set (which is updated by NavUpdateAnyRequestFlag above)
+func (c *Context) NavProcessItem(window *Window, nav_bb f64.Rectangle, id ID) {
+	item_flags := window.DC.ItemFlags
+	nav_bb_rel := f64.Rectangle{
+		nav_bb.Min.Sub(window.Pos),
+		nav_bb.Max.Sub(window.Pos),
+	}
+	if c.NavInitRequest && c.NavLayer == window.DC.NavLayerCurrent {
+		// Even if 'ImGuiItemFlags_NoNavDefaultFocus' is on (typically collapse/close button) we record the first ResultId so they can be used as a fallback
+		if item_flags&ItemFlagsNoNavDefaultFocus == 0 || c.NavInitResultId == 0 {
+			c.NavInitResultId = id
+			c.NavInitResultRectRel = nav_bb_rel
+		}
+
+		if item_flags&ItemFlagsNoNavDefaultFocus == 0 {
+			c.NavInitRequest = false // Found a match, clear request
+			c.NavUpdateAnyRequestFlag()
+		}
+	}
+
+	// Scoring for navigation
+	if c.NavId != id && item_flags&ItemFlagsNoNav == 0 {
+		var result *NavMoveResult
+		if window == c.NavWindow {
+			result = &c.NavMoveResultLocal
+		} else {
+			result = &c.NavMoveResultOther
+		}
+
+		new_best := c.NavMoveRequest && c.NavScoreItem(result, nav_bb)
+		if new_best {
+			result.ID = id
+			result.ParentID = window.IDStack[len(window.IDStack)-1]
+			result.Window = window
+			result.RectRel = nav_bb_rel
+		}
+	}
+
+	// Update window-relative bounding box of navigated item
+	if c.NavId == id {
+		// Always refresh g.NavWindow, because some operations such as FocusItem() don't have a window.
+		c.NavWindow = window
+		c.NavLayer = window.DC.NavLayerCurrent
+		c.NavIdIsAlive = true
+		c.NavIdTabCounter = window.FocusIdxTabCounter
+		// Store item bounding box (relative to window position)
+		window.NavRectRel[window.DC.NavLayerCurrent] = nav_bb_rel
+	}
+}
+
+func (c *Context) NavUpdateAnyRequestFlag() {
+	c.NavAnyRequest = c.NavMoveRequest || c.NavInitRequest
+}
+
+// Scoring function for directional navigation. Based on https://gist.github.com/rygorous/6981057
+func (c *Context) NavScoreItem(result *NavMoveResult, cand f64.Rectangle) bool {
+	window := c.CurrentWindow
+	if c.NavLayer != window.DC.NavLayerCurrent {
+		return false
+	}
+
+	// Current modified source rect (NB: we've applied Max.x = Min.x in NavUpdate() to inhibit the effect of having varied item width)
+	curr := &c.NavScoringRectScreen
+	c.NavScoringCount++
+
+	// We perform scoring on items bounding box clipped by their parent window on the other axis (clipping on our movement axis would give us equal scores for all clipped items)
+	if c.NavMoveDir == DirLeft || c.NavMoveDir == DirRight {
+		cand.Min.Y = f64.Clamp(cand.Min.Y, window.ClipRect.Min.Y, window.ClipRect.Max.Y)
+		cand.Max.Y = f64.Clamp(cand.Max.Y, window.ClipRect.Min.Y, window.ClipRect.Max.Y)
+	} else {
+		cand.Min.X = f64.Clamp(cand.Min.X, window.ClipRect.Min.X, window.ClipRect.Max.X)
+		cand.Max.X = f64.Clamp(cand.Max.X, window.ClipRect.Min.X, window.ClipRect.Max.X)
+	}
+
+	// Compute distance between boxes
+	// FIXME-NAV: Introducing biases for vertical navigation, needs to be removed.
+	dbx := c.NavScoreItemDistInterval(cand.Min.X, cand.Max.X, curr.Min.X, curr.Max.X)
+	// Scale down on Y to keep using box-distance for vertically touching items
+	dby := c.NavScoreItemDistInterval(
+		f64.Lerp(0.2, cand.Min.Y, cand.Max.Y),
+		f64.Lerp(0.8, cand.Min.Y, cand.Max.Y),
+		f64.Lerp(0.2, curr.Min.Y, curr.Max.Y),
+		f64.Lerp(0.8, curr.Min.Y, curr.Max.Y),
+	)
+	if dby != 0 && dbx != 0 {
+		if dbx > 0 {
+			dbx = dbx/1000 + 1
+		} else {
+			dbx = dbx/1000 - 1
+		}
+	}
+	dist_box := math.Abs(dbx) + math.Abs(dby)
+
+	// Compute distance between centers (this is off by a factor of 2, but we only compare center distances with each other so it doesn't matter)
+	dcx := (cand.Min.X + cand.Max.X) - (curr.Min.X + curr.Max.X)
+	dcy := (cand.Min.Y + cand.Max.Y) - (curr.Min.Y + curr.Max.Y)
+	dist_center := math.Abs(dcx) + math.Abs(dcy) // L1 metric (need this for our connectedness guarantee)
+
+	// Determine which quadrant of 'curr' our candidate item 'cand' lies in based on distance
+	var quadrant Dir
+	var dax, day, dist_axial float64
+	if dbx != 0 || dby != 0 {
+		// For non-overlapping boxes, use distance between boxes
+		dax = dbx
+		day = dby
+		dist_axial = dist_box
+		quadrant = c.NavScoreItemGetQuadrant(dbx, dby)
+	} else if dcx != 0 || dcy != 0 {
+		// For overlapping boxes with different centers, use distance between centers
+		dax = dcx
+		day = dcy
+		dist_axial = dist_center
+		quadrant = c.NavScoreItemGetQuadrant(dcx, dcy)
+	} else {
+		// Degenerate case: two overlapping buttons with same center, break ties arbitrarily (note that LastItemId here is really the _previous_ item order, but it doesn't matter)
+		if window.DC.LastItemId < c.NavId {
+			quadrant = DirLeft
+		} else {
+			quadrant = DirRight
+		}
+	}
+
+	// Is it in the quadrant we're interesting in moving to?
+	new_best := false
+	if quadrant == c.NavMoveDir {
+		// Does it beat the current best candidate?
+		if dist_box < result.DistBox {
+			result.DistBox = dist_box
+			result.DistCenter = dist_center
+			return true
+		}
+
+		if dist_box == result.DistBox {
+			// Try using distance between center points to break ties
+			if dist_center < result.DistCenter {
+				result.DistCenter = dist_center
+				new_best = true
+			} else if dist_center == result.DistCenter {
+				// Still tied! we need to be extra-careful to make sure everything gets linked properly. We consistently break ties by symbolically moving "later" items
+				// (with higher index) to the right/downwards by an infinitesimal amount since we the current "best" button already (so it must have a lower index),
+				// this is fairly easy. This rule ensures that all buttons with dx==dy==0 will end up being linked in order of appearance along the x axis.
+
+				// moving bj to the right/down decreases distance
+				if c.NavMoveDir == DirUp || c.NavMoveDir == DirDown {
+					new_best = dby < 0
+				} else {
+					new_best = dbx < 0
+				}
+			}
+		}
+	}
+
+	// Axial check: if 'curr' has no link at all in some direction and 'cand' lies roughly in that direction, add a tentative link. This will only be kept if no "real" matches
+	// are found, so it only augments the graph produced by the above method using extra links. (important, since it doesn't guarantee strong connectedness)
+	// This is just to avoid buttons having no links in a particular direction when there's a suitable neighbor. you get good graphs without this too.
+	// 2017/09/29: FIXME: This now currently only enabled inside menu bars, ideally we'd disable it everywhere. Menus in particular need to catch failure. For general navigation it feels awkward.
+	// Disabling it may however lead to disconnected graphs when nodes are very spaced out on different axis. Perhaps consider offering this as an option?
+
+	// Check axial match
+	if result.DistBox == math.MaxFloat32 && dist_axial < result.DistAxial {
+		if c.NavLayer == 1 && c.NavWindow.Flags&WindowFlagsChildMenu == 0 {
+			if (c.NavMoveDir == DirRight && dax > 0) || (c.NavMoveDir == DirRight && dax > 0) ||
+				(c.NavMoveDir == DirUp && day < 0) || (c.NavMoveDir == DirDown && day > 0) {
+				result.DistAxial = dist_axial
+				new_best = true
+			}
+		}
+	}
+
+	return new_best
+}

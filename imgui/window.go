@@ -385,8 +385,48 @@ func (c *Context) ItemAdd(bb f64.Rectangle, id ID) bool {
 	return c.ItemAddEx(bb, id, nil)
 }
 
-func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, nav_bb *f64.Rectangle) bool {
-	return false
+// Declare item bounding box for clipping and interaction.
+// Note that the size can be different than the one provided to ItemSize(). Typically, widgets that spread over available surface
+// declare their minimum size requirement to ItemSize() and then use a larger region for drawing/interaction, which is passed to ItemAdd().
+func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, nav_bb_arg *f64.Rectangle) bool {
+	window := c.CurrentWindow
+
+	if id != 0 {
+		// Navigation processing runs prior to clipping early-out
+		//  (a) So that NavInitRequest can be honored, for newly opened windows to select a default widget
+		//  (b) So that we can scroll up/down past clipped items. This adds a small O(N) cost to regular navigation requests unfortunately, but it is still limited to one window.
+		//      it may not scale very well for windows with ten of thousands of item, but at least NavMoveRequest is only set on user interaction, aka maximum once a frame.
+		//      We could early out with "if (is_clipped && !g.NavInitRequest) return false;" but when we wouldn't be able to reach unclipped widgets. This would work if user had explicit scrolling control (e.g. mapped on a stick)
+		window.DC.NavLayerActiveMaskNext |= window.DC.NavLayerCurrentMask
+		if c.NavId == id || c.NavAnyRequest {
+			if c.NavWindow.RootWindowForNav == window.RootWindowForNav {
+				if window == c.NavWindow || (window.Flags|c.NavWindow.Flags)&WindowFlagsNavFlattened != 0 {
+					if nav_bb_arg != nil {
+						c.NavProcessItem(window, *nav_bb_arg, id)
+					} else {
+						c.NavProcessItem(window, bb, id)
+					}
+
+				}
+			}
+		}
+	}
+
+	window.DC.LastItemId = id
+	window.DC.LastItemRect = bb
+	window.DC.LastItemStatusFlags = 0
+
+	// Clipping test
+	is_clipped := c.IsClippedEx(bb, id, false)
+	if is_clipped {
+		return false
+	}
+
+	// We need to calculate this now to take account of the current clipping rectangle (as items like Selectable may change them)
+	if c.IsMouseHoveringRect(bb.Min, bb.Max) {
+		window.DC.LastItemStatusFlags |= ItemStatusFlagsHoveredRect
+	}
+	return true
 }
 
 func (c *Context) SameLine() {
