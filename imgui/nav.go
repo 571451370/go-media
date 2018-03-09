@@ -450,3 +450,27 @@ func (c *Context) NavScoreItem(result *NavMoveResult, cand f64.Rectangle) bool {
 
 	return new_best
 }
+
+func (c *Context) NavScoreItemDistInterval(a0, a1, b0, b1 float64) float64 {
+	if a1 < b0 {
+		return a1 - b0
+	}
+	if b1 < a0 {
+		return a0 - b1
+	}
+	return 0
+}
+
+func (c *Context) NavScoreItemGetQuadrant(dx, dy float64) Dir {
+	if math.Abs(dx) > math.Abs(dy) {
+		if dx > 0 {
+			return DirRight
+		}
+		return DirLeft
+	}
+
+	if dy > 0 {
+		return DirDown
+	}
+	return DirUp
+}
