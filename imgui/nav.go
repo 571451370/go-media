@@ -474,3 +474,98 @@ func (c *Context) NavScoreItemGetQuadrant(dx, dy float64) Dir {
 	}
 	return DirUp
 }
+
+func (c *Context) NavProcessMoveRequestWrapAround(window *Window) {
+	if c.NavWindow == window && c.NavMoveRequestButNoResultYet() {
+		if (c.NavMoveDir == DirUp || c.NavMoveDir == DirDown) &&
+			c.NavMoveRequestForward == NavForwardNone && c.NavLayer == 0 {
+			c.NavMoveRequestForward = NavForwardForwardQueued
+			c.NavMoveRequestCancel()
+
+			c.NavWindow.NavRectRel[0].Min.Y = 0
+			if c.NavMoveDir == DirUp {
+				c.NavWindow.NavRectRel[0].Min.Y = math.Max(window.SizeFull.Y, window.SizeContents.Y) - window.Scroll.Y
+			} else {
+				c.NavWindow.NavRectRel[0].Min.Y = -window.Scroll.Y
+			}
+
+			c.NavWindow.NavRectRel[0].Max.Y = c.NavWindow.NavRectRel[0].Min.Y
+		}
+	}
+}
+
+func (c *Context) NavMoveRequestButNoResultYet() bool {
+	return c.NavMoveRequest && c.NavMoveResultLocal.ID == 0 && c.NavMoveResultOther.ID == 0
+}
+
+func (c *Context) NavMoveRequestCancel() {
+	c.NavMoveRequest = false
+	c.NavUpdateAnyRequestFlag()
+}
+
+func (c *Context) NavRestoreLayer(layer int) {
+	c.NavLayer = layer
+	if layer == 0 {
+		c.NavWindow = c.NavRestoreLastChildNavWindow(c.NavWindow)
+	}
+	if layer == 0 && c.NavWindow.NavLastIds[0] != 0 {
+		c.SetNavIDAndMoveMouse(c.NavWindow.NavLastIds[0], layer, c.NavWindow.NavRectRel[0])
+	} else {
+		c.NavInitWindow(c.NavWindow, true)
+	}
+}
+
+func (c *Context) SetNavIDAndMoveMouse(id ID, nav_layer int, rect_rel f64.Rectangle) {
+	c.SetNavID(id, nav_layer)
+	c.NavWindow.NavRectRel[nav_layer] = rect_rel
+	c.NavMousePosDirty = true
+	c.NavDisableHighlight = false
+	c.NavDisableMouseHover = true
+}
+
+func (c *Context) SetNavID(id ID, nav_layer int) {
+	c.NavId = id
+	c.NavWindow.NavLastIds[nav_layer] = id
+}
+
+func (c *Context) NavInitWindow(window *Window, force_reinit bool) {
+	var init_for_nav bool
+	if window.Flags&WindowFlagsNoNavInputs == 0 {
+		if window.Flags&WindowFlagsChildWindow == 0 || window.Flags&WindowFlagsPopup != 0 ||
+			window.NavLastIds[0] == 0 || force_reinit {
+			init_for_nav = true
+		}
+	}
+
+	if init_for_nav {
+		c.SetNavID(0, c.NavLayer)
+		c.NavInitRequest = true
+		c.NavInitRequestFromMove = false
+		c.NavInitResultId = 0
+		c.NavInitResultRectRel = f64.Rectangle{}
+		c.NavUpdateAnyRequestFlag()
+	} else {
+		c.NavId = window.NavLastIds[0]
+	}
+}
+
+func (c *Context) NavCalcPreferredMousePos() f64.Vec2 {
+	window := c.NavWindow
+	if window == nil {
+		return c.IO.MousePos
+	}
+	rect_rel := window.NavRectRel[c.NavLayer]
+	pos := f64.Vec2{
+		rect_rel.Min.X + math.Min(c.Style.FramePadding.X*4, rect_rel.Dx()),
+		rect_rel.Max.Y - math.Min(c.Style.FramePadding.Y, rect_rel.Dy()),
+	}
+	visible_rect := c.GetViewportRect()
+
+	// ImFloor() is important because non-integer mouse position application in back-end might be lossy and result in undesirable non-zero delta.
+	pos.X = f64.Clamp(pos.X, visible_rect.Min.X, visible_rect.Max.X)
+	pos.Y = f64.Clamp(pos.Y, visible_rect.Min.Y, visible_rect.Max.Y)
+
+	pos.X = math.Floor(pos.X)
+	pos.Y = math.Floor(pos.Y)
+	return pos
+}

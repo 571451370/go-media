@@ -305,3 +305,11 @@ func (c *Context) InvisibleButton(str_id string, size_arg f64.Vec2) bool {
 	_, _, pressed := c.ButtonBehavior(bb, id, 0)
 	return pressed
 }
+
+func (c *Context) PushButtonRepeat(repeat bool) {
+	c.PushItemFlag(ItemFlagsButtonRepeat, repeat)
+}
+
+func (c *Context) PopButtonRepeat() {
+	c.PopItemFlag()
+}

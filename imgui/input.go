@@ -119,3 +119,11 @@ func (c *Context) GetKeyPressedAmount(key_index int, repeat_delay, repeat_rate f
 	t := c.IO.KeysDownDuration[key_index]
 	return c.CalcTypematicPressedRepeatAmount(t, t-c.IO.DeltaTime, repeat_delay, repeat_rate)
 }
+
+func (c *Context) PushAllowKeyboardFocus(allow_keyboard_focus bool) {
+	c.PushItemFlag(ItemFlagsAllowKeyboardFocus, allow_keyboard_focus)
+}
+
+func (c *Context) PopAllowKeyboardFocus() {
+	c.PopItemFlag()
+}
