@@ -28,7 +28,7 @@ type Context struct {
 	Windows                  []*Window
 	WindowsSortBuffer        []*Window
 	CurrentWindowStack       []*Window
-	WindowsById              Storage
+	WindowsById              map[ID]*Window
 	WindowsActiveCount       int
 	CurrentWindow            *Window // Being drawn into
 	HoveredWindow            *Window // Will catch mouse inputs
@@ -164,9 +164,6 @@ const (
 	ConfigFlagsIsSRGB        ConfigFlags = 1 << 20 // Back-end is SRGB-aware.
 	ConfigFlagsIsTouchScreen ConfigFlags = 1 << 21 // Back-end is using a touch screen instead of a mouse.
 )
-
-type Storage struct {
-}
 
 func CreateContext() *Context {
 	return CreateContextEx(nil)

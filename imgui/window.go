@@ -105,7 +105,7 @@ type Window struct {
 	LastFrameActive                int
 	ItemWidthDefault               float64
 	MenuColumns                    MenuColumns // Simplified columns storage for menu items
-	StateStorage                   Storage
+	StateStorage                   map[ID]interface{}
 	ColumnsStorage                 []ColumnsSet
 	FontWindowScale                float64 // Scale multiplier per-window
 	DrawList                       *DrawList
@@ -154,7 +154,7 @@ type DrawContext struct {
 	MenuBarAppending              bool // FIXME: Remove this
 	MenuBarOffsetX                float64
 	ChildWindows                  []*Window
-	StateStorage                  *Storage
+	StateStorage                  map[ID]interface{}
 	LayoutType                    LayoutType
 	ParentLayoutType              LayoutType // Layout type of parent window at the time of Begin()
 
@@ -1589,5 +1589,76 @@ func (c *Context) SetNextWindowSize(size f64.Vec2, cond Cond) {
 }
 
 func (c *Context) FindWindowByName(name string) *Window {
-	return nil
+	h := fnv.New32()
+	h.Sum([]byte(name))
+	id := h.Sum32()
+	return c.WindowsById[ID(id)]
+}
+
+func (c *Context) SetWindowConditionAllowFlags(window *Window, flags Cond, enabled bool) {
+	if enabled {
+		window.SetWindowPosAllowFlags |= flags
+		window.SetWindowSizeAllowFlags |= flags
+		window.SetWindowCollapsedAllowFlags |= flags
+	} else {
+		window.SetWindowPosAllowFlags &^= flags
+		window.SetWindowSizeAllowFlags &^= flags
+		window.SetWindowCollapsedAllowFlags &^= flags
+	}
+}
+func (c *Context) SetWindowPos(window *Window, pos f64.Vec2, cond Cond) {
+}
+
+func (c *Context) SetWindowSize(window *Window, size f64.Vec2, cond Cond) {
+	// Test condition (NB: bit 0 is always true) and clear flags for next time
+	if cond != 0 && window.SetWindowSizeAllowFlags&cond == 0 {
+		return
+	}
+	window.SetWindowSizeAllowFlags &^= (CondOnce | CondFirstUseEver | CondAppearing)
+
+	// Set
+	if size.X > 0 {
+		window.AutoFitFramesX = 0
+		window.SizeFull.X = size.X
+	} else {
+		window.AutoFitFramesX = 2
+		window.AutoFitOnlyGrows = false
+	}
+
+	if size.Y > 0 {
+		window.AutoFitFramesY = 0
+		window.SizeFull.Y = size.Y
+	} else {
+		window.AutoFitFramesY = 2
+		window.AutoFitOnlyGrows = false
+	}
+}
+
+func (w *Window) TitleBarHeight() float64 {
+	if w.Flags&WindowFlagsNoTitleBar != 0 {
+		return 0
+	}
+	return w.CalcFontSize() + w.Ctx.Style.FramePadding.Y*2.0
+}
+
+func (w *Window) MenuBarHeight() float64 {
+	if w.Flags&WindowFlagsMenuBar != 0 {
+		return w.CalcFontSize() + w.Ctx.Style.FramePadding.Y*2.0
+	}
+	return 0
+}
+
+func (c *Context) SetWindowFocus() {
+	c.FocusWindow(c.CurrentWindow)
+}
+
+func (c *Context) SetWindowCollapsed(window *Window, collapsed bool, cond Cond) {
+	// Test condition (NB: bit 0 is always true) and clear flags for next time
+	if cond != 0 && (window.SetWindowCollapsedAllowFlags&cond) == 0 {
+		return
+	}
+	window.SetWindowCollapsedAllowFlags &^= (CondOnce | CondFirstUseEver | CondAppearing)
+
+	// Set
+	window.Collapsed = collapsed
 }

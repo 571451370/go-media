@@ -409,10 +409,158 @@ func (c *Context) Begin(name string) bool {
 // - Passing 'bool* p_open' displays a Close button on the upper-right corner of the window, the pointed value will be set to false when the button is pressed.
 func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	// Find or create
+	style := &c.Style
 	window := c.FindWindowByName(name)
 	if window == nil {
+		// Any condition flag will do since we are creating a new window here.
+		var size_on_first_use f64.Vec2
+		if c.NextWindowData.SizeCond != 0 {
+			size_on_first_use = c.NextWindowData.SizeVal
+			window = c.CreateNewWindow(name, size_on_first_use, flags)
+		}
 	}
-	return true
+
+	// Automatically disable manual moving/resizing when NoInputs is set
+	if flags&WindowFlagsNoInputs != 0 {
+		flags |= WindowFlagsNoMove | WindowFlagsNoResize
+	}
+
+	current_frame := c.FrameCount
+	first_begin_of_the_frame := window.LastFrameActive != current_frame
+	if first_begin_of_the_frame {
+		window.Flags = flags
+	} else {
+		flags = window.Flags
+	}
+
+	// Update the Appearing flag
+	// Not using !WasActive because the implicit "Debug" window would always toggle off->on
+	window_just_activated_by_user := window.LastFrameActive < current_frame-1
+	window_just_appearing_after_hidden_for_resize := window.HiddenFrames == 1
+	if flags&WindowFlagsPopup != 0 {
+		popup_ref := c.OpenPopupStack[len(c.CurrentPopupStack)]
+		// We recycle popups so treat window as activated if popup id changed
+		if window.PopupId != popup_ref.PopupId {
+			window_just_activated_by_user = true
+		}
+		if window != popup_ref.Window {
+			window_just_activated_by_user = true
+		}
+	}
+	window.Appearing = window_just_activated_by_user || window_just_appearing_after_hidden_for_resize
+	window.CloseButton = p_open != nil
+	if window.Appearing {
+		c.SetWindowConditionAllowFlags(window, CondAppearing, true)
+	}
+
+	// Parent window is latched only on the first call to Begin() of the frame, so further append-calls can be done from a different window stack
+
+	// Add to stack
+	c.CurrentWindowStack = append(c.CurrentWindowStack, window)
+	c.SetCurrentWindow(window)
+	if flags&WindowFlagsPopup != 0 {
+		popup_ref := c.OpenPopupStack[len(c.CurrentPopupStack)]
+		popup_ref.Window = window
+		c.CurrentPopupStack = append(c.CurrentPopupStack, popup_ref)
+		window.PopupId = popup_ref.PopupId
+	}
+
+	if window_just_appearing_after_hidden_for_resize && flags&WindowFlagsChildWindow == 0 {
+		window.NavLastIds[0] = 0
+	}
+
+	// Process SetNextWindow***() calls
+	window_pos_set_by_api := false
+	window_size_x_set_by_api := false
+	window_size_y_set_by_api := false
+	if c.NextWindowData.PosCond != 0 {
+		window_pos_set_by_api = window.SetWindowPosAllowFlags&c.NextWindowData.PosCond != 0
+		if window_pos_set_by_api && c.NextWindowData.PosPivotVal.LenSquared() > 0.00001 {
+			// May be processed on the next frame if this is our first frame and we are measuring size
+			// FIXME: Look into removing the branch so everything can go through this same code path for consistency.
+			window.SetWindowPosVal = c.NextWindowData.PosVal
+			window.SetWindowPosPivot = c.NextWindowData.PosPivotVal
+			window.SetWindowPosAllowFlags &^= (CondOnce | CondFirstUseEver | CondAppearing)
+		} else {
+			c.SetWindowPos(window, c.NextWindowData.PosVal, c.NextWindowData.PosCond)
+		}
+		c.NextWindowData.PosCond = 0
+	}
+
+	if c.NextWindowData.SizeCond != 0 {
+		window_size_x_set_by_api = (window.SetWindowSizeAllowFlags&c.NextWindowData.SizeCond) != 0 && (c.NextWindowData.SizeVal.X > 0.0)
+		window_size_y_set_by_api = (window.SetWindowSizeAllowFlags&c.NextWindowData.SizeCond) != 0 && (c.NextWindowData.SizeVal.Y > 0.0)
+		c.SetWindowSize(window, c.NextWindowData.SizeVal, c.NextWindowData.SizeCond)
+		c.NextWindowData.SizeCond = 0
+	}
+	_ = window_size_x_set_by_api
+	_ = window_size_y_set_by_api
+
+	if c.NextWindowData.ContentSizeCond != 0 {
+		// Adjust passed "client size" to become a "window size"
+		window.SizeContentsExplicit = c.NextWindowData.ContentSizeVal
+		if window.SizeContentsExplicit.Y != 0.0 {
+			window.SizeContentsExplicit.Y += window.TitleBarHeight() + window.MenuBarHeight()
+		}
+		c.NextWindowData.ContentSizeCond = 0
+	} else if first_begin_of_the_frame {
+		window.SizeContentsExplicit = f64.Vec2{0, 0}
+	}
+
+	if c.NextWindowData.CollapsedCond != 0 {
+		c.SetWindowCollapsed(window, c.NextWindowData.CollapsedVal, c.NextWindowData.CollapsedCond)
+		c.NextWindowData.CollapsedCond = 0
+
+	}
+
+	if c.NextWindowData.FocusCond != 0 {
+		c.SetWindowFocus()
+		c.NextWindowData.FocusCond = 0
+	}
+
+	if window.Appearing {
+		c.SetWindowConditionAllowFlags(window, CondAppearing, false)
+	}
+
+	var parent_window *Window
+	// When reusing window again multiple times a frame, just append content (don't need to setup again)
+	if first_begin_of_the_frame {
+	}
+
+	c.PushClipRect(window.InnerClipRect.Min, window.InnerClipRect.Max, true)
+	// Clear 'accessed' flag last thing (After PushClipRect which will set the flag. We want the flag to stay false when the default "Debug" window is unused)
+	if first_begin_of_the_frame {
+		window.WriteAccessed = false
+	}
+
+	window.BeginCount++
+	c.NextWindowData.SizeConstraintCond = 0
+
+	// Child window can be out of sight and have "negative" clip windows.
+	// Mark them as collapsed so commands are skipped earlier (we can't manually collapse because they have no title bar).
+	if flags&WindowFlagsChildWindow != 0 {
+		window.Collapsed = parent_window != nil && parent_window.Collapsed
+
+		if flags&WindowFlagsAlwaysAutoResize == 0 && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0 {
+			if window.WindowRectClipped.Min.X >= window.WindowRectClipped.Max.X ||
+				window.WindowRectClipped.Min.Y >= window.WindowRectClipped.Max.Y {
+				window.Collapsed = true
+			}
+		}
+
+		// We also hide the window from rendering because we've already added its border to the command list.
+		// (we could perform the check earlier in the function but it is simpler at this point)
+		if window.Collapsed {
+			window.Active = false
+		}
+	}
+	if style.Alpha <= 0.0 {
+		window.Active = false
+	}
+
+	// Return false if we don't intend to display anything to allow user to perform an early out optimization
+	window.SkipItems = (window.Collapsed || !window.Active) && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0
+	return !window.SkipItems
 }
 
 func (c *Context) Render() {
