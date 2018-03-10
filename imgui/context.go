@@ -294,5 +294,21 @@ func (c *Context) LogFinish() {
 func (c *Context) PushID(str_id string) {
 	window := c.GetCurrentWindowRead()
 	window.IDStack = append(window.IDStack, window.GetID(str_id))
+}
 
+func (c *Context) MarkIniSettingsDirty() {
+	if c.SettingsDirtyTimer <= 0 {
+		c.SettingsDirtyTimer = c.IO.IniSavingRate
+	}
+}
+
+func (c *Context) MarkIniSettingsDirtyEx(window *Window) {
+	if window.Flags&WindowFlagsNoSavedSettings == 0 {
+		if c.SettingsDirtyTimer <= 0 {
+			c.SettingsDirtyTimer = c.IO.IniSavingRate
+		}
+	}
+}
+
+func (c *Context) SaveIniSettingsToDisk(ini_filename string) {
 }

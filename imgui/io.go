@@ -94,7 +94,7 @@ type IO struct {
 	MouseDownOwned            [5]bool      // Track if button was clicked inside a window. We don't request mouse capture from the application if click started outside ImGui bounds.
 	MouseDownDuration         [5]float64   // Duration the mouse button has been down (0.0f == just clicked)
 	MouseDownDurationPrev     [5]float64   // Previous time the mouse button has been down
-	MouseDragMaxDistanceAbs   [5]float64   // Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
+	MouseDragMaxDistanceAbs   [5]f64.Vec2  // Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
 	MouseDragMaxDistanceSqr   [5]float64   // Squared maximum distance of how much mouse has traveled from the clicking point
 	KeysDownDuration          [512]float64 // Duration the keyboard key has been down (0.0f == just pressed)
 	KeysDownDurationPrev      [512]float64 // Previous duration the key has been down

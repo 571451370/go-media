@@ -1489,3 +1489,69 @@ func (c *Context) PopItemFlag() {
 		window.DC.ItemFlags = window.DC.ItemFlagsStack[length-1]
 	}
 }
+
+func (c *Context) UpdateMovingWindow() {
+	if c.MovingWindow != nil && c.MovingWindow.MoveId == c.ActiveId && c.ActiveIdSource == InputSourceMouse {
+		// We actually want to move the root window. g.MovingWindow == window we clicked on (could be a child window).
+		// We track it to preserve Focus and so that ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
+		c.KeepAliveID(c.ActiveId)
+		moving_window := c.MovingWindow.RootWindow
+		if c.IO.MouseDown[0] {
+			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
+			if moving_window.PosFloat.X != pos.X || moving_window.PosFloat.Y != pos.Y {
+				c.MarkIniSettingsDirtyEx(moving_window)
+				moving_window.PosFloat = pos
+			}
+			c.FocusWindow(c.MovingWindow)
+		} else {
+			c.ClearActiveID()
+			c.MovingWindow = nil
+		}
+	} else {
+		// When clicking/dragging from a window that has the _NoMove flag, we still set the ActiveId in order to prevent hovering others.
+		if c.ActiveIdWindow != nil && c.ActiveIdWindow.MoveId == c.ActiveId {
+			c.KeepAliveID(c.ActiveId)
+			if !c.IO.MouseDown[0] {
+				c.ClearActiveID()
+			}
+		}
+		c.MovingWindow = nil
+	}
+}
+
+// Find window given position, search front-to-back
+// FIXME: Note that we have a lag here because WindowRectClipped is updated in Begin() so windows moved by user via SetWindowPos() and not SetNextWindowPos() will have that rectangle lagging by a frame at the time FindHoveredWindow() is called, aka before the next Begin(). Moving window thankfully isn't affected.
+func (c *Context) FindHoveredWindow() *Window {
+	for i := len(c.Windows) - 1; i >= 0; i-- {
+		window := c.Windows[i]
+		if !window.Active {
+			continue
+		}
+		if window.Flags&WindowFlagsNoInputs != 0 {
+			continue
+		}
+
+		// Using the clipped AABB, a child window will typically be clipped by its parent (not always)
+		bb := f64.Rectangle{
+			window.WindowRectClipped.Min.Sub(c.Style.TouchExtraPadding),
+			window.WindowRectClipped.Max.Add(c.Style.TouchExtraPadding),
+		}
+		if c.IO.MousePos.In(bb) {
+			return window
+		}
+	}
+	return nil
+}
+
+func (c *Context) IsWindowChildOf(window, potential_parent *Window) bool {
+	if window.RootWindow == potential_parent {
+		return true
+	}
+	for window != nil {
+		if window == potential_parent {
+			return true
+		}
+		window = window.ParentWindow
+	}
+	return false
+}
