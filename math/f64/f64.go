@@ -65,6 +65,10 @@ func (p Vec2) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
 
+func (p Vec2) LenSquared() float64 {
+	return p.Dot(p)
+}
+
 func (p Vec2) Normalize() Vec2 {
 	l := p.Len()
 	if l == 0 {
@@ -226,6 +230,10 @@ func (p Vec3) Refract(q Vec3, eta float64) Vec3 {
 
 func (p Vec3) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
+}
+
+func (p Vec3) LenSquared() float64 {
+	return p.Dot(p)
 }
 
 func (p Vec3) Scalev(q Vec3) Vec3 {
