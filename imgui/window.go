@@ -1555,3 +1555,39 @@ func (c *Context) IsWindowChildOf(window, potential_parent *Window) bool {
 	}
 	return false
 }
+
+func (c *Context) SetWindowScrollX(window *Window, new_scroll_x float64) {
+	// SizeContents is generally computed based on CursorMaxPos which is affected by scroll position, so we need to apply our change to it.
+	window.DC.CursorMaxPos.X += window.Scroll.X
+	window.Scroll.X = new_scroll_x
+	window.DC.CursorMaxPos.X -= window.Scroll.X
+}
+
+func (c *Context) SetWindowScrollY(window *Window, new_scroll_y float64) {
+	// SizeContents is generally computed based on CursorMaxPos which is affected by scroll position, so we need to apply our change to it.
+	window.DC.CursorMaxPos.Y += window.Scroll.Y
+	window.Scroll.Y = new_scroll_y
+	window.DC.CursorMaxPos.Y -= window.Scroll.Y
+}
+
+func (c *Context) FocusFrontMostActiveWindow(ignore_window *Window) {
+	for i := len(c.Windows) - 1; i >= 0; i-- {
+		if c.Windows[i] != ignore_window && c.Windows[i].WasActive && c.Windows[i].Flags&WindowFlagsChildWindow == 0 {
+			focus_window := c.NavRestoreLastChildNavWindow(c.Windows[i])
+			c.FocusWindow(focus_window)
+			return
+		}
+	}
+}
+
+func (c *Context) SetNextWindowSize(size f64.Vec2, cond Cond) {
+	c.NextWindowData.SizeVal = size
+	c.NextWindowData.SizeCond = CondAlways
+	if cond != 0 {
+		c.NextWindowData.SizeCond = cond
+	}
+}
+
+func (c *Context) FindWindowByName(name string) *Window {
+	return nil
+}

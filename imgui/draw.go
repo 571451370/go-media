@@ -305,6 +305,114 @@ func (c *Context) NewFrame() {
 	}
 
 	// Mouse wheel scrolling, scale
+	if c.HoveredWindow != nil && !c.HoveredWindow.Collapsed && (c.IO.MouseWheel != 0 || c.IO.MouseWheelH != 0) {
+		// If a child window has the ImGuiWindowFlags_NoScrollWithMouse flag, we give a chance to scroll its parent (unless either ImGuiWindowFlags_NoInputs or ImGuiWindowFlags_NoScrollbar are also set).
+		window := c.HoveredWindow
+		scroll_window := window
+		for scroll_window.Flags&WindowFlagsChildWindow != 0 &&
+			scroll_window.Flags&WindowFlagsNoScrollWithMouse != 0 &&
+			scroll_window.Flags&WindowFlagsNoScrollbar == 0 &&
+			scroll_window.Flags&WindowFlagsNoInputs == 0 &&
+			scroll_window.ParentWindow != nil {
+			scroll_window = scroll_window.ParentWindow
+		}
+		scroll_allowed := scroll_window.Flags&WindowFlagsNoScrollWithMouse == 0 && scroll_window.Flags&WindowFlagsNoInputs == 0
+
+		if c.IO.MouseWheel != 0 {
+			if c.IO.KeyCtrl && c.IO.FontAllowUserScaling {
+				// Zoom / Scale window
+				new_font_scale := f64.Clamp(window.FontWindowScale+c.IO.MouseWheel*0.10, 0.50, 2.50)
+				scale := new_font_scale / window.FontWindowScale
+				window.FontWindowScale = new_font_scale
+
+				offset := f64.Vec2{
+					window.Size.X * (1.0 - scale) * (c.IO.MousePos.X - window.Pos.X) / window.Size.X,
+					window.Size.Y * (1.0 - scale) * (c.IO.MousePos.Y - window.Pos.Y) / window.Size.Y,
+				}
+				window.Pos = window.Pos.Add(offset)
+				window.PosFloat = window.PosFloat.Add(offset)
+				window.Size = window.Size.Scale(scale)
+				window.SizeFull = window.SizeFull.Scale(scale)
+			} else if !c.IO.KeyCtrl && scroll_allowed {
+				// Mouse wheel vertical scrolling
+				scroll_amount := 5 * scroll_window.CalcFontSize()
+				scroll_amount = math.Min(
+					scroll_amount,
+					(scroll_window.ContentsRegionRect.Dy()+scroll_window.WindowPadding.Y*2.0)*0.67,
+				)
+				c.SetWindowScrollY(scroll_window, scroll_window.Scroll.Y-c.IO.MouseWheel*scroll_amount)
+			}
+		}
+		if c.IO.MouseWheelH != 0 && scroll_allowed {
+			// Mouse wheel horizontal scrolling (for hardware that supports it)
+			scroll_amount := scroll_window.CalcFontSize()
+			if !c.IO.KeyCtrl && window.Flags&WindowFlagsNoScrollWithMouse == 0 {
+				c.SetWindowScrollX(window, window.Scroll.X-c.IO.MouseWheelH*scroll_amount)
+			}
+		}
+	}
+
+	// Pressing TAB activate widget focus
+	if c.ActiveId == 0 && c.NavWindow != nil && c.NavWindow.Active && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0 &&
+		!c.IO.KeyCtrl && c.IsKeyPressedMap(KeyTab, false) {
+		if c.NavId != 0 && c.NavIdTabCounter != math.MaxInt32 {
+			c.NavWindow.FocusIdxTabRequestNext = c.NavIdTabCounter + 1
+			if c.IO.KeyShift {
+				c.NavWindow.FocusIdxTabRequestNext -= 1
+			} else {
+				c.NavWindow.FocusIdxTabRequestNext += 1
+			}
+		} else {
+			c.NavWindow.FocusIdxTabRequestNext = 0
+			if c.IO.KeyShift {
+				c.NavWindow.FocusIdxTabRequestNext = -1
+			}
+		}
+	}
+	c.NavIdTabCounter = math.MaxInt32
+
+	// Mark all windows as not visible
+	for i := range c.Windows {
+		window := c.Windows[i]
+		window.WasActive = window.Active
+		window.Active = false
+		window.WriteAccessed = false
+	}
+
+	// Closing the focused window restore focus to the first active root window in descending z-order
+	if c.NavWindow != nil && !c.NavWindow.WasActive {
+		c.FocusFrontMostActiveWindow(nil)
+	}
+
+	// No window should be open at the beginning of the frame.
+	// But in order to allow the user to call NewFrame() multiple times without calling Render(), we are doing an explicit clear.
+	c.CurrentWindowStack = c.CurrentWindowStack[:0]
+	c.CurrentPopupStack = c.CurrentPopupStack[:0]
+	c.ClosePopupsOverWindow(c.NavWindow)
+
+	// Create implicit window - we will only render it if the user has added something to it.
+	// We don't use "Debug" to avoid colliding with user trying to create a "Debug" window with custom flags.
+	c.SetNextWindowSize(f64.Vec2{400, 400}, CondFirstUseEver)
+	c.Begin("Debug##Default")
+}
+
+func (c *Context) Begin(name string) bool {
+	return c.BeginEx(name, nil, 0)
+}
+
+// Push a new ImGui window to add widgets to.
+// - A default window called "Debug" is automatically stacked at the beginning of every frame so you can use widgets without explicitly calling a Begin/End pair.
+// - Begin/End can be called multiple times during the frame with the same window name to append content.
+// - The window name is used as a unique identifier to preserve window information across frames (and save rudimentary information to the .ini file).
+//   You can use the "##" or "###" markers to use the same label with different id, or same id with different label. See documentation at the top of this file.
+// - Return false when window is collapsed, so you can early out in your code. You always need to call ImGui::End() even if false is returned.
+// - Passing 'bool* p_open' displays a Close button on the upper-right corner of the window, the pointed value will be set to false when the button is pressed.
+func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
+	// Find or create
+	window := c.FindWindowByName(name)
+	if window == nil {
+	}
+	return true
 }
 
 func (c *Context) Render() {
