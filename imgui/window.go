@@ -1699,8 +1699,28 @@ func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Ve
 
 func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64.Vec2 {
 	if c.NextWindowData.SizeConstraintCond != 0 {
+		// Using -1,-1 on either X/Y axis to preserve the current size.
+		cr := c.NextWindowData.SizeConstraintRect
+		if cr.Min.X >= 0 && cr.Max.X >= 0 {
+			new_size.X = f64.Clamp(new_size.X, cr.Min.X, cr.Max.X)
+		}
+		if cr.Min.Y >= 0 && cr.Max.Y >= 0 {
+			new_size.Y = f64.Clamp(new_size.Y, cr.Min.Y, cr.Max.Y)
+		}
 
+		// TODO
+		if c.NextWindowData.SizeCallback != nil {
+			c.NextWindowData.SizeCallback()
+		}
 	}
 
-	return f64.Vec2{}
+	// Minimum size
+	if window.Flags&(WindowFlagsChildWindow|WindowFlagsAlwaysAutoResize) == 0 {
+		new_size = new_size.Max(c.Style.WindowMinSize)
+
+		// Reduce artifacts with very small windows
+		new_size.Y = math.Max(new_size.Y, window.TitleBarHeight()+window.MenuBarHeight()+math.Max(0, c.Style.WindowRounding-1))
+	}
+
+	return new_size
 }
