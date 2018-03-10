@@ -493,8 +493,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		c.SetWindowSize(window, c.NextWindowData.SizeVal, c.NextWindowData.SizeCond)
 		c.NextWindowData.SizeCond = 0
 	}
-	_ = window_size_x_set_by_api
-	_ = window_size_y_set_by_api
 
 	if c.NextWindowData.ContentSizeCond != 0 {
 		// Adjust passed "client size" to become a "window size"
@@ -525,6 +523,131 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	var parent_window *Window
 	// When reusing window again multiple times a frame, just append content (don't need to setup again)
 	if first_begin_of_the_frame {
+		// FIXME-WIP: Undocumented behavior of Child+Tooltip for pinned tooltip (#1345)
+		window_is_child_tooltip := (flags&WindowFlagsChildWindow) != 0 && (flags&WindowFlagsTooltip) != 0
+
+		// Initialize
+		window.ParentWindow = parent_window
+		window.RootWindow = window
+		window.RootWindowForTitleBarHighlight = window
+		window.RootWindowForTabbing = window
+		window.RootWindowForNav = window
+		if parent_window != nil && flags&WindowFlagsChildWindow != 0 && !window_is_child_tooltip {
+			window.RootWindow = parent_window.RootWindow
+		}
+
+		if parent_window != nil && flags&WindowFlagsModal == 0 && flags&(WindowFlagsChildWindow|WindowFlagsPopup) != 0 {
+			// Same value in master branch, will differ for docking
+			window.RootWindowForTitleBarHighlight = parent_window.RootWindowForTitleBarHighlight
+			window.RootWindowForTabbing = window.RootWindowForTitleBarHighlight
+		}
+
+		for window.RootWindowForNav.Flags&WindowFlagsNavFlattened != 0 {
+			window.RootWindowForNav = window.RootWindowForNav.ParentWindow
+		}
+
+		window.Active = true
+		window.BeginOrderWithinParent = 0
+		window.BeginOrderWithinContext = c.WindowsActiveCount
+		c.WindowsActiveCount++
+		window.BeginCount = 0
+		window.ClipRect = f64.Rectangle{
+			f64.Vec2{-math.MaxFloat32, -math.MaxFloat32},
+			f64.Vec2{+math.MaxFloat32, +math.MaxFloat32},
+		}
+		window.LastFrameActive = current_frame
+		window.IDStack = window.IDStack[:1]
+
+		// Lock window rounding, border size and rounding so that altering the border sizes for children doesn't have side-effects.
+		if flags&WindowFlagsChildWindow != 0 {
+			window.WindowRounding = style.ChildRounding
+		} else if flags&WindowFlagsPopup != 0 && flags&WindowFlagsModal == 0 {
+			window.WindowRounding = style.PopupRounding
+		} else {
+			window.WindowRounding = style.WindowRounding
+		}
+
+		if flags&WindowFlagsChildWindow != 0 {
+			window.WindowBorderSize = style.ChildBorderSize
+		} else if flags&WindowFlagsPopup != 0 && flags&WindowFlagsModal == 0 {
+			window.WindowBorderSize = style.PopupBorderSize
+		} else {
+			window.WindowBorderSize = style.WindowBorderSize
+		}
+		window.WindowPadding = style.WindowPadding
+
+		if flags&WindowFlagsChildWindow != 0 && flags&(WindowFlagsAlwaysUseWindowPadding|WindowFlagsPopup) == 0 && window.WindowBorderSize == 0 {
+			window.WindowPadding = f64.Vec2{0, 0}
+			if flags&WindowFlagsMenuBar != 0 {
+				window.WindowPadding.Y = style.WindowPadding.Y
+			}
+		}
+
+		// Collapse window by double-clicking on title bar
+		// At this point we don't have a clipping rectangle setup yet, so we can use the title bar area for hit detection and drawing
+		if flags&WindowFlagsNoTitleBar == 0 && flags&WindowFlagsNoCollapse == 0 {
+			title_bar_rect := window.TitleBarRect()
+			if window.CollapseToggleWanted || (c.HoveredWindow == window && c.IsMouseHoveringRect(title_bar_rect.Min, title_bar_rect.Max) && c.IO.MouseDoubleClicked[0]) {
+				window.Collapsed = !window.Collapsed
+				c.MarkIniSettingsDirtyEx(window)
+				c.FocusWindow(window)
+			}
+		} else {
+			window.Collapsed = false
+		}
+		window.CollapseToggleWanted = false
+
+		// SIZE
+
+		// Update contents size from last frame for auto-fitting (unless explicitly specified)
+		window.SizeContents = c.CalcSizeContents(window)
+
+		// Hide popup/tooltip window when re-opening while we measure size (because we recycle the windows)
+		if window.HiddenFrames > 0 {
+			window.HiddenFrames--
+		}
+
+		if flags&(WindowFlagsPopup|WindowFlagsTooltip) != 0 && window_just_activated_by_user {
+			window.HiddenFrames = 1
+			if flags&WindowFlagsAlwaysAutoResize != 0 {
+				if !window_size_x_set_by_api {
+					window.Size.X = 0
+					window.SizeFull.X = 0
+				}
+				if !window_size_y_set_by_api {
+					window.Size.Y = 0
+					window.SizeFull.Y = 0
+				}
+				window.SizeContents = f64.Vec2{0, 0}
+			}
+		}
+
+		// Calculate auto-fit size, handle automatic resize
+		size_auto_fit := c.CalcSizeAutoFit(window, window.SizeContents)
+		size_full_modified := f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+		if flags&WindowFlagsAlwaysAutoResize != 0 && !window.Collapsed {
+			// Using SetNextWindowSize() overrides ImGuiWindowFlags_AlwaysAutoResize, so it can be used on tooltips/popups, etc.
+			if !window_size_x_set_by_api {
+				size_full_modified.X = size_auto_fit.X
+				window.SizeFull.X = size_full_modified.X
+			}
+			if !window_size_y_set_by_api {
+				size_full_modified.Y = size_auto_fit.Y
+				window.SizeFull.Y = size_full_modified.Y
+			}
+		} else if window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0 {
+			// Auto-fit only grows during the first few frames
+			// We still process initial auto-fit on collapsed windows to get a window width, but otherwise don't honor ImGuiWindowFlags_AlwaysAutoResize when collapsed.
+			if !window_size_x_set_by_api && window.AutoFitFramesX > 0 {
+			}
+
+			if !window_size_y_set_by_api && window.AutoFitFramesY > 0 {
+			}
+
+			if !window.Collapsed {
+				c.MarkIniSettingsDirtyEx(window)
+			}
+		}
 	}
 
 	c.PushClipRect(window.InnerClipRect.Min, window.InnerClipRect.Max, true)

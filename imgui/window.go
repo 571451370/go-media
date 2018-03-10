@@ -1662,3 +1662,45 @@ func (c *Context) SetWindowCollapsed(window *Window, collapsed bool, cond Cond) 
 	// Set
 	window.Collapsed = collapsed
 }
+
+func (w *Window) TitleBarRect() f64.Rectangle {
+	return f64.Rectangle{
+		w.Pos,
+		f64.Vec2{w.Pos.X + w.SizeFull.X, w.Pos.Y + w.TitleBarHeight()},
+	}
+}
+
+func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Vec2 {
+	var size_auto_fit f64.Vec2
+	style := &c.Style
+	flags := window.Flags
+
+	if flags&WindowFlagsTooltip != 0 {
+		// Tooltip always resize. We keep the spacing symmetric on both axises for aesthetic purpose.
+		size_auto_fit = size_contents
+	} else {
+
+		// When the window cannot fit all contents (either because of constraints, either because screen is too small): we are growing the size on the other axis to compensate for expected scrollbar. FIXME: Might turn bigger than DisplaySize-WindowPadding.
+		size_auto_fit = f64.Vec2{
+			f64.Clamp(size_contents.X, style.WindowMinSize.X, math.Max(style.WindowMinSize.X, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.X)),
+			f64.Clamp(size_contents.Y, style.WindowMinSize.Y, math.Max(style.WindowMinSize.Y, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.Y)),
+		}
+
+		size_auto_fit_after_constraint := c.CalcSizeAfterConstraint(window, size_auto_fit)
+		if size_auto_fit_after_constraint.X < size_contents.X && flags&WindowFlagsNoScrollbar == 0 && flags&WindowFlagsHorizontalScrollbar != 0 {
+			size_auto_fit.Y += style.ScrollbarSize
+		}
+		if size_auto_fit_after_constraint.Y < size_contents.Y && flags&WindowFlagsNoScrollbar == 0 {
+			size_auto_fit.X += style.ScrollbarSize
+		}
+	}
+	return size_auto_fit
+}
+
+func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64.Vec2 {
+	if c.NextWindowData.SizeConstraintCond != 0 {
+
+	}
+
+	return f64.Vec2{}
+}
