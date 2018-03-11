@@ -765,7 +765,89 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 		// Position tooltip (always follows mouse)
 		if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
+			sc := c.Style.MouseCursorScale
+			ref_pos := c.IO.MousePos
+			if !c.NavDisableHighlight && c.NavDisableMouseHover {
+				ref_pos = c.NavCalcPreferredMousePos()
+			}
+			var rect_to_avoid f64.Rectangle
+			if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavMoveMouse == 0 {
+				rect_to_avoid = f64.Rectangle{f64.Vec2{ref_pos.X - 16, ref_pos.Y - 8}, f64.Vec2{ref_pos.X + 16, ref_pos.Y + 8}}
+			} else {
+				// FIXME: Hard-coded based on mouse cursor shape expectation. Exact dimension not very important.
+				rect_to_avoid = f64.Rectangle{f64.Vec2{ref_pos.X - 16, ref_pos.Y - 8}, f64.Vec2{ref_pos.X + 24*sc, ref_pos.Y + 24*sc}}
+			}
+			window.PosFloat = c.FindBestWindowPosForPopup(ref_pos, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
+			if window.AutoPosLastDirection == DirNone {
+				// If there's not enough room, for tooltip we prefer avoiding the cursor at all cost even if it means that part of the tooltip won't be visible.
+				window.PosFloat = ref_pos.Add(f64.Vec2{2, 2})
+			}
 		}
+
+		// Clamp position so it stays visible
+		if flags&WindowFlagsChildWindow == 0 && flags&WindowFlagsTooltip == 0 {
+			// Ignore zero-sized display explicitly to avoid losing positions if a window manager reports zero-sized window when initializing or minimizing.
+			if !window_pos_set_by_api && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0 && c.IO.DisplaySize.X > 0 && c.IO.DisplaySize.Y > 0 {
+				padding := style.DisplayWindowPadding.Max(style.DisplaySafeAreaPadding)
+				posFloat := window.PosFloat.Add(window.Size)
+				posFloat = posFloat.Max(padding)
+				posFloat = posFloat.Sub(window.Size)
+				posFloat = posFloat.Min(c.IO.DisplaySize.Sub(padding))
+				window.PosFloat = posFloat
+			}
+		}
+		window.Pos = window.PosFloat.Floor()
+
+		// Default item width. Make it proportional to window size if window manually resizes
+		if window.Size.X > 0 && flags&WindowFlagsTooltip == 0 && flags&WindowFlagsAlwaysAutoResize == 0 {
+			window.ItemWidthDefault = float64(int(window.Size.X * 0.65))
+		} else {
+			window.ItemWidthDefault = float64(int(c.FontSize * 16))
+		}
+
+		// Prepare for focus requests
+		if window.FocusIdxAllRequestNext == math.MaxInt32 || window.FocusIdxAllCounter == -1 {
+			window.FocusIdxAllRequestCurrent = math.MaxInt32
+		} else {
+			window.FocusIdxAllRequestCurrent = (window.FocusIdxAllRequestNext + (window.FocusIdxAllCounter + 1)) % (window.FocusIdxAllCounter + 1)
+		}
+		if window.FocusIdxTabRequestNext == math.MaxInt32 || window.FocusIdxTabCounter == -1 {
+			window.FocusIdxTabRequestCurrent = math.MaxInt32
+		} else {
+			window.FocusIdxTabRequestCurrent = (window.FocusIdxTabRequestNext + (window.FocusIdxTabCounter + 1)) % (window.FocusIdxTabCounter + 1)
+		}
+		window.FocusIdxAllCounter = -1
+		window.FocusIdxTabCounter = -1
+		window.FocusIdxAllRequestNext = math.MaxInt32
+		window.FocusIdxTabRequestNext = math.MaxInt32
+
+		// Apply scrolling
+		window.Scroll = c.CalcNextScrollFromScrollTargetAndClamp(window)
+		window.ScrollTarget = f64.Vec2{math.MaxInt32, math.MaxInt32}
+
+		// Apply focus, new windows appears in front
+		want_focus := false
+		if window_just_activated_by_user && flags&WindowFlagsNoFocusOnAppearing == 0 {
+			if flags&(WindowFlagsChildWindow|WindowFlagsTooltip) == 0 || flags&WindowFlagsPopup != 0 {
+				want_focus = true
+			}
+		}
+
+		// Handle manual resize: Resize Grips, Borders, Gamepad
+		border_held := -1
+		resize_grip_col := [4]uint32{}
+		resize_grip_count := 1
+		if flags&WindowFlagsResizeFromAnySide != 0 {
+			resize_grip_count = 2
+		}
+		grip_draw_size := float64(int(math.Max(c.FontSize*1.35, window.WindowRounding+1.0+c.FontSize*0.2)))
+		if !window.Collapsed {
+			c.UpdateManualResize(window, size_auto_fit, &border_held, resize_grip_col[:resize_grip_count])
+		}
+		_ = want_focus
+		_ = grip_draw_size
+
+		// DRAWING
 	}
 
 	c.PushClipRect(window.InnerClipRect.Min, window.InnerClipRect.Max, true)
@@ -1261,4 +1343,27 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 	}
 
 	*out_render_list = append(*out_render_list, draw_list)
+}
+
+// Handle resize for: Resize Grips, Borders, Gamepad
+func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, border_held *int, resize_grip_col []uint32) {
+}
+
+func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec2 {
+	scroll := window.Scroll
+	cr_x := window.ScrollTargetCenterRatio.X
+	cr_y := window.ScrollTargetCenterRatio.Y
+	if window.ScrollTarget.X < math.MaxFloat32 {
+		scroll.X = window.ScrollTarget.X - cr_x*(window.SizeFull.X-window.ScrollbarSizes.X)
+	}
+	if window.ScrollTarget.Y < math.MaxFloat32 {
+		scroll.Y = window.ScrollTarget.Y - (1-cr_y)*(window.TitleBarHeight()+window.MenuBarHeight()) - cr_y*(window.SizeFull.Y-window.ScrollbarSizes.Y)
+	}
+	scroll = scroll.Max(f64.Vec2{0, 0})
+	if !window.Collapsed && !window.SkipItems {
+		scroll.X = math.Min(scroll.X, c.GetScrollMaxX(window))
+		scroll.Y = math.Min(scroll.Y, c.GetScrollMaxY(window))
+	}
+
+	return scroll
 }
