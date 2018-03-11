@@ -426,8 +426,12 @@ func (p Vec4) Scale(k float64) Vec4 {
 	return Vec4{p.X * k, p.Y * k, p.Z * k, p.W}
 }
 
-func (p Vec4) Scalev(q Vec4) Vec4 {
+func (p Vec4) Scale3(q Vec3) Vec4 {
 	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W}
+}
+
+func (p Vec4) Scale4(q Vec4) Vec4 {
+	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W * q.W}
 }
 
 func (p Vec4) Shrink(k float64) Vec4 {
