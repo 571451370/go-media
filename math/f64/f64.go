@@ -1164,6 +1164,14 @@ func (r Rectangle) Size() Vec2 {
 	}
 }
 
+func (r Rectangle) Expand(x, y float64) Rectangle {
+	r.Min.X -= x
+	r.Min.Y -= y
+	r.Max.X += x
+	r.Max.Y += y
+	return r
+}
+
 func (r Rectangle) Inset(n float64) Rectangle {
 	if r.Dx() < 2*n {
 		r.Min.X = (r.Min.X + r.Max.X) / 2
