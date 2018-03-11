@@ -14,7 +14,7 @@ func Sphere(p f64.Vec3, s float64) float64 {
 
 func Box(p, b f64.Vec3) float64 {
 	d := p.Abs().Sub(b)
-	return math.Min(d.MaxComp(), 0) + d.Max(0).Len()
+	return math.Min(d.MaxComp(), 0) + d.MaxScalar(0).Len()
 }
 
 func Torus(p f64.Vec3, t f64.Vec2) float64 {
