@@ -1724,3 +1724,26 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 
 	return new_size
 }
+
+func (c *Context) FindBestWindowPosForPopup(ref_pos, size f64.Vec2, last_dir *Dir, r_avoid f64.Rectangle) f64.Vec2 {
+	return c.FindBestWindowPosForPopupEx(ref_pos, size, last_dir, r_avoid, PopupPositionPolicyDefault)
+}
+
+func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *Dir, r_avoid f64.Rectangle, policy PopupPositionPolicy) f64.Vec2 {
+	// r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
+	// r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
+	r_outer := c.GetViewportRect()
+
+	// Combo Box policy (we want a connecting edge)
+	if policy == PopupPositionPolicyComboBox {
+	}
+
+	// Default popup policy
+
+	// Fallback, try to keep within display
+	*last_dir = DirNone
+	pos := ref_pos
+	pos.X = math.Max(math.Min(pos.X+size.X, r_outer.Max.X)-size.X, r_outer.Min.X)
+	pos.Y = math.Max(math.Min(pos.Y+size.Y, r_outer.Max.Y)-size.Y, r_outer.Min.Y)
+	return pos
+}

@@ -454,6 +454,10 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	}
 
 	// Parent window is latched only on the first call to Begin() of the frame, so further append-calls can be done from a different window stack
+	var parent_window_in_stack *Window
+	if len(c.CurrentWindowStack) > 0 {
+		parent_window_in_stack = c.CurrentWindowStack[len(c.CurrentWindowStack)-1]
+	}
 
 	// Add to stack
 	c.CurrentWindowStack = append(c.CurrentWindowStack, window)
@@ -639,14 +643,128 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			// Auto-fit only grows during the first few frames
 			// We still process initial auto-fit on collapsed windows to get a window width, but otherwise don't honor ImGuiWindowFlags_AlwaysAutoResize when collapsed.
 			if !window_size_x_set_by_api && window.AutoFitFramesX > 0 {
+				if window.AutoFitOnlyGrows {
+					size_full_modified.X = math.Max(window.SizeFull.X, size_auto_fit.X)
+				} else {
+					size_full_modified.X = size_auto_fit.X
+				}
+				window.SizeFull.X = size_full_modified.X
 			}
 
 			if !window_size_y_set_by_api && window.AutoFitFramesY > 0 {
+				if window.AutoFitOnlyGrows {
+					size_full_modified.Y = math.Max(window.SizeFull.Y, size_auto_fit.Y)
+				} else {
+					size_full_modified.Y = size_auto_fit.Y
+				}
+				window.SizeFull.Y = size_full_modified.Y
 			}
 
 			if !window.Collapsed {
 				c.MarkIniSettingsDirtyEx(window)
 			}
+		}
+
+		// Apply minimum/maximum window size constraints and final size
+		window.SizeFull = c.CalcSizeAfterConstraint(window, window.SizeFull)
+		window.Size = window.SizeFull
+		if window.Collapsed && flags&WindowFlagsChildWindow == 0 {
+			window.Size = window.TitleBarRect().Size()
+		}
+
+		// SCROLLBAR STATUS
+
+		// Update scrollbar status (based on the Size that was effective during last frame or the auto-resized Size).
+		if !window.Collapsed {
+			// When reading the current size we need to read it after size constraints have been applied
+			size_x_for_scrollbars := window.SizeFullAtLastBegin.X
+			if size_full_modified.X != math.MaxFloat32 {
+				size_x_for_scrollbars = window.SizeFull.X
+			}
+
+			size_y_for_scrollbars := window.SizeFullAtLastBegin.Y
+			if size_full_modified.Y != math.MaxFloat32 {
+				size_y_for_scrollbars = window.SizeFull.Y
+			}
+
+			window.ScrollbarY = flags&WindowFlagsAlwaysVerticalScrollbar != 0 || window.SizeContents.Y > size_y_for_scrollbars && flags&WindowFlagsNoScrollbar == 0
+			if window.ScrollbarX && !window.ScrollbarY {
+				window.ScrollbarY = (window.SizeContents.Y > size_y_for_scrollbars-style.ScrollbarSize) && flags&WindowFlagsNoScrollbar == 0
+			}
+
+			scrollbarSizeX := 0.0
+			if window.ScrollbarY {
+				scrollbarSizeX = style.ScrollbarSize
+			}
+			window.ScrollbarX = flags&WindowFlagsAlwaysHorizontalScrollbar != 0 ||
+				((window.SizeContents.X > size_x_for_scrollbars-scrollbarSizeX) &&
+					flags&WindowFlagsNoScrollbar == 0 && flags&WindowFlagsHorizontalScrollbar != 0)
+
+			window.ScrollbarSizes = f64.Vec2{0, 0}
+			if window.ScrollbarY {
+				window.ScrollbarSizes.X = style.ScrollbarSize
+			}
+			if window.ScrollbarX {
+				window.ScrollbarSizes.Y = style.ScrollbarSize
+			}
+		}
+
+		// POSITION
+		// Popup latch its initial position, will position itself when it appears next frame
+		if window_just_activated_by_user {
+			window.AutoPosLastDirection = DirNone
+			if flags&WindowFlagsPopup != 0 && !window_pos_set_by_api {
+				window.PosFloat = c.CurrentPopupStack[len(c.CurrentPopupStack)-1].OpenPopupPos
+				window.Pos = window.PosFloat
+			}
+		}
+
+		// Position child window
+		if flags&WindowFlagsChildWindow != 0 {
+			window.BeginOrderWithinParent = len(parent_window.DC.ChildWindows)
+			parent_window.DC.ChildWindows = append(parent_window.DC.ChildWindows, window)
+			if flags&WindowFlagsPopup == 0 && !window_pos_set_by_api && !window_is_child_tooltip {
+				window.PosFloat = parent_window.DC.CursorPos
+				window.Pos = window.PosFloat
+			}
+		}
+
+		window_pos_with_pivot := (window.SetWindowPosVal.X != math.MaxFloat32 && window.HiddenFrames == 0)
+		if window_pos_with_pivot {
+			// Position given a pivot (e.g. for centering)
+			windowPos := window.SizeFull.Scalev(window.SetWindowPosPivot)
+			windowPos = window.SetWindowPosVal.Sub(windowPos)
+			windowPos = windowPos.Max(style.DisplaySafeAreaPadding)
+			c.SetWindowPos(window, windowPos, 0)
+		} else if flags&WindowFlagsChildMenu != 0 {
+			// Child menus typically request _any_ position within the parent menu item, and then our FindBestPopupWindowPos() function will move the new menu outside the parent bounds.
+			// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
+			// We want some overlap to convey the relative depth of each popup (currently the amount of overlap it is hard-coded to style.ItemSpacing.x, may need to introduce another style value).
+			horizontal_overlap := style.ItemSpacing.X
+			parent_menu := parent_window_in_stack
+			var rect_to_avoid f64.Rectangle
+			if parent_menu.DC.MenuBarAppending {
+				rect_to_avoid = f64.Rectangle{
+					f64.Vec2{-math.MaxFloat32, parent_menu.Pos.Y + parent_menu.TitleBarHeight()},
+					f64.Vec2{math.MaxFloat32, parent_menu.Pos.Y + parent_menu.TitleBarHeight() + parent_menu.MenuBarHeight()},
+				}
+			} else {
+				rect_to_avoid = f64.Rectangle{
+					f64.Vec2{parent_menu.Pos.X + horizontal_overlap, -math.MaxFloat32},
+					f64.Vec2{parent_menu.Pos.X + parent_menu.Size.X - horizontal_overlap - parent_menu.ScrollbarSizes.X, math.MaxFloat32},
+				}
+			}
+			window.PosFloat = c.FindBestWindowPosForPopup(window.PosFloat, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
+		} else if flags&WindowFlagsPopup != 0 && !window_pos_set_by_api && window_just_appearing_after_hidden_for_resize {
+			rect_to_avoid := f64.Rectangle{
+				f64.Vec2{window.PosFloat.X - 1, window.PosFloat.Y - 1},
+				f64.Vec2{window.PosFloat.X + 1, window.PosFloat.Y + 1},
+			}
+			window.PosFloat = c.FindBestWindowPosForPopup(window.PosFloat, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
+		}
+
+		// Position tooltip (always follows mouse)
+		if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
 		}
 	}
 
