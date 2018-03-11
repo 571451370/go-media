@@ -1215,6 +1215,15 @@ func (r Rectangle) XYWH() (x, y, w, h float64) {
 	return r.Min.X, r.Min.Y, r.Dx(), r.Dy()
 }
 
+func (r Rectangle) In(s Rectangle) bool {
+	if r.Empty() {
+		return true
+	}
+
+	return s.Min.X <= r.Min.X && r.Max.X <= s.Max.X &&
+		s.Min.Y <= r.Min.Y && r.Max.Y <= s.Max.Y
+}
+
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
 		return v

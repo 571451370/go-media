@@ -1730,15 +1730,116 @@ func (c *Context) FindBestWindowPosForPopup(ref_pos, size f64.Vec2, last_dir *Di
 }
 
 func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *Dir, r_avoid f64.Rectangle, policy PopupPositionPolicy) f64.Vec2 {
+	style := &c.Style
+
 	// r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
 	// r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
+	safe_padding := style.DisplaySafeAreaPadding
 	r_outer := c.GetViewportRect()
+	safe_padding_x := 0.0
+	safe_padding_y := 0.0
+	if size.X-r_outer.Dx() > safe_padding.Y*2 {
+		safe_padding_x = -safe_padding.X
+	}
+	if size.Y-r_outer.Dy() > safe_padding.Y*2 {
+		safe_padding_y = -safe_padding.Y
+	}
+	r_outer = r_outer.Expand(safe_padding_x, safe_padding_y)
+
+	base_pos_clamped := f64.Vec2{
+		f64.Clamp(ref_pos.X, r_outer.Min.X, r_outer.Max.X-size.X),
+		f64.Clamp(ref_pos.Y, r_outer.Min.Y, r_outer.Max.Y-size.Y),
+	}
 
 	// Combo Box policy (we want a connecting edge)
 	if policy == PopupPositionPolicyComboBox {
+		dir_prefered_order := [...]Dir{DirDown, DirRight, DirLeft, DirUp}
+		n := Dir(0)
+		if *last_dir != DirNone {
+			n = -1
+		}
+		for ; n < DirCOUNT; n++ {
+			var dir Dir
+			if n == -1 {
+				dir = *last_dir
+			} else {
+				dir = dir_prefered_order[n]
+			}
+
+			// Already tried this direction?
+			if n != -1 && dir == *last_dir {
+				continue
+			}
+
+			var pos f64.Vec2
+			// Below, Toward Right (default)
+			if dir == DirDown {
+				pos = f64.Vec2{r_avoid.Min.X, r_avoid.Max.Y}
+			}
+			// Above, Toward Right
+			if dir == DirRight {
+				pos = f64.Vec2{r_avoid.Min.X, r_avoid.Min.Y - size.Y}
+			}
+			// Below, Toward Left
+			if dir == DirLeft {
+				pos = f64.Vec2{r_avoid.Max.X - size.X, r_avoid.Max.Y}
+			}
+			// Above, Toward Left
+			if dir == DirUp {
+				pos = f64.Vec2{r_avoid.Max.X - size.X, r_avoid.Min.Y - size.Y}
+			}
+
+			r_test := f64.Rectangle{pos, pos.Add(size)}
+			if !r_test.In(r_outer) {
+				continue
+			}
+
+			*last_dir = dir
+			return pos
+		}
 	}
 
 	// Default popup policy
+	dir_prefered_order := [...]Dir{DirRight, DirDown, DirUp, DirLeft}
+	n := Dir(0)
+	if *last_dir != DirNone {
+		n = -1
+	}
+	for ; n < DirCOUNT; n++ {
+		var dir Dir
+		if n == -1 {
+			dir = *last_dir
+		} else {
+			dir = dir_prefered_order[n]
+		}
+
+		// Already tried this direction?
+		if n != -1 && dir == *last_dir {
+			continue
+		}
+
+		var pos f64.Vec2
+		switch dir {
+		case DirLeft:
+			pos.X = r_avoid.Min.X - size.X
+		case DirRight:
+			pos.X = r_avoid.Max.X
+		default:
+			pos.X = base_pos_clamped.X
+		}
+
+		switch dir {
+		case DirUp:
+			pos.Y = r_avoid.Min.Y - size.Y
+		case DirDown:
+			pos.Y = r_avoid.Max.Y
+		default:
+			pos.Y = base_pos_clamped.Y
+		}
+
+		*last_dir = dir
+		return pos
+	}
 
 	// Fallback, try to keep within display
 	*last_dir = DirNone
