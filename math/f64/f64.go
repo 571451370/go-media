@@ -61,6 +61,20 @@ func (p Vec2) Min(q Vec2) Vec2 {
 	}
 }
 
+func (p Vec2) Floor() Vec2 {
+	return Vec2{
+		math.Floor(p.X),
+		math.Floor(p.Y),
+	}
+}
+
+func (p Vec2) Ceil() Vec2 {
+	return Vec2{
+		math.Ceil(p.X),
+		math.Ceil(p.Y),
+	}
+}
+
 func (p Vec2) Len() float64 {
 	return math.Sqrt(p.X*p.X + p.Y*p.Y)
 }
@@ -77,7 +91,7 @@ func (p Vec2) Normalize() Vec2 {
 	return Vec2{p.X / l, p.Y / l}
 }
 
-func (p Vec2) Scalev(q Vec2) Vec2 {
+func (p Vec2) Scale2(q Vec2) Vec2 {
 	return Vec2{p.X * q.X, p.Y * q.Y}
 }
 
@@ -97,6 +111,13 @@ func (p Vec2) Lerp(t float64, q Vec2) Vec2 {
 	return Vec2{
 		Lerp(t, p.X, q.X),
 		Lerp(t, p.Y, q.Y),
+	}
+}
+
+func (p Vec2) Lerp2(t, q Vec2) Vec2 {
+	return Vec2{
+		Lerp(t.X, p.X, q.X),
+		Lerp(t.Y, p.Y, q.Y),
 	}
 }
 
@@ -236,7 +257,7 @@ func (p Vec3) LenSquared() float64 {
 	return p.Dot(p)
 }
 
-func (p Vec3) Scalev(q Vec3) Vec3 {
+func (p Vec3) Scale3(q Vec3) Vec3 {
 	return Vec3{p.X * q.X, p.Y * q.Y, p.Z * q.Z}
 }
 
@@ -547,8 +568,8 @@ func (m *Mat3) Det() float64 {
 	A4 := Vec3{m[1][2], m[1][0], m[1][1]}
 	A5 := Vec3{m[2][1], m[2][2], m[2][0]}
 
-	X := A2.Scalev(A3)
-	Y := A4.Scalev(A5)
+	X := A2.Scale3(A3)
+	Y := A4.Scale3(A5)
 	A6 := X.Sub(Y)
 	return A1.Dot(A6)
 }

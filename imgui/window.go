@@ -341,6 +341,20 @@ func (w *Window) GetID(str string) ID {
 	return id
 }
 
+func (w *Window) GetIDByInt(n int) ID {
+	var seed, val [4]byte
+	seedId := w.IDStack[len(w.IDStack)-1]
+	binary.LittleEndian.PutUint32(seed[:], uint32(seedId))
+	binary.LittleEndian.PutUint32(val[:], uint32(n))
+
+	h := fnv.New32()
+	h.Write(seed[:])
+	h.Write(val[:])
+	id := ID(h.Sum32())
+	w.Ctx.KeepAliveID(id)
+	return id
+}
+
 func (c *Context) ItemSize(size f64.Vec2) {
 	c.ItemSizeEx(size, 0)
 }

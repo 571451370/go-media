@@ -732,7 +732,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		window_pos_with_pivot := (window.SetWindowPosVal.X != math.MaxFloat32 && window.HiddenFrames == 0)
 		if window_pos_with_pivot {
 			// Position given a pivot (e.g. for centering)
-			windowPos := window.SizeFull.Scalev(window.SetWindowPosPivot)
+			windowPos := window.SizeFull.Scale2(window.SetWindowPosPivot)
 			windowPos = window.SetWindowPosVal.Sub(windowPos)
 			windowPos = windowPos.Max(style.DisplaySafeAreaPadding)
 			c.SetWindowPos(window, windowPos, 0)
@@ -1346,7 +1346,61 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 }
 
 // Handle resize for: Resize Grips, Borders, Gamepad
+// TODO
 func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, border_held *int, resize_grip_col []uint32) {
+	flags := window.Flags
+	if flags&WindowFlagsNoResize != 0 || flags&WindowFlagsAlwaysAutoResize != 0 || window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0 {
+		return
+	}
+
+	resize_border_count := 0
+	if flags&WindowFlagsResizeFromAnySide != 0 {
+		resize_border_count = 4
+	}
+	grip_draw_size := float64(int(math.Max(c.FontSize*1.35, window.WindowRounding+1.0+c.FontSize*0.2)))
+	grip_hover_size := float64(int(grip_draw_size * 0.75))
+
+	pos_target := f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+	size_target := f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+
+	_, _, _ = resize_border_count, pos_target, size_target
+
+	// Manual resize grips
+	c.PushID("#RESIZE")
+	for resize_grip_n := range resize_grip_col {
+		grip := resize_grip_def[resize_grip_n]
+		corner := window.Pos.Lerp2(grip.CornerPos, window.Pos.Add(window.Size))
+
+		// Using the FlattenChilds button flag we make the resize button accessible even if we are hovering over a child window
+		resize_rect := f64.Rectangle{
+			corner,
+			corner.Add(grip.InnerDir.Scale(grip_hover_size)),
+		}
+		resize_rect = resize_rect.Canon()
+
+		hovered, held, _ := c.ButtonBehavior(resize_rect, window.GetIDByInt(resize_grip_n), ButtonFlagsFlattenChildren|ButtonFlagsNoNavFocus)
+		if hovered || held {
+			if resize_grip_n&1 != 0 {
+				c.MouseCursor = MouseCursorResizeNESW
+			} else {
+				c.MouseCursor = MouseCursorResizeNWSE
+			}
+		}
+
+		if c.HoveredWindow == window && held && c.IO.MouseDoubleClicked[0] && resize_grip_n == 0 {
+			// Manual auto-fit when double-clicking
+			size_target = c.CalcSizeAfterConstraint(window, size_auto_fit)
+			c.ClearActiveID()
+		} else if held {
+			// Resize from any of the four corners
+			// We don't use an incremental MouseDelta but rather compute an absolute target size based on mouse position
+		}
+
+		if resize_grip_n == 0 || held || hovered {
+			cornerTarget := resize_rect.Size()
+			cornerTarget = cornerTarget.Scale2(grip.CornerPos)
+		}
+	}
 }
 
 func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec2 {
