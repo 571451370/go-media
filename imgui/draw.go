@@ -952,6 +952,24 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 			// Menu bar
 			if flags&WindowFlagsMenuBar != 0 {
+				menu_bar_rect := window.MenuBarRect()
+				menu_bar_rect = menu_bar_rect.Intersect(window.Rect())
+
+				rounding := 0.0
+				if flags&WindowFlagsNoTitleBar != 0 {
+					rounding = window_rounding
+				}
+				window.DrawList.AddRectFilledEx(
+					menu_bar_rect.Min, menu_bar_rect.Max,
+					c.GetColorFromStyle(ColMenuBarBg), rounding, DrawCornerFlagsTop,
+				)
+
+				if style.FrameBorderSize > 0 && menu_bar_rect.Max.Y < window.Pos.Y+window.Size.Y {
+					window.DrawList.AddLineEx(
+						menu_bar_rect.BL(), menu_bar_rect.BR(),
+						c.GetColorFromStyle(ColBorder), style.FrameBorderSize,
+					)
+				}
 			}
 
 			// Scrollbars
@@ -960,6 +978,38 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			}
 			if window.ScrollbarY {
 				c.Scrollbar(LayoutTypeVertical)
+			}
+
+			// Render resize grips (after their input handling so we don't have a frame of latency)
+			if flags&WindowFlagsNoResize == 0 {
+				for resize_grip_n := range resize_grip_def {
+					grip := resize_grip_def[resize_grip_n]
+					corner := window.Pos.Lerp2(grip.CornerPos, window.Pos.Add(window.Size))
+
+					var l1, l2 f64.Vec2
+					if resize_grip_n&1 != 0 {
+						l1 = f64.Vec2{window_border_size, grip_draw_size}
+						l2 = f64.Vec2{grip_draw_size, window_border_size}
+					} else {
+						l1 = f64.Vec2{grip_draw_size, window_border_size}
+						l2 = f64.Vec2{window_border_size, grip_draw_size}
+					}
+					p1 := grip.InnerDir.Scale2(l1)
+					p2 := grip.InnerDir.Scale2(l2)
+					p1 = corner.Add(p1)
+					p2 = corner.Add(p2)
+					window.DrawList.PathLineTo(p1)
+					window.DrawList.PathLineTo(p2)
+					// TODO
+				}
+			}
+
+			// Borders
+			if window_border_size > 0 {
+			}
+			if border_held != -1 {
+			}
+			if style.FrameBorderSize > 0 && flags&WindowFlagsNoTitleBar == 0 {
 			}
 		}
 		_ = grip_draw_size

@@ -1879,3 +1879,8 @@ func (w *Window) GetWindowBgColorIdxFromFlags(flags WindowFlags) Col {
 	}
 	return ColWindowBg
 }
+
+func (w *Window) MenuBarRect() f64.Rectangle {
+	y1 := w.Pos.Y + w.TitleBarHeight()
+	return f64.Rect(w.Pos.X, y1, w.Pos.X+w.SizeFull.X, y1+w.MenuBarHeight())
+}
