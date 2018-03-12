@@ -223,7 +223,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 	} else {
 		col = c.GetColorFromStyle(ColSliderGrabActive)
 	}
-	window.DrawList.AddRectFilled(grab_bb.Min, grab_bb.Max, col, style.GrabRounding)
+	window.DrawList.AddRectFilledEx(grab_bb.Min, grab_bb.Max, col, style.GrabRounding, DrawCornerFlagsAll)
 
 	return value_changed
 }

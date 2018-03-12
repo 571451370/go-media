@@ -1862,3 +1862,20 @@ func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *
 	pos.Y = math.Max(math.Min(pos.Y+size.Y, r_outer.Max.Y)-size.Y, r_outer.Min.Y)
 	return pos
 }
+
+func (w *Window) Rect() f64.Rectangle {
+	return f64.Rectangle{
+		w.Pos,
+		w.Pos.Add(w.Size),
+	}
+}
+
+func (w *Window) GetWindowBgColorIdxFromFlags(flags WindowFlags) Col {
+	if flags&(WindowFlagsTooltip|WindowFlagsPopup) != 0 {
+		return ColPopupBg
+	}
+	if flags&WindowFlagsChildWindow != 0 {
+		return ColChildBg
+	}
+	return ColWindowBg
+}

@@ -7,6 +7,20 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
+type DrawCornerFlags int
+
+const (
+	DrawCornerFlagsTopLeft  DrawCornerFlags = 1 << 0                                            // 0x1
+	DrawCornerFlagsTopRight DrawCornerFlags = 1 << 1                                            // 0x2
+	DrawCornerFlagsBotLeft  DrawCornerFlags = 1 << 2                                            // 0x4
+	DrawCornerFlagsBotRight DrawCornerFlags = 1 << 3                                            // 0x8
+	DrawCornerFlagsTop      DrawCornerFlags = DrawCornerFlagsTopLeft | DrawCornerFlagsTopRight  // 0x3
+	DrawCornerFlagsBot      DrawCornerFlags = DrawCornerFlagsBotLeft | DrawCornerFlagsBotRight  // 0xC
+	DrawCornerFlagsLeft     DrawCornerFlags = DrawCornerFlagsTopLeft | DrawCornerFlagsBotLeft   // 0x5
+	DrawCornerFlagsRight    DrawCornerFlags = DrawCornerFlagsTopRight | DrawCornerFlagsBotRight // 0xA
+	DrawCornerFlagsAll      DrawCornerFlags = 0xF                                               // In your function calls you may use ~0 (= all bits sets) instead of DrawCornerFlags_All, as a convenience
+)
+
 type DrawListSharedData struct {
 	TexUvWhitePixel      f64.Vec2 // UV of white pixel in the atlas
 	Font                 *Font    // Current/default font (optional, for simplified AddText overload)
@@ -844,10 +858,78 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		if !window.Collapsed {
 			c.UpdateManualResize(window, size_auto_fit, &border_held, resize_grip_col[:resize_grip_count])
 		}
-		_ = want_focus
-		_ = grip_draw_size
 
 		// DRAWING
+
+		// Setup draw list and outer clipping rectangle
+		window.DrawList.Clear()
+		if c.Style.AntiAliasedLines {
+			window.DrawList.Flags |= DrawListFlagsAntiAliasedLines
+		}
+		if c.Style.AntiAliasedFill {
+			window.DrawList.Flags |= DrawListFlagsAntiAliasedFill
+		}
+		window.DrawList.PushTextureID(c.Font.ContainerAtlas.TexID)
+		viewport_rect := c.GetViewportRect()
+		if flags&WindowFlagsChildWindow != 0 && flags&WindowFlagsPopup == 0 && !window_is_child_tooltip {
+			c.PushClipRect(parent_window.ClipRect.Min, parent_window.ClipRect.Max, true)
+		} else {
+			c.PushClipRect(viewport_rect.Min, viewport_rect.Max, true)
+		}
+
+		// Draw modal window background (darkens what is behind them)
+		if flags&WindowFlagsModal != 0 && window == c.GetFrontMostModalRootWindow() {
+			window.DrawList.AddRectFilled(
+				viewport_rect.Min,
+				viewport_rect.Max,
+				c.GetColorFromStyleWithAlpha(ColModalWindowDarkening, c.ModalWindowDarkeningRatio),
+			)
+		}
+
+		// Draw navigation selection/windowing rectangle background
+		if c.NavWindowingTarget == window {
+			bb := window.Rect()
+			bb = bb.Expand(c.FontSize, c.FontSize)
+			// Avoid drawing if the window covers all the viewport anyway
+			if !viewport_rect.In(bb) {
+				window.DrawList.AddRectFilledEx(
+					bb.Min, bb.Max,
+					c.GetColorFromStyleWithAlpha(ColNavWindowingHighlight, c.NavWindowingHighlightAlpha*0.25),
+					c.Style.WindowRounding,
+					DrawCornerFlagsAll,
+				)
+			}
+		}
+
+		// Draw window + handle manual resize
+		window_rounding := window.WindowRounding
+		window_border_size := window.WindowBorderSize
+		title_bar_is_highlight := want_focus || (c.NavWindow != nil && window.RootWindowForTitleBarHighlight == c.NavWindow.RootWindowForTitleBarHighlight)
+		title_bar_rect := window.TitleBarRect()
+		if window.Collapsed {
+			// Title bar only
+			backup_border_size := style.FrameBorderSize
+			c.Style.FrameBorderSize = window.WindowBorderSize
+
+			var title_bar_col color.RGBA
+			if title_bar_is_highlight && !c.NavDisableHighlight {
+				title_bar_col = c.GetColorFromStyle(ColTitleBgActive)
+			} else {
+				title_bar_col = c.GetColorFromStyle(ColTitleBgCollapsed)
+			}
+
+			c.RenderFrameEx(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, true, window_rounding)
+			c.Style.FrameBorderSize = backup_border_size
+		} else {
+			// Window background
+			if c.NextWindowData.BgAlphaCond != 0 {
+				c.NextWindowData.BgAlphaCond = 0
+			}
+
+			// Title bar
+		}
+		_ = grip_draw_size
+		_ = window_border_size
 	}
 
 	c.PushClipRect(window.InnerClipRect.Min, window.InnerClipRect.Max, true)
@@ -1094,7 +1176,11 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
 }
 
-func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
+func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA) {
+	d.AddRectFilledEx(p_min, p_max, col, 0, DrawCornerFlagsAll)
+}
+
+func (d *DrawList) AddRectFilledEx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags) {
 }
 
 func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
