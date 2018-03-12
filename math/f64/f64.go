@@ -1197,6 +1197,10 @@ func (r Rectangle) Expand(x, y float64) Rectangle {
 	return r
 }
 
+func (r Rectangle) Expand2(v Vec2) Rectangle {
+	return r.Expand(v.X, v.Y)
+}
+
 func (r Rectangle) Inset(n float64) Rectangle {
 	if r.Dx() < 2*n {
 		r.Min.X = (r.Min.X + r.Max.X) / 2
@@ -1248,6 +1252,11 @@ func (r Rectangle) In(s Rectangle) bool {
 	return s.Min.X <= r.Min.X && r.Max.X <= s.Max.X &&
 		s.Min.Y <= r.Min.Y && r.Max.Y <= s.Max.Y
 }
+
+func (r Rectangle) TL() Vec2 { return r.Min }
+func (r Rectangle) TR() Vec2 { return Vec2{r.Max.X, r.Min.Y} }
+func (r Rectangle) BL() Vec2 { return Vec2{r.Min.X, r.Max.Y} }
+func (r Rectangle) BR() Vec2 { return r.Max }
 
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
