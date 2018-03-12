@@ -922,11 +922,45 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			c.Style.FrameBorderSize = backup_border_size
 		} else {
 			// Window background
+			bg_col := c.GetColorFromStyle(c.GetWindowBgColorIdxFromFlags(flags))
 			if c.NextWindowData.BgAlphaCond != 0 {
+				bg_col.A = uint8(c.NextWindowData.BgAlphaVal * 255)
 				c.NextWindowData.BgAlphaCond = 0
 			}
+			drawCornerFlags := DrawCornerFlagsBot
+			if flags&WindowFlagsNoTitleBar != 0 {
+				drawCornerFlags = DrawCornerFlagsAll
+			}
+			window.DrawList.AddRectFilledEx(
+				window.Pos.Add(f64.Vec2{0, window.TitleBarHeight()}),
+				window.Pos.Add(window.Size),
+				bg_col, window_rounding, drawCornerFlags,
+			)
 
 			// Title bar
+			var title_bar_col color.RGBA
+			if window.Collapsed {
+				title_bar_col = c.GetColorFromStyle(ColTitleBgCollapsed)
+			} else if title_bar_is_highlight {
+				title_bar_col = c.GetColorFromStyle(ColTitleBgActive)
+			} else {
+				title_bar_col = c.GetColorFromStyle(ColTitleBg)
+			}
+			if flags&WindowFlagsNoTitleBar == 0 {
+				window.DrawList.AddRectFilledEx(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, window_rounding, DrawCornerFlagsTop)
+			}
+
+			// Menu bar
+			if flags&WindowFlagsMenuBar != 0 {
+			}
+
+			// Scrollbars
+			if window.ScrollbarX {
+				c.Scrollbar(LayoutTypeHorizontal)
+			}
+			if window.ScrollbarY {
+				c.Scrollbar(LayoutTypeVertical)
+			}
 		}
 		_ = grip_draw_size
 		_ = window_border_size
@@ -1506,4 +1540,12 @@ func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec
 	}
 
 	return scroll
+}
+
+// Vertical scrollbar
+// The entire piece of code below is rather confusing because:
+// - We handle absolute seeking (when first clicking outside the grab) and relative manipulation (afterward or when clicking inside the grab)
+// - We store values as normalized ratio and in a form that allows the window content to change while we are holding on a scrollbar
+// - We handle both horizontal and vertical scrollbars, which makes the terminology not ideal.
+func (c *Context) Scrollbar(direction LayoutType) {
 }
