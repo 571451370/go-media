@@ -1598,4 +1598,95 @@ func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec
 // - We store values as normalized ratio and in a form that allows the window content to change while we are holding on a scrollbar
 // - We handle both horizontal and vertical scrollbars, which makes the terminology not ideal.
 func (c *Context) Scrollbar(direction LayoutType) {
+	window := c.CurrentWindow
+
+	horizontal := direction == LayoutTypeHorizontal
+	style := &c.Style
+	var id ID
+	if horizontal {
+		id = window.GetID("#SCROLLX")
+	} else {
+		id = window.GetID("#SCROLLY")
+	}
+
+	// Render background
+	other_scrollbar := window.ScrollbarY
+	if !horizontal {
+		other_scrollbar = window.ScrollbarX
+	}
+	other_scrollbar_size_w := 0.0
+	if other_scrollbar {
+		other_scrollbar_size_w = style.ScrollbarSize
+	}
+	window_rect := window.Rect()
+	border_size := window.WindowBorderSize
+
+	var bb f64.Rectangle
+	if horizontal {
+		bb = f64.Rect(
+			window.Pos.X+border_size,
+			window_rect.Max.Y-style.ScrollbarSize,
+			window_rect.Max.X-other_scrollbar_size_w-border_size,
+			window_rect.Max.Y-border_size,
+		)
+	} else {
+		bb = f64.Rect(
+			window_rect.Max.X-style.ScrollbarSize,
+			window.Pos.Y+border_size,
+			window_rect.Max.X-border_size,
+			window_rect.Max.Y-other_scrollbar_size_w-border_size,
+		)
+	}
+	if !horizontal {
+		bb.Min.Y += window.TitleBarHeight()
+		if window.Flags&WindowFlagsMenuBar != 0 {
+			bb.Min.Y += window.MenuBarHeight()
+		}
+	}
+	if bb.Dx() <= 0 || bb.Dy() <= 0 {
+		return
+	}
+
+	var window_rounding_corners DrawCornerFlags
+	if horizontal {
+		window_rounding_corners = DrawCornerFlagsBotLeft
+		if !other_scrollbar {
+			window_rounding_corners |= DrawCornerFlagsBotRight
+		}
+	} else {
+		if window.Flags&WindowFlagsNoTitleBar != 0 && window.Flags&WindowFlagsMenuBar == 0 {
+			window_rounding_corners |= DrawCornerFlagsTopRight
+		}
+		if !other_scrollbar {
+			window_rounding_corners |= DrawCornerFlagsBotRight
+		}
+	}
+	window.DrawList.AddRectFilledEx(bb.Min, bb.Max, c.GetColorFromStyle(ColScrollbarBg), window.WindowRounding, window_rounding_corners)
+	bb = bb.Expand(
+		-f64.Clamp(float64(int((bb.Max.X-bb.Min.X-2.0)*0.5)), 0, 3),
+		-f64.Clamp(float64(int((bb.Max.Y-bb.Min.Y-2.0)*0.5)), 0, 3),
+	)
+
+	// V denote the main, longer axis of the scrollbar (= height for a vertical scrollbar)
+	var scrollbar_size_v, scroll_v, win_size_avail_v, win_size_contents_v float64
+	if horizontal {
+		scrollbar_size_v = bb.Dx()
+		scroll_v = window.Scroll.X
+		win_size_avail_v = window.SizeFull.X - other_scrollbar_size_w
+		win_size_contents_v = window.SizeContents.X
+	} else {
+		scrollbar_size_v = bb.Dy()
+		scroll_v = window.Scroll.Y
+		win_size_avail_v = window.SizeFull.Y - other_scrollbar_size_w
+		win_size_contents_v = window.SizeContents.Y
+	}
+
+	// Calculate the height of our grabbable box. It generally represent the amount visible (vs the total scrollable amount)
+	// But we maintain a minimum size in pixel to allow for the user to still aim inside.
+	win_size_v := math.Max(math.Max(win_size_contents_v, win_size_avail_v), 1.0)
+	grab_h_pixels := f64.Clamp(scrollbar_size_v*(win_size_avail_v/win_size_v), style.GrabMinSize, scrollbar_size_v)
+	grab_h_norm := grab_h_pixels / scrollbar_size_v
+
+	// Handle input right away. None of the code of Begin() is relying on scrolling position before calling Scrollbar().
+	_, _, _ = id, scroll_v, grab_h_norm
 }
