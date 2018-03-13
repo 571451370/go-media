@@ -21,7 +21,7 @@ func (c *Context) Image(user_texture_id TextureID, size, uv0, uv1 f64.Vec2, tint
 	}
 
 	if border_col.W > 0 {
-		window.DrawList.AddRect(bb.Min, bb.Max, border_col.ToRGBA(), 0)
+		window.DrawList.AddRect(bb.Min, bb.Max, border_col.ToRGBA())
 		window.DrawList.AddImageEx(user_texture_id, bb.Min.Add(f64.Vec2{1, 1}), bb.Max.Sub(f64.Vec2{1, 1}), uv0, uv1, tint_col.ToRGBA())
 	} else {
 		window.DrawList.AddImageEx(user_texture_id, bb.Min, bb.Max, uv0, uv1, tint_col.ToRGBA())

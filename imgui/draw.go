@@ -849,7 +849,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 		// Handle manual resize: Resize Grips, Borders, Gamepad
 		border_held := -1
-		resize_grip_col := [4]uint32{}
+		resize_grip_col := [4]color.RGBA{}
 		resize_grip_count := 1
 		if flags&WindowFlagsResizeFromAnySide != 0 {
 			resize_grip_count = 2
@@ -1000,17 +1000,36 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 					p2 = corner.Add(p2)
 					window.DrawList.PathLineTo(p1)
 					window.DrawList.PathLineTo(p2)
-					// TODO
+					window.DrawList.PathArcToFast(
+						f64.Vec2{
+							corner.X + grip.InnerDir.X*(window_rounding+window_border_size),
+							corner.Y + grip.InnerDir.Y*(window_rounding+window_border_size),
+						},
+						window_rounding, grip.AngleMin12, grip.AngleMax12,
+					)
+					window.DrawList.PathFillConvex(resize_grip_col[resize_grip_n])
 				}
 			}
 
 			// Borders
 			if window_border_size > 0 {
+				window.DrawList.AddRectEx(window.Pos, window.Pos.Add(window.Size), c.GetColorFromStyle(ColBorder), window_rounding, DrawCornerFlagsAll, window_border_size)
 			}
 			if border_held != -1 {
+				border := c.GetBorderRect(window, border_held, grip_draw_size, 0.0)
+				window.DrawList.AddLineEx(border.Min, border.Max, c.GetColorFromStyle(ColSeparatorActive), math.Max(1.0, window_border_size))
 			}
 			if style.FrameBorderSize > 0 && flags&WindowFlagsNoTitleBar == 0 {
+				window.DrawList.AddLineEx(
+					title_bar_rect.BL().Add(f64.Vec2{style.WindowBorderSize, -1}),
+					title_bar_rect.BR().Add(f64.Vec2{-style.WindowBorderSize, -1}),
+					c.GetColorFromStyle(ColBorder), style.FrameBorderSize,
+				)
 			}
+		}
+
+		// Draw navigation selection/windowing rectangle border
+		if c.NavWindowingTarget == window {
 		}
 		_ = grip_draw_size
 		_ = window_border_size
@@ -1257,7 +1276,11 @@ func (d *DrawList) AddLineEx(a, b f64.Vec2, col color.RGBA, thickness float64) {
 func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, thickness float64) {
 }
 
-func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
+func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA) {
+	d.AddRectEx(p_min, p_max, col, 0, DrawCornerFlagsAll, 1)
+}
+
+func (d *DrawList) AddRectEx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64, rounding_corner_flags DrawCornerFlags, thickness float64) {
 }
 
 func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA) {
@@ -1428,6 +1451,12 @@ func (d *DrawList) AddDrawCmd() {
 	d.CmdBuffer = append(d.CmdBuffer, draw_cmd)
 }
 
+func (d *DrawList) PathArcToFast(centre f64.Vec2, radius float64, a_min_of_12, a_max_of_12 int) {
+}
+
+func (d *DrawList) PathFillConvex(col color.RGBA) {
+}
+
 func (d *DrawList) ChannelsMerge() {
 	// Note that we never use or rely on channels.Size because it is merely a buffer that we never shrink back to 0 to keep all sub-buffers ready for use.
 	if d._ChannelsCount <= 1 {
@@ -1517,7 +1546,7 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 
 // Handle resize for: Resize Grips, Borders, Gamepad
 // TODO
-func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, border_held *int, resize_grip_col []uint32) {
+func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, border_held *int, resize_grip_col []color.RGBA) {
 	flags := window.Flags
 	if flags&WindowFlagsNoResize != 0 || flags&WindowFlagsAlwaysAutoResize != 0 || window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0 {
 		return
@@ -1688,5 +1717,116 @@ func (c *Context) Scrollbar(direction LayoutType) {
 	grab_h_norm := grab_h_pixels / scrollbar_size_v
 
 	// Handle input right away. None of the code of Begin() is relying on scrolling position before calling Scrollbar().
-	_, _, _ = id, scroll_v, grab_h_norm
+	previously_held := c.ActiveId == id
+	hovered, held, _ := c.ButtonBehavior(bb, id, ButtonFlagsNoNavFocus)
+
+	scroll_max := math.Max(1.0, win_size_contents_v-win_size_avail_v)
+	scroll_ratio := f64.Saturate(scroll_v / scroll_max)
+	grab_v_norm := scroll_ratio * (scrollbar_size_v - grab_h_pixels) / scrollbar_size_v
+	if held && grab_h_norm < 1.0 {
+		var (
+			scrollbar_pos_v, mouse_pos_v float64
+			click_delta_to_grab_center_v *float64
+		)
+		if horizontal {
+			scrollbar_pos_v = bb.Min.X
+			mouse_pos_v = c.IO.MousePos.X
+			click_delta_to_grab_center_v = &c.ScrollbarClickDeltaToGrabCenter.X
+		} else {
+			scrollbar_pos_v = bb.Min.Y
+			mouse_pos_v = c.IO.MousePos.Y
+			click_delta_to_grab_center_v = &c.ScrollbarClickDeltaToGrabCenter.Y
+		}
+
+		// Click position in scrollbar normalized space (0.0f->1.0f)
+		clicked_v_norm := f64.Saturate((mouse_pos_v - scrollbar_pos_v) / scrollbar_size_v)
+		c.SetHoveredID(id)
+
+		seek_absolute := false
+		if !previously_held {
+			// On initial click calculate the distance between mouse and the center of the grab
+			if clicked_v_norm >= grab_v_norm && clicked_v_norm <= grab_v_norm+grab_h_norm {
+				*click_delta_to_grab_center_v = clicked_v_norm - grab_v_norm - grab_h_norm*0.5
+			} else {
+				seek_absolute = true
+				*click_delta_to_grab_center_v = 0
+			}
+		}
+
+		// Apply scroll
+		// It is ok to modify Scroll here because we are being called in Begin() after the calculation of SizeContents and before setting up our starting position
+		scroll_v_norm := f64.Saturate((clicked_v_norm - *click_delta_to_grab_center_v - grab_h_norm*0.5) / (1.0 - grab_h_norm))
+		scroll_v = float64(int(0.5 + scroll_v_norm*scroll_max))
+		if horizontal {
+			window.Scroll.X = scroll_v
+		} else {
+			window.Scroll.Y = scroll_v
+		}
+
+		// Update values for rendering
+		scroll_ratio = f64.Saturate(scroll_v / scroll_max)
+		grab_v_norm = scroll_ratio * (scrollbar_size_v - grab_h_pixels) / scrollbar_size_v
+
+		// Update distance to grab now that we have seeked and saturated
+		if seek_absolute {
+			*click_delta_to_grab_center_v = clicked_v_norm - grab_v_norm - grab_h_norm*0.5
+		}
+	}
+
+	// Render
+	var grab_rect f64.Rectangle
+	var grab_col color.RGBA
+	switch {
+	case held:
+		grab_col = c.GetColorFromStyle(ColScrollbarGrabActive)
+	case hovered:
+		grab_col = c.GetColorFromStyle(ColScrollbarGrabHovered)
+	default:
+		grab_col = c.GetColorFromStyle(ColScrollbarGrab)
+	}
+
+	if horizontal {
+		grab_rect = f64.Rectangle{
+			f64.Vec2{
+				f64.Lerp(grab_v_norm, bb.Min.X, bb.Max.X),
+				bb.Min.Y,
+			},
+			f64.Vec2{
+				math.Min(f64.Lerp(grab_v_norm, bb.Min.X, bb.Max.X)+grab_h_pixels, window_rect.Max.X),
+				bb.Max.Y,
+			},
+		}
+	} else {
+		grab_rect = f64.Rectangle{
+			f64.Vec2{
+				bb.Min.X,
+				f64.Lerp(grab_v_norm, bb.Min.Y, bb.Max.Y),
+			},
+			f64.Vec2{
+				bb.Max.X,
+				math.Min(f64.Lerp(grab_v_norm, bb.Min.Y, bb.Max.Y)+grab_h_pixels, window_rect.Max.Y),
+			},
+		}
+	}
+
+	window.DrawList.AddRectFilledEx(grab_rect.Min, grab_rect.Max, grab_col, style.ScrollbarRounding, DrawCornerFlagsAll)
+}
+
+func (c *Context) GetBorderRect(window *Window, border_n int, perp_padding, thickness float64) f64.Rectangle {
+	rect := window.Rect()
+	if thickness == 0 {
+		rect.Max = rect.Max.Sub(f64.Vec2{1, 1})
+	}
+	switch border_n {
+	case 0:
+		return f64.Rect(rect.Min.X+perp_padding, rect.Min.Y, rect.Max.X-perp_padding, rect.Min.Y+thickness)
+	case 1:
+		return f64.Rect(rect.Max.X-thickness, rect.Min.Y+perp_padding, rect.Max.X, rect.Max.Y-perp_padding)
+	case 2:
+		return f64.Rect(rect.Min.X+perp_padding, rect.Max.Y-thickness, rect.Max.X-perp_padding, rect.Max.Y)
+	case 3:
+		return f64.Rect(rect.Min.X, rect.Min.Y+perp_padding, rect.Min.X+thickness, rect.Max.Y-perp_padding)
+	}
+
+	return f64.Rectangle{}
 }
