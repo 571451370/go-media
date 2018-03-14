@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"image/color"
+	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -303,6 +304,43 @@ func (c *Context) InvisibleButton(str_id string, size_arg f64.Vec2) bool {
 	}
 
 	_, _, pressed := c.ButtonBehavior(bb, id, 0)
+	return pressed
+}
+
+// Button to close a window
+func (c *Context) CloseButton(id ID, pos f64.Vec2, radius float64) bool {
+	window := c.CurrentWindow
+
+	// We intentionally allow interaction when clipped so that a mechanical Alt,Right,Validate sequence close a window.
+	// (this isn't the regular behavior of buttons, but it doesn't affect the user much because navigation tends to keep items visible).
+	rad := f64.Vec2{radius, radius}
+	bb := f64.Rectangle{pos.Sub(rad), pos.Add(rad)}
+	is_clipped := !c.ItemAdd(bb, id)
+
+	hovered, held, pressed := c.ButtonBehavior(bb, id, 0)
+	if is_clipped {
+		return pressed
+	}
+
+	// Render
+	center := bb.Center()
+	if hovered {
+		var col color.RGBA
+		switch {
+		case held && hovered:
+			col = c.GetColorFromStyle(ColButtonActive)
+		default:
+			col = c.GetColorFromStyle(ColButtonHovered)
+		}
+		window.DrawList.AddCircleFilledEx(center, math.Max(2, radius), col, 9)
+	}
+
+	cross_extent := (radius * 0.7071) - 1.0
+	cross_col := c.GetColorFromStyle(ColText)
+	center = center.Sub(f64.Vec2{0.5, 0.5})
+	window.DrawList.AddLineEx(center.Add(f64.Vec2{+cross_extent, +cross_extent}), center.Add(f64.Vec2{-cross_extent, -cross_extent}), cross_col, 1.0)
+	window.DrawList.AddLineEx(center.Add(f64.Vec2{+cross_extent, -cross_extent}), center.Add(f64.Vec2{-cross_extent, +cross_extent}), cross_col, 1.0)
+
 	return pressed
 }
 

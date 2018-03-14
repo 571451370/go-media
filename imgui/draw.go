@@ -1128,15 +1128,112 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 			// Collapse button
 			if flags&WindowFlagsNoCollapse == 0 {
-			}
-			_ = item_flags_backup
+				id := window.GetID("#COLLAPSE")
+				one := f64.Vec2{1, 1}
 
+				bx := style.FramePadding.Add(one)
+				bx = window.Pos.Add(bx)
+				by := f64.Vec2{c.FontSize, c.FontSize}
+				by = by.Add(one)
+				by = style.FramePadding.Add(by)
+				by = window.Pos.Add(by)
+				bb := f64.Rectangle{bx, by}
+
+				// To allow navigation
+				c.ItemAdd(bb, id)
+
+				_, _, pressed := c.ButtonBehavior(bb, id, 0)
+				if pressed {
+					// Defer collapsing to next frame as we are too far in the Begin() function
+					window.CollapseToggleWanted = true
+				}
+				c.RenderNavHighlight(bb, id)
+				dir := DirDown
+				if window.Collapsed {
+					dir = DirRight
+				}
+				c.RenderArrowEx(window.Pos.Add(style.FramePadding), dir, 1)
+			}
+
+			// Close button
+			if p_open != nil {
+				pad := style.FramePadding.Y
+				rad := c.FontSize * 0.5
+				padRect := f64.Vec2{-pad - rad, pad + rad}
+				if c.CloseButton(window.GetID("#CLOSE"), window.Rect().TR().Add(padRect), rad+1) {
+					*p_open = false
+				}
+			}
+
+			window.DC.NavLayerCurrent--
+			window.DC.NavLayerCurrentMask >>= 1
+			window.DC.ItemFlags = item_flags_backup
+
+			// Title text (FIXME: refactor text alignment facilities along with RenderText helpers)
+			text_size := c.CalcTextSizeEx(name, true, -1)
+			text_r := title_bar_rect
+			pad_left := style.FramePadding.X
+			if flags&WindowFlagsNoCollapse == 0 {
+				pad_left = style.FramePadding.X + c.FontSize + style.ItemInnerSpacing.X
+			}
+			pad_right := style.FramePadding.X
+			if p_open != nil {
+				pad_right = style.FramePadding.X + c.FontSize + style.ItemInnerSpacing.X
+			}
+			if style.WindowTitleAlign.X > 0 {
+				pad_right = f64.Lerp(style.WindowTitleAlign.X, pad_right, pad_left)
+			}
+			text_r.Min.X += pad_left
+			text_r.Max.X -= pad_right
+			clip_rect := text_r
+			clip_rect.Max.X = window.Pos.X + window.Size.X
+			if p_open != nil {
+				clip_rect.Max.X -= title_bar_rect.Dy() - 3
+			} else {
+				clip_rect.Max.X -= style.FramePadding.X
+			}
+			c.RenderTextClippedEx(text_r.Min, text_r.Max, name, &text_size, style.WindowTitleAlign, &clip_rect)
 		}
-		_ = grip_draw_size
-		_ = window_border_size
+
+		// Save clipped aabb so we can access it in constant-time in FindHoveredWindow()
+		window.WindowRectClipped = window.Rect()
+		window.WindowRectClipped = window.WindowRectClipped.Intersect(window.ClipRect)
+
+		// Pressing CTRL+C while holding on a window copy its content to the clipboard
+		// This works but 1. doesn't handle multiple Begin/End pairs, 2. recursing into another Begin/End pair - so we need to work that out and add better logging scope.
+		// Maybe we can support CTRL+C on every element?
+
+		// Inner rectangle
+		// We set this up after processing the resize grip so that our clip rectangle doesn't lag by a frame
+		// Note that if our window is collapsed we will end up with a null clipping rectangle which is the correct behavior.
+		window.InnerRect.Min.X = title_bar_rect.Min.X + window.WindowBorderSize
+		window.InnerRect.Min.Y = title_bar_rect.Max.Y + window.MenuBarHeight()
+		if flags&WindowFlagsMenuBar != 0 || flags&WindowFlagsNoTitleBar == 0 {
+			window.InnerRect.Min.Y += style.FrameBorderSize
+		} else {
+			window.InnerRect.Min.Y += window.WindowBorderSize
+		}
+		window.InnerRect.Max.X = window.Pos.X + window.Size.X - window.ScrollbarSizes.X - window.WindowBorderSize
+		window.InnerRect.Max.Y = window.Pos.Y + window.Size.Y - window.ScrollbarSizes.Y - window.WindowBorderSize
+
+		// Inner clipping rectangle
+		// Force round operator last to ensure that e.g. (int)(max.x-min.x) in user's render code produce correct result.
+		window.InnerClipRect.Min.X = math.Floor(0.5 + window.InnerRect.Min.X + math.Max(0, math.Floor(window.WindowPadding.X*0.5-window.WindowBorderSize)))
+		window.InnerClipRect.Min.Y = math.Floor(0.5 + window.InnerRect.Min.Y)
+		window.InnerClipRect.Max.X = math.Floor(0.5 + window.InnerRect.Max.X - math.Max(0, math.Floor(window.WindowPadding.X*0.5-window.WindowBorderSize)))
+		window.InnerClipRect.Max.Y = math.Floor(0.5 + window.InnerRect.Max.Y)
+
+		// After Begin() we fill the last item / hovered data using the title bar data. Make that a standard behavior (to allow usage of context menus on title bar only, etc.).
+		window.DC.LastItemId = window.MoveId
+		window.DC.LastItemStatusFlags = 0
+		if c.IsMouseHoveringRectEx(title_bar_rect.Min, title_bar_rect.Max, false) {
+			window.DC.LastItemStatusFlags = ItemStatusFlagsHoveredRect
+		}
+		window.DC.LastItemRect = title_bar_rect
 	}
 
 	c.PushClipRect(window.InnerClipRect.Min, window.InnerClipRect.Max, true)
+
 	// Clear 'accessed' flag last thing (After PushClipRect which will set the flag. We want the flag to stay false when the default "Debug" window is unused)
 	if first_begin_of_the_frame {
 		window.WriteAccessed = false
@@ -1334,6 +1431,10 @@ func (c *Context) RenderFrameEx(p_min, p_max f64.Vec2, col color.RGBA, border bo
 }
 
 func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
+	c.RenderArrowEx(pos, dir, 1)
+}
+
+func (c *Context) RenderArrowEx(pos f64.Vec2, dir Dir, scale float64) {
 }
 
 func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2) {
@@ -1389,6 +1490,13 @@ func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA) {
 }
 
 func (d *DrawList) AddRectFilledEx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags) {
+}
+
+func (d *DrawList) AddCircleFilled(centre f64.Vec2, radius float64, col color.RGBA) {
+	d.AddCircleFilledEx(centre, radius, col, 9)
+}
+
+func (d *DrawList) AddCircleFilledEx(centre f64.Vec2, radius float64, col color.RGBA, num_segments int) {
 }
 
 func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
