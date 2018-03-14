@@ -1030,6 +1030,107 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 		// Draw navigation selection/windowing rectangle border
 		if c.NavWindowingTarget == window {
+			rounding := math.Max(window.WindowRounding, c.Style.WindowRounding)
+			bb := window.Rect()
+			bb = bb.Expand(c.FontSize, c.FontSize)
+			// If a window fits the entire viewport, adjust its highlight inward
+			if viewport_rect.In(bb) {
+				bb = bb.Expand(-c.FontSize-1.0, -c.FontSize-1.0)
+				rounding = window.WindowRounding
+			}
+			window.DrawList.AddRectEx(bb.Min, bb.Max, c.GetColorFromStyleWithAlpha(ColNavWindowingHighlight, c.NavWindowingHighlightAlpha), rounding, ^0, 3.0)
+		}
+
+		// Store a backup of SizeFull which we will use next frame to decide if we need scrollbars.
+		window.SizeFullAtLastBegin = window.SizeFull
+
+		// Update ContentsRegionMax. All the variable it depends on are set above in this function.
+		window.ContentsRegionRect.Min.X = -window.Scroll.X + window.WindowPadding.X
+		window.ContentsRegionRect.Min.Y = -window.Scroll.Y + window.WindowPadding.Y + window.TitleBarHeight() + window.MenuBarHeight()
+		if window.SizeContentsExplicit.X != 0.0 {
+			window.ContentsRegionRect.Max.X = -window.Scroll.X - window.WindowPadding.X + window.SizeContentsExplicit.X
+		} else {
+			window.ContentsRegionRect.Max.X = -window.Scroll.X - window.WindowPadding.X + window.Size.X - window.ScrollbarSizes.X
+		}
+		if window.SizeContentsExplicit.Y != 0.0 {
+			window.ContentsRegionRect.Max.Y = -window.Scroll.Y - window.WindowPadding.Y + window.SizeContentsExplicit.Y
+		} else {
+			window.ContentsRegionRect.Max.Y = -window.Scroll.Y - window.WindowPadding.Y + window.Size.Y - window.ScrollbarSizes.Y
+		}
+
+		// Setup drawing context
+		// (NB: That term "drawing context / DC" lost its meaning a long time ago. Initially was meant to hold transient data only. Nowadays difference between window-> and window->DC-> is dubious.)
+		window.DC.IndentX = 0.0 + window.WindowPadding.X - window.Scroll.X
+		window.DC.GroupOffsetX = 0.0
+		window.DC.ColumnsOffsetX = 0.0
+		window.DC.CursorStartPos = window.Pos.Add(f64.Vec2{
+			window.DC.IndentX + window.DC.ColumnsOffsetX,
+			window.TitleBarHeight() + window.MenuBarHeight() + window.WindowPadding.Y - window.Scroll.Y,
+		})
+		window.DC.CursorPos = window.DC.CursorStartPos
+		window.DC.CursorPosPrevLine = window.DC.CursorPos
+		window.DC.CursorMaxPos = window.DC.CursorStartPos
+		window.DC.CurrentLineHeight = 0
+		window.DC.PrevLineHeight = 0
+		window.DC.CurrentLineTextBaseOffset = 0
+		window.DC.PrevLineTextBaseOffset = 0
+		window.DC.NavHideHighlightOneFrame = false
+		window.DC.NavHasScroll = c.GetScrollMaxY() > 0
+		window.DC.NavLayerActiveMask = window.DC.NavLayerActiveMaskNext
+		window.DC.NavLayerActiveMaskNext = 0x00
+		window.DC.MenuBarAppending = false
+		window.DC.MenuBarOffsetX = math.Max(window.WindowPadding.X, style.ItemSpacing.X)
+		window.DC.LogLinePosY = window.DC.CursorPos.Y - 9999
+		window.DC.ChildWindows = window.DC.ChildWindows[:0]
+		window.DC.LayoutType = LayoutTypeVertical
+		window.DC.ParentLayoutType = LayoutTypeVertical
+		if parent_window != nil {
+			window.DC.ParentLayoutType = parent_window.DC.LayoutType
+		}
+		window.DC.ItemFlags = ItemFlagsDefault_
+		window.DC.ItemWidth = window.ItemWidthDefault
+		window.DC.TextWrapPos = -1.0 // disabled
+		window.DC.ItemFlagsStack = window.DC.ItemFlagsStack[:0]
+		window.DC.ItemWidthStack = window.DC.ItemWidthStack[:0]
+		window.DC.TextWrapPosStack = window.DC.TextWrapPosStack[:0]
+		window.DC.ColumnsSet = nil
+		window.DC.TreeDepth = 0
+		window.DC.TreeDepthMayJumpToParentOnPop = 0x00
+		window.DC.StateStorage = window.StateStorage
+		window.DC.GroupStack = window.DC.GroupStack[:0]
+		window.MenuColumns.Update(3, style.ItemSpacing.X, window_just_activated_by_user)
+
+		if flags&WindowFlagsChildWindow != 0 && window.DC.ItemFlags != parent_window.DC.ItemFlags {
+			window.DC.ItemFlags = parent_window.DC.ItemFlags
+			window.DC.ItemFlagsStack = append(window.DC.ItemFlagsStack, window.DC.ItemFlags)
+		}
+
+		if window.AutoFitFramesX > 0 {
+			window.AutoFitFramesX--
+		}
+		if window.AutoFitFramesY > 0 {
+			window.AutoFitFramesY--
+		}
+
+		// Apply focus (we need to call FocusWindow() AFTER setting DC.CursorStartPos so our initial navigation reference rectangle can start around there)
+		if want_focus {
+			c.FocusWindow(window)
+			c.NavInitWindow(window, false)
+		}
+
+		// Title bar
+		if flags&WindowFlagsNoTitleBar == 0 {
+			// Close & collapse button are on layer 1 (same as menus) and don't default focus
+			item_flags_backup := window.DC.ItemFlags
+			window.DC.ItemFlags |= ItemFlagsNoNavDefaultFocus
+			window.DC.NavLayerCurrent++
+			window.DC.NavLayerCurrentMask <<= 1
+
+			// Collapse button
+			if flags&WindowFlagsNoCollapse == 0 {
+			}
+			_ = item_flags_backup
+
 		}
 		_ = grip_draw_size
 		_ = window_border_size
@@ -1614,8 +1715,8 @@ func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec
 	}
 	scroll = scroll.Max(f64.Vec2{0, 0})
 	if !window.Collapsed && !window.SkipItems {
-		scroll.X = math.Min(scroll.X, c.GetScrollMaxX(window))
-		scroll.Y = math.Min(scroll.Y, c.GetScrollMaxY(window))
+		scroll.X = math.Min(scroll.X, c.GetWindowScrollMaxX(window))
+		scroll.Y = math.Min(scroll.Y, c.GetWindowScrollMaxY(window))
 	}
 
 	return scroll

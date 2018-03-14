@@ -1453,12 +1453,20 @@ func (c *Context) CalcSizeContents(window *Window) f64.Vec2 {
 	return sz
 }
 
-func (c *Context) GetScrollMaxX(window *Window) float64 {
+func (c *Context) GetWindowScrollMaxX(window *Window) float64 {
 	return math.Max(0, window.SizeContents.X-(window.SizeFull.X-window.ScrollbarSizes.X))
 }
 
-func (c *Context) GetScrollMaxY(window *Window) float64 {
+func (c *Context) GetWindowScrollMaxY(window *Window) float64 {
 	return math.Max(0, window.SizeContents.Y-(window.SizeFull.Y-window.ScrollbarSizes.Y))
+}
+
+func (c *Context) GetScrollMaxX() float64 {
+	return c.GetWindowScrollMaxX(c.CurrentWindow)
+}
+
+func (c *Context) GetScrollMaxY() float64 {
+	return c.GetWindowScrollMaxY(c.CurrentWindow)
 }
 
 func (c *Context) GetWindowBgColorIdxFromFlags(flags WindowFlags) Col {
