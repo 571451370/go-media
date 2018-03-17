@@ -165,7 +165,7 @@ func (p Vec2) Shrink(k float64) Vec2 {
 	return Vec2{p.X / k, p.Y / k}
 }
 
-func (p Vec2) Shrinkv(q Vec2) Vec2 {
+func (p Vec2) Shrink2(q Vec2) Vec2 {
 	return Vec2{p.X / q.X, p.Y / q.Y}
 }
 
@@ -273,7 +273,7 @@ func (p Vec3) Shrink(k float64) Vec3 {
 	}
 }
 
-func (p Vec3) Shrinkv(q Vec3) Vec3 {
+func (p Vec3) Shrink3(q Vec3) Vec3 {
 	return Vec3{
 		p.X / q.X,
 		p.Y / q.Y,
@@ -438,7 +438,7 @@ func (p Vec4) Shrink(k float64) Vec4 {
 	return Vec4{p.X / k, p.Y / k, p.Z / k, p.W}
 }
 
-func (p Vec4) Shrinkv(q Vec4) Vec4 {
+func (p Vec4) Shrink4(q Vec4) Vec4 {
 	return Vec4{p.X / q.X, p.Y / q.Y, p.Z / q.Z, p.W}
 }
 
