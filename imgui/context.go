@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"math"
 	"os"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -308,4 +309,12 @@ func (c *Context) MarkIniSettingsDirtyEx(window *Window) {
 }
 
 func (c *Context) SaveIniSettingsToDisk(ini_filename string) {
+}
+
+func InvLength(lhs f64.Vec2, fail_value float64) float64 {
+	d := lhs.X*lhs.X + lhs.Y*lhs.Y
+	if d > 0.0 {
+		return 1.0 / math.Sqrt(d)
+	}
+	return fail_value
 }

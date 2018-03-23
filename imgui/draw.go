@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -55,7 +56,7 @@ type DrawList struct {
 }
 
 type DrawCmd struct {
-	ElemCount        uint        // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
+	ElemCount        int         // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
 	ClipRect         f64.Vec4    // Clipping rectangle (x1, y1, x2, y2)
 	TextureId        TextureID   // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
 	UserCallback     func()      // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
@@ -67,7 +68,7 @@ type DrawIdx uint32
 type DrawVert struct {
 	Pos f64.Vec2
 	UV  f64.Vec2
-	Col f64.Vec2
+	Col uint32
 }
 
 type DrawChannel struct {
@@ -1844,6 +1845,109 @@ func (d *DrawList) PathFillConvex(col color.RGBA) {
 }
 
 func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
+	points_count := len(points)
+	uv := d._Data.TexUvWhitePixel
+
+	if d.Flags&DrawListFlagsAntiAliasedFill != 0 {
+		// Anti-aliased Fill
+		const AA_SIZE = 1.0
+		col_trans := color.RGBA{0, 0, 0, col.A}
+		idx_count := (points_count-2)*3 + points_count*6
+		vtx_count := (points_count * 2)
+		d.PrimReserve(idx_count, vtx_count)
+
+		// Add indexes for fill
+		vtx_inner_idx := d._VtxCurrentIdx
+		vtx_outer_idx := d._VtxCurrentIdx + 1
+		for i := uint(2); i < uint(points_count); i++ {
+			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(vtx_inner_idx)
+			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
+			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(vtx_inner_idx + (i << 1))
+			d._IdxWritePtr += 3
+		}
+
+		// Compute normals
+		temp_normals := make([]f64.Vec2, points_count)
+		for i0, i1 := points_count-1, 0; i1 < points_count; i0, i1 = i1, i1+1 {
+			p0 := points[i0]
+			p1 := points[i1]
+			diff := p1.Sub(p0)
+			invLength := InvLength(diff, 1)
+			diff = diff.Scale2(f64.Vec2{invLength, invLength})
+			temp_normals[i0].X = diff.Y
+			temp_normals[i0].Y = -diff.X
+		}
+
+		for i0, i1 := points_count-1, 0; i1 < points_count; i0, i1 = i1, i1+1 {
+			// Average normals
+			n0 := temp_normals[i0]
+			n1 := temp_normals[i1]
+			dm := n0.Add(n1)
+			dm = dm.Scale(0.5)
+			dmr2 := dm.X*dm.X + dm.Y*dm.Y
+			if dmr2 > 0.000001 {
+				scale := 1.0 / dmr2
+				if scale > 100.0 {
+					scale = 100.0
+				}
+				dm = dm.Scale(scale)
+			}
+			dm = dm.Scale(AA_SIZE * 0.5)
+
+			// Add vertices
+			// Inner
+			d.VtxBuffer[d._VtxWritePtr].Pos = points[i1].Sub(dm)
+			d.VtxBuffer[d._VtxWritePtr].UV = uv
+			d.VtxBuffer[d._VtxWritePtr].Col = chroma.RGBA32(col)
+			// Outer
+			d.VtxBuffer[d._VtxWritePtr+1].Pos = points[i1].Add(dm)
+			d.VtxBuffer[d._VtxWritePtr+1].UV = uv
+			d.VtxBuffer[d._VtxWritePtr+1].Col = chroma.RGBA32(col_trans)
+			d._VtxWritePtr += 2
+
+			// Add indexes for fringes
+			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(vtx_inner_idx + uint(i1<<1))
+			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(vtx_inner_idx + uint(i0<<1))
+			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(vtx_outer_idx + uint(i0<<1))
+			d.IdxBuffer[d._IdxWritePtr+3] = DrawIdx(vtx_outer_idx + uint(i0<<1))
+			d.IdxBuffer[d._IdxWritePtr+4] = DrawIdx(vtx_outer_idx + uint(i1<<1))
+			d.IdxBuffer[d._IdxWritePtr+5] = DrawIdx(vtx_inner_idx + uint(i1<<1))
+			d._IdxWritePtr += 6
+		}
+		d._VtxCurrentIdx += uint(vtx_count)
+	} else {
+		// Non Anti-aliased Fill
+		idx_count := (points_count - 2) * 3
+		vtx_count := points_count
+		d.PrimReserve(idx_count, vtx_count)
+		for i := 0; i < vtx_count; i++ {
+			d.VtxBuffer[d._VtxWritePtr].Pos = points[i]
+			d.VtxBuffer[d._VtxWritePtr+1].UV = uv
+			d.VtxBuffer[d._VtxWritePtr+2].Col = chroma.RGBA32(col)
+			d._VtxWritePtr++
+		}
+		for i := 2; i < points_count; i++ {
+			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(d._VtxCurrentIdx)
+			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(d._VtxCurrentIdx + uint(i-1))
+			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(d._VtxCurrentIdx + uint(i))
+			d._IdxWritePtr += 3
+		}
+		d._VtxCurrentIdx += uint(vtx_count)
+	}
+}
+
+// NB: this can be called with negative count for removing primitives (as long as the result does not underflow)
+func (d *DrawList) PrimReserve(idx_count, vtx_count int) {
+	draw_cmd := &d.CmdBuffer[len(d.CmdBuffer)-1]
+	draw_cmd.ElemCount += idx_count
+
+	vtx_buffer_old_size := len(d.VtxBuffer)
+	d.VtxBuffer = make([]DrawVert, vtx_buffer_old_size+vtx_count)
+	d._VtxWritePtr = vtx_buffer_old_size
+
+	idx_buffer_old_size := len(d.IdxBuffer)
+	d.IdxBuffer = make([]DrawIdx, idx_buffer_old_size+idx_count)
+	d._IdxWritePtr = idx_buffer_old_size
 }
 
 func (d *DrawList) ChannelsMerge() {
