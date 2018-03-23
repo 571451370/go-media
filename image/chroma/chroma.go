@@ -274,3 +274,11 @@ func MixHSL(a, b HSL, t float64) HSL {
 		a.L*(1-t) + t*b.L,
 	}
 }
+
+func RGBA32(c color.RGBA) uint32 {
+	return uint32(c.R) | uint32(c.G)<<8 | uint32(c.B)<<16 | uint32(c.A)<<24
+}
+
+func BGRA32(c color.RGBA) uint32 {
+	return uint32(c.B) | uint32(c.G)<<8 | uint32(c.R)<<16 | uint32(c.A)<<24
+}
