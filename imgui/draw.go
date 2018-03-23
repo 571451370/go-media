@@ -1592,11 +1592,31 @@ func (d *DrawList) AddLineEx(a, b f64.Vec2, col color.RGBA, thickness float64) {
 func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, thickness float64) {
 }
 
+// a: upper-left, b: lower-right. we don't render 1 px sized rectangles properly.
 func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA) {
 	d.AddRectEx(p_min, p_max, col, 0, DrawCornerFlagsAll, 1)
 }
 
-func (d *DrawList) AddRectEx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64, rounding_corner_flags DrawCornerFlags, thickness float64) {
+func (d *DrawList) AddRectEx(a, b f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags, thickness float64) {
+	if col.A == 0 {
+		return
+	}
+
+	if d.Flags&DrawListFlagsAntiAliasedLines != 0 {
+		d.PathRect(
+			a.Add(f64.Vec2{0.5, 0.5}),
+			b.Sub(f64.Vec2{0.50, 0.50}),
+			rounding, rounding_corners_flags,
+		)
+	} else {
+		// Better looking lower-right corner and rounded non-AA shapes.
+		d.PathRect(
+			a.Add(f64.Vec2{0.5, 0.5}),
+			b.Sub(f64.Vec2{0.49, 0.49}),
+			rounding, rounding_corners_flags,
+		)
+	}
+	d.PathStrokeEx(col, true, thickness)
 }
 
 func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA) {
@@ -1775,9 +1795,55 @@ func (d *DrawList) AddDrawCmd() {
 }
 
 func (d *DrawList) PathArcToFast(centre f64.Vec2, radius float64, a_min_of_12, a_max_of_12 int) {
+	if radius == 0 || a_min_of_12 > a_max_of_12 {
+		d._Path = append(d._Path, centre)
+		return
+	}
+	for a := a_min_of_12; a <= a_max_of_12; a++ {
+		c := d._Data.CircleVtx12[a%len(d._Data.CircleVtx12)]
+		d._Path = append(d._Path, f64.Vec2{centre.X + c.X*radius, centre.Y + c.Y*radius})
+	}
+}
+
+func (d *DrawList) PathArcTo(centre f64.Vec2, radius, a_min, a_max float64, num_segments int) {
+	if radius == 0 {
+		d._Path = append(d._Path, centre)
+		return
+	}
+	for i := 0; i <= num_segments; i++ {
+		a := a_min + (float64(i)/float64(num_segments))*(a_max-a_min)
+		d._Path = append(d._Path, f64.Vec2{centre.X + math.Cos(a)*radius, centre.Y + math.Sin(a)*radius})
+	}
+}
+
+func (d *DrawList) PathBezierToCasteljau(path *[]f64.Vec2, x1, y1, x2, y2, x3, y3, x4, y4, tess_tol float64, level int) {
+	dx := x4 - x1
+	dy := y4 - y1
+	d2 := ((x2-x4)*dy - (y2-y4)*dx)
+	d3 := ((x3-x4)*dy - (y3-y4)*dx)
+	d2 = math.Abs(d2)
+	d3 = math.Abs(d3)
+	if (d2+d3)*(d2+d3) < tess_tol*(dx*dx+dy*dy) {
+		*path = append(*path, f64.Vec2{x4, y4})
+	} else if level < 10 {
+		x12, y12 := (x1+x2)*0.5, (y1+y2)*0.5
+		x23, y23 := (x2+x3)*0.5, (y2+y3)*0.5
+		x34, y34 := (x3+x4)*0.5, (y3+y4)*0.5
+		x123, y123 := (x12+x23)*0.5, (y12+y23)*0.5
+		x234, y234 := (x23+x34)*0.5, (y23+y34)*0.5
+		x1234, y1234 := (x123+x234)*0.5, (y123+y234)*0.5
+
+		d.PathBezierToCasteljau(path, x1, y1, x12, y12, x123, y123, x1234, y1234, tess_tol, level+1)
+		d.PathBezierToCasteljau(path, x1234, y1234, x234, y234, x34, y34, x4, y4, tess_tol, level+1)
+	}
 }
 
 func (d *DrawList) PathFillConvex(col color.RGBA) {
+	d.AddConvexPolyFilled(d._Path, col)
+	d.PathClear()
+}
+
+func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 }
 
 func (d *DrawList) ChannelsMerge() {
@@ -2165,5 +2231,45 @@ func (c *Context) SetupDrawData(draw_lists []*DrawList, out_draw_data *DrawData)
 	for n := range draw_lists {
 		out_draw_data.TotalVtxCount += len(draw_lists[n].VtxBuffer)
 		out_draw_data.TotalIdxCount += len(draw_lists[n].IdxBuffer)
+	}
+}
+
+func (d *DrawList) PathRect(a, b f64.Vec2, rounding float64, rounding_corners DrawCornerFlags) {
+	scale := 1.0
+	if rounding_corners&DrawCornerFlagsTop == DrawCornerFlagsTop || rounding_corners&DrawCornerFlagsBot == DrawCornerFlagsBot {
+		scale = 0.5
+	}
+	rounding = math.Min(rounding, math.Abs(b.X-a.X)*scale-1)
+
+	scale = 1.0
+	if rounding_corners&DrawCornerFlagsLeft == DrawCornerFlagsLeft || rounding_corners&DrawCornerFlagsRight == DrawCornerFlagsRight {
+		scale = 0.5
+	}
+	rounding = math.Min(rounding, math.Abs(b.Y-a.Y)*scale-1)
+
+	if rounding <= 0 || rounding_corners == 0 {
+		d.PathLineTo(a)
+		d.PathLineTo(f64.Vec2{b.X, a.Y})
+		d.PathLineTo(b)
+		d.PathLineTo(f64.Vec2{a.X, b.Y})
+	} else {
+		var rounding_tl, rounding_tr, rounding_br, rounding_bl float64
+		if rounding_corners&DrawCornerFlagsTopLeft != 0 {
+			rounding_tl = rounding
+		}
+		if rounding_corners&DrawCornerFlagsTopRight != 0 {
+			rounding_tr = rounding
+		}
+		if rounding_corners&DrawCornerFlagsBotRight != 0 {
+			rounding_br = rounding
+		}
+		if rounding_corners&DrawCornerFlagsBotLeft != 0 {
+			rounding_bl = rounding
+		}
+
+		d.PathArcToFast(f64.Vec2{a.X + rounding_tl, a.Y + rounding_tl}, rounding_tl, 6, 9)
+		d.PathArcToFast(f64.Vec2{b.X - rounding_tr, a.Y + rounding_tr}, rounding_tr, 9, 12)
+		d.PathArcToFast(f64.Vec2{b.X - rounding_br, b.Y - rounding_br}, rounding_br, 0, 3)
+		d.PathArcToFast(f64.Vec2{a.X + rounding_bl, b.Y - rounding_bl}, rounding_bl, 3, 6)
 	}
 }
