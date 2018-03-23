@@ -196,6 +196,15 @@ func VEC42RGBA(c f64.Vec4) color.RGBA {
 	}
 }
 
+func RGBA2VEC4(c color.RGBA) f64.Vec4 {
+	return f64.Vec4{
+		float64(c.R) / 255.0,
+		float64(c.G) / 255.0,
+		float64(c.B) / 255.0,
+		float64(c.A) / 255.0,
+	}
+}
+
 func ParseRGBA(s string) (color.RGBA, error) {
 	var r, g, b, a uint8
 	n, _ := fmt.Sscanf(s, "rgb(%v,%v,%v)", &r, &g, &b)

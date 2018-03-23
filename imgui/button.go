@@ -26,6 +26,14 @@ const (
 	ButtonFlagsNoNavFocus            ButtonFlags = 1 << 13 // don't override navigation focus when activated
 )
 
+func (c *Context) ColorButton(desc_id string, col color.RGBA) bool {
+	return c.ColorButtonEx(desc_id, col, 0, f64.Vec2{0, 0})
+}
+
+func (c *Context) ColorButtonEx(desc_id string, col color.RGBA, flags ColorEditFlags, size f64.Vec2) bool {
+	return false
+}
+
 func (c *Context) Button(label string) bool {
 	return c.ButtonEx(label, f64.Vec2{}, 0)
 }

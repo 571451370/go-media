@@ -91,3 +91,12 @@ func (c *Context) FindRenderedTextEnd(text string) int {
 	}
 	return text_display_end
 }
+
+func (c *Context) Text(format string, args ...interface{}) {
+}
+
+func (c *Context) TextUnformatted(text string) {
+}
+
+func (c *Context) Separator() {
+}
