@@ -1472,6 +1472,69 @@ func (c *Context) End() {
 }
 
 func (c *Context) RenderNavHighlight(bb f64.Rectangle, id ID) {
+	c.RenderNavHighlightEx(bb, id, NavHighlightFlagsTypeDefault)
+}
+
+func (c *Context) RenderNavHighlightEx(bb f64.Rectangle, id ID, flags NavHighlightFlags) {
+	if id != c.NavId {
+		return
+	}
+	if c.NavDisableHighlight && flags&NavHighlightFlagsAlwaysDraw == 0 {
+		return
+	}
+	window := c.GetCurrentWindow()
+	if window.DC.NavHideHighlightOneFrame {
+		return
+	}
+
+	rounding := 0.0
+	if flags&NavHighlightFlagsNoRounding != 0 {
+		rounding = c.Style.FrameRounding
+	}
+	display_rect := bb
+	display_rect = display_rect.Intersect(window.ClipRect)
+	if flags&NavHighlightFlagsTypeDefault != 0 {
+		const THICKNESS = 2.0
+		const DISTANCE = 3.0 + THICKNESS*0.5
+		display_rect = display_rect.Expand(DISTANCE, DISTANCE)
+		fully_visible := display_rect.In(window.ClipRect)
+		if !fully_visible {
+			window.DrawList.PushClipRect(display_rect.Min, display_rect.Max)
+		}
+		window.DrawList.AddRectEx(
+			display_rect.Min.Add(f64.Vec2{THICKNESS * 0.5, THICKNESS * 0.5}),
+			display_rect.Max.Sub(f64.Vec2{THICKNESS * 0.5, THICKNESS * 0.5}),
+			c.GetColorFromStyle(ColNavHighlight),
+			rounding, DrawCornerFlagsAll, THICKNESS,
+		)
+		if !fully_visible {
+			window.DrawList.PopClipRect()
+		}
+	}
+	if flags&NavHighlightFlagsTypeThin != 0 {
+		window.DrawList.AddRectEx(display_rect.Min, display_rect.Max, c.GetColorFromStyle(ColNavHighlight), rounding, ^0, 1.0)
+	}
+}
+
+func (c *Context) RenderBullet(pos f64.Vec2) {
+	window := c.CurrentWindow
+	window.DrawList.AddCircleFilledEx(pos, c.FontSize*0.20, c.GetColorFromStyle(ColText), 8)
+}
+
+func (c *Context) RenderCheckMark(pos f64.Vec2, col color.RGBA, sz float64) {
+	window := c.CurrentWindow
+
+	thickness := math.Max(sz/5.0, 1.0)
+	sz -= thickness * 0.5
+	pos = pos.Add(f64.Vec2{thickness * 0.25, thickness * 0.25})
+
+	third := sz / 3.0
+	bx := pos.X + third
+	by := pos.Y + sz - third*0.5
+	window.DrawList.PathLineTo(f64.Vec2{bx - third, by - third})
+	window.DrawList.PathLineTo(f64.Vec2{bx, by})
+	window.DrawList.PathLineTo(f64.Vec2{bx + third*2, by - third*2})
+	window.DrawList.PathStrokeEx(col, false, thickness)
 }
 
 func (c *Context) RenderFrame(p_min, p_max f64.Vec2, col color.RGBA) {
