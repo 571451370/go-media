@@ -1,0 +1,7 @@
+go build
+# github.com/qeedquan/go-media/imgui
+./font.go:202:5: undefined: word_end
+./font.go:209:5: undefined: word_end
+./font.go:211:21: undefined: word_end
+exit status 2
+2018-03-23 10:56:15.647717073 -0400 EDT

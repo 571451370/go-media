@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"unicode/utf8"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type CustomRect struct {
 	ID            uint     // Input    // User ID. Use <0x10000 to map into a font glyph, >=0x10000 for other/internal/custom texture data.
@@ -138,4 +142,100 @@ func (c *Context) SetWindowFontScale(scale float64) {
 	window.FontWindowScale = scale
 	c.FontSize = window.CalcFontSize()
 	c.DrawListSharedData.FontSize = c.FontSize
+}
+
+func (f *Font) CalcTextSizeA(size, max_width, wrap_width float64, text string) f64.Vec2 {
+	return f64.Vec2{}
+}
+
+func (f *Font) CalcWordWrapPositionA(scale float64, text string, wrap_width float64) int {
+	// Simple word-wrapping for English, not full-featured. Please submit failing cases!
+	// FIXME: Much possible improvements (don't cut things like "word !", "word!!!" but cut within "word,,,,", more sensible support for punctuations, support for Unicode punctuations, etc.)
+
+	// For references, possible wrap point marked with ^
+	//  "aaa bbb, ccc,ddd. eee   fff. ggg!"
+	//      ^    ^    ^   ^   ^__    ^    ^
+
+	// List of hardcoded separators: .,;!?'"
+
+	// Skip extra blanks after a line returns (that includes not counting them in width computation)
+	// e.g. "Hello    world" --> "Hello" "World"
+
+	// Cut words that cannot possibly fit within one line.
+	// e.g.: "The tropical fish" with ~5 characters worth of width --> "The tr" "opical" "fish"
+
+	line_width := 0.0
+	word_width := 0.0
+	blank_width := 0.0
+	// We work with unscaled widths to avoid scaling every characters
+	wrap_width /= scale
+
+	word_end := 0
+	prev_word_end := -1
+	inside_word := true
+
+	var s int
+	for s < len(text) {
+		c, size := utf8.DecodeRuneInString(text[s:])
+		next_s := s + size
+
+		switch c {
+		case '\n':
+			line_width, word_width, blank_width = 0, 0, 0
+			inside_word = true
+			s = next_s
+			continue
+
+		case '\r':
+			s = next_s
+			continue
+		}
+
+		char_width := f.FallbackAdvanceX
+		if int(c) < len(f.IndexAdvanceX) {
+			char_width = f.IndexAdvanceX[c]
+		}
+		if CharIsSpace(c) {
+			if inside_word {
+				line_width += blank_width
+				blank_width = 0
+				word_end = s
+			}
+			blank_width += char_width
+			inside_word = false
+		} else {
+			word_width += char_width
+			if inside_word {
+				word_end = next_s
+			} else {
+				prev_word_end = word_end
+				line_width += word_width + blank_width
+				word_width, blank_width = 0, 0
+			}
+
+			// Allow wrapping after punctuation.
+			inside_word = !(c == '.' || c == ',' || c == ';' || c == '!' || c == '?' || c == '"')
+		}
+
+		// We ignore blank width at the end of the line (they can be skipped)
+		if line_width+word_width >= wrap_width {
+			// Words that cannot possibly fit within an entire line will be cut anywhere.
+			if word_width < wrap_width {
+				if prev_word_end != -1 {
+					s = prev_word_end
+				} else {
+					s = word_end
+				}
+			}
+			break
+		}
+
+		s = next_s
+	}
+
+	return s
+}
+
+func CharIsSpace(c rune) bool {
+	return c == ' ' || c == '\t' || c == 0x3000
 }

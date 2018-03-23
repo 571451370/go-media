@@ -1,6 +1,11 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"math"
+	"strings"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type InputTextFlags int
 
@@ -52,6 +57,37 @@ func (c *Context) CalcTextSize(text string) f64.Vec2 {
 	return c.CalcTextSizeEx(text, false, -1)
 }
 
+// Calculate text size. Text can be multi-line. Optionally ignore text after a ## marker.
+// CalcTextSize("") should return ImVec2(0.0f, GImGui->FontSize)
 func (c *Context) CalcTextSizeEx(text string, hide_text_after_double_hash bool, wrap_width float64) f64.Vec2 {
-	return f64.Vec2{}
+	text_display_end := len(text)
+	if hide_text_after_double_hash {
+		// Hide anything after a '##' string
+		text_display_end = c.FindRenderedTextEnd(text)
+	}
+
+	font := c.Font
+	font_size := c.FontSize
+	if len(text) == text_display_end {
+		return f64.Vec2{0, font_size}
+	}
+	text_size := font.CalcTextSizeA(font_size, math.MaxFloat32, wrap_width, text[:text_display_end])
+
+	// Cancel out character spacing for the last character of a line (it is baked into glyph->AdvanceX field)
+	font_scale := font_size / font.FontSize
+	character_spacing_x := 1.0 * font_scale
+	if text_size.X > 0.0 {
+		text_size.X -= character_spacing_x
+	}
+	text_size.X = float64(int(text_size.X + 0.95))
+
+	return text_size
+}
+
+func (c *Context) FindRenderedTextEnd(text string) int {
+	text_display_end := strings.Index(text, "##")
+	if text_display_end == -1 {
+		text_display_end = len(text)
+	}
+	return text_display_end
 }
