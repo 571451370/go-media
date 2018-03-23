@@ -68,10 +68,10 @@ func (c *Context) CalcTextSizeEx(text string, hide_text_after_double_hash bool, 
 
 	font := c.Font
 	font_size := c.FontSize
-	if len(text) == text_display_end {
+	if text_display_end == 0 {
 		return f64.Vec2{0, font_size}
 	}
-	text_size := font.CalcTextSizeA(font_size, math.MaxFloat32, wrap_width, text[:text_display_end])
+	text_size, _ := font.CalcTextSizeA(font_size, math.MaxFloat32, wrap_width, text[:text_display_end])
 
 	// Cancel out character spacing for the last character of a line (it is baked into glyph->AdvanceX field)
 	font_scale := font_size / font.FontSize

@@ -1301,6 +1301,57 @@ func (c *Context) Render() {
 	c.DrawDataBuilder.FlattenIntoSingleLayer()
 
 	// Draw software mouse cursor if requested
+	var (
+		offset, size f64.Vec2
+		uv           [4]f64.Vec2
+	)
+	if c.IO.MouseDrawCursor && c.IO.Fonts.GetMouseCursorTexData(c.MouseCursor, &offset, &size, uv[:], uv[:]) {
+		pos := c.IO.MousePos.Sub(offset)
+		tex_id := c.IO.Fonts.TexID
+		sc := c.Style.MouseCursorScale
+		c.OverlayDrawList.PushTextureID(tex_id)
+
+		// Shadow
+		x := f64.Vec2{1, 0}
+		x = x.Scale(sc)
+		x = pos.Add(x)
+		y := f64.Vec2{1, 0}
+		y = y.Scale(sc)
+		y = pos.Add(y)
+		s := size.Scale(sc)
+		y = y.Add(s)
+		c.OverlayDrawList.AddImageEx(tex_id, x, y, uv[2], uv[3], color.RGBA{0, 0, 0, 48})
+
+		// Shadow
+		x = f64.Vec2{2, 0}
+		x = x.Scale(sc)
+		x = pos.Add(x)
+		y = f64.Vec2{2, 0}
+		y = y.Scale(sc)
+		y = pos.Add(y)
+		s = size.Scale(sc)
+		y = y.Add(s)
+		c.OverlayDrawList.AddImageEx(tex_id, x, y, uv[2], uv[3], color.RGBA{0, 0, 0, 48})
+
+		// Black border
+		x = pos
+		y = pos.Add(s)
+		c.OverlayDrawList.AddImageEx(tex_id, x, y, uv[2], uv[3], color.RGBA{0, 0, 0, 255})
+
+		// White fill
+		x = pos
+		y = pos.Add(s)
+		c.OverlayDrawList.AddImageEx(tex_id, x, y, uv[0], uv[1], color.RGBA{255, 255, 255, 255})
+	}
+
+	if len(c.OverlayDrawList.VtxBuffer) == 0 {
+		c.AddDrawListToDrawData(&c.DrawDataBuilder.Layers[0], &c.OverlayDrawList)
+	}
+
+	// Setup ImDrawData structure for end-user
+	c.SetupDrawData(c.DrawDataBuilder.Layers[0], &c.DrawData)
+	c.IO.MetricsRenderVertices = c.DrawData.TotalVtxCount
+	c.IO.MetricsRenderIndices = c.DrawData.TotalIdxCount
 }
 
 // This is normally called by Render(). You may want to call it directly if you want to avoid calling Render() but the gain will be very minimal.
@@ -2038,4 +2089,18 @@ func (c *Context) GetBorderRect(window *Window, border_n int, perp_padding, thic
 	}
 
 	return f64.Rectangle{}
+}
+
+func (c *Context) SetupDrawData(draw_lists []*DrawList, out_draw_data *DrawData) {
+	out_draw_data.Valid = true
+	out_draw_data.CmdLists = nil
+	if len(draw_lists) > 0 {
+		out_draw_data.CmdLists = draw_lists
+	}
+	out_draw_data.CmdListsCount = len(draw_lists)
+	out_draw_data.TotalVtxCount, out_draw_data.TotalIdxCount = 0, 0
+	for n := range draw_lists {
+		out_draw_data.TotalVtxCount += len(draw_lists[n].VtxBuffer)
+		out_draw_data.TotalIdxCount += len(draw_lists[n].IdxBuffer)
+	}
 }

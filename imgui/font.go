@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"math"
 	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -144,8 +145,88 @@ func (c *Context) SetWindowFontScale(scale float64) {
 	c.DrawListSharedData.FontSize = c.FontSize
 }
 
-func (f *Font) CalcTextSizeA(size, max_width, wrap_width float64, text string) f64.Vec2 {
-	return f64.Vec2{}
+func (f *Font) CalcTextSizeA(size, max_width, wrap_width float64, text string) (text_size f64.Vec2, remaining int) {
+	line_height := size
+	scale := size / f.FontSize
+
+	line_width := 0.0
+
+	word_wrap_enabled := wrap_width > 0.0
+	word_wrap_eol := -1
+
+	s := 0
+	for s < len(text) {
+		if word_wrap_enabled {
+			// Calculate how far we can render. Requires two passes on the string data but keeps the code simple and not intrusive for what's essentially an uncommon feature.
+			if word_wrap_eol < 0 {
+				word_wrap_eol = f.CalcWordWrapPositionA(scale, text[s:], wrap_width-line_width) + s
+				// Wrap_width is too small to fit anything. Force displaying 1 character to minimize the height discontinuity.
+				if word_wrap_eol == s {
+					// +1 may not be a character start point in UTF-8 but it's ok because we use s >= word_wrap_eol below
+					word_wrap_eol++
+				}
+			}
+
+			if s >= word_wrap_eol {
+				if text_size.X < line_width {
+					text_size.X = line_width
+				}
+				text_size.Y += line_height
+				line_width = 0
+				word_wrap_eol = -1
+
+				// Wrapping skips upcoming blanks
+				for s < len(text) {
+					c := rune(text[s])
+					if CharIsSpace(c) {
+						s++
+					} else if c == '\n' {
+						s++
+						break
+					} else {
+						break
+					}
+				}
+				continue
+			}
+		}
+
+		prev_s := s
+		c, size := utf8.DecodeRuneInString(text[s:])
+		s += size
+
+		switch c {
+		case '\n':
+			text_size.X = math.Max(text_size.X, line_width)
+			text_size.Y += line_height
+			line_width = 0.0
+			continue
+		case '\r':
+			continue
+		}
+
+		char_width := f.FallbackAdvanceX * scale
+		if int(c) < len(f.IndexAdvanceX) {
+			char_width = f.IndexAdvanceX[c] * scale
+		}
+		if line_width+char_width >= max_width {
+			s = prev_s
+			break
+		}
+
+		line_width += char_width
+	}
+
+	if text_size.X < line_width {
+		text_size.X = line_width
+	}
+
+	if line_width > 0 || text_size.Y == 0 {
+		text_size.Y += line_height
+	}
+
+	remaining = s
+	return
 }
 
 func (f *Font) CalcWordWrapPositionA(scale float64, text string, wrap_width float64) int {
@@ -238,4 +319,75 @@ func (f *Font) CalcWordWrapPositionA(scale float64, text string, wrap_width floa
 
 func CharIsSpace(c rune) bool {
 	return c == ' ' || c == '\t' || c == 0x3000
+}
+
+func (f *FontAtlas) GetMouseCursorTexData(cursor_type MouseCursor, out_offset, out_size *f64.Vec2, out_uv_border, out_uv_fill []f64.Vec2) bool {
+	if cursor_type <= MouseCursorNone || cursor_type >= MouseCursorCOUNT {
+		return false
+	}
+
+	if f.Flags&FontAtlasFlagsNoMouseCursors != 0 {
+		return false
+	}
+
+	r := f.CustomRects[f.CustomRectIds[0]]
+	pos := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][0]
+	pos = pos.Add(f64.Vec2{float64(r.X), float64(r.Y)})
+	size := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][1]
+	*out_size = size
+	*out_offset = FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][2]
+	out_uv_border[0] = pos.Scale2(f.TexUvScale)
+	out_uv_border[1] = pos.Add(size).Scale2(f.TexUvScale)
+	pos.X += FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF + 1
+	out_uv_fill[0] = pos.Scale2(f.TexUvScale)
+	out_uv_fill[1] = pos.Add(size).Scale2(f.TexUvScale)
+	return true
+}
+
+// A work of art lies ahead! (. = white layer, X = black layer, others are blank)
+// The white texels on the top left are the ones we'll use everywhere in ImGui to render filled shapes.
+const (
+	FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF = 90
+	FONT_ATLAS_DEFAULT_TEX_DATA_H      = 27
+	FONT_ATLAS_DEFAULT_TEX_DATA_ID     = 0x80000000
+)
+
+var FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS = []byte(
+	"..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX" +
+		"..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X" +
+		"---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X" +
+		"X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X" +
+		"XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X" +
+		"X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X" +
+		"X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX" +
+		"X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      " +
+		"X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       " +
+		"X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        " +
+		"X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         " +
+		"X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          " +
+		"X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           " +
+		"X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            " +
+		"X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           " +
+		"X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          " +
+		"X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          " +
+		"X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       ------------------------------------" +
+		"X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           " +
+		"XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           " +
+		"      X..X          -  X...X  -         X...X         -  X..X           X..X  -           " +
+		"       XX           -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           " +
+		"------------        -    X    -           X           -X.....................X-           " +
+		"                    ----------------------------------- X...XXXXXXXXXXXXX...X -           " +
+		"                                                      -  X..X           X..X  -           " +
+		"                                                      -   X.X           X.X   -           " +
+		"                                                      -    XX           XX    -           ")
+
+var FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA = [MouseCursorCOUNT][3]f64.Vec2{
+	// Pos ........ Size ......... Offset ......
+	{f64.Vec2{0, 3}, f64.Vec2{12, 19}, f64.Vec2{0, 0}},    // ImGuiMouseCursor_Arrow
+	{f64.Vec2{13, 0}, f64.Vec2{7, 16}, f64.Vec2{4, 8}},    // ImGuiMouseCursor_TextInput
+	{f64.Vec2{31, 0}, f64.Vec2{23, 23}, f64.Vec2{11, 11}}, // ImGuiMouseCursor_ResizeAll
+	{f64.Vec2{21, 0}, f64.Vec2{9, 23}, f64.Vec2{5, 11}},   // ImGuiMouseCursor_ResizeNS
+	{f64.Vec2{55, 18}, f64.Vec2{23, 9}, f64.Vec2{11, 5}},  // ImGuiMouseCursor_ResizeEW
+	{f64.Vec2{73, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNESW
+	{f64.Vec2{55, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNWSE
 }
