@@ -7,6 +7,13 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
+type SeparatorFlags int
+
+const (
+	SeparatorFlagsHorizontal SeparatorFlags = 1 << 0 // Axis default to current layout type, so generally Horizontal unless e.g. in a menu bar
+	SeparatorFlagsVertical   SeparatorFlags = 1 << 1
+)
+
 type InputTextFlags int
 
 const (
@@ -98,5 +105,69 @@ func (c *Context) Text(format string, args ...interface{}) {
 func (c *Context) TextUnformatted(text string) {
 }
 
+// Horizontal separating line.
 func (c *Context) Separator() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	var flags SeparatorFlags
+	if flags&(SeparatorFlagsHorizontal|SeparatorFlagsVertical) == 0 {
+		flags |= SeparatorFlagsVertical
+		if window.DC.LayoutType == LayoutTypeHorizontal {
+			flags |= SeparatorFlagsVertical
+		} else {
+			flags |= SeparatorFlagsHorizontal
+		}
+	}
+
+	if flags&SeparatorFlagsVertical != 0 {
+		c.VerticalSeparator()
+		return
+	}
+
+	// Horizontal Separator
+	if window.DC.ColumnsSet != nil {
+		c.PopClipRect()
+	}
+
+	x1 := window.Pos.X
+	x2 := window.Pos.X + window.Size.Y
+	if len(window.DC.GroupStack) > 0 {
+		x1 += window.DC.IndentX
+	}
+
+	bb := f64.Rectangle{
+		f64.Vec2{x1, window.DC.CursorPos.Y},
+		f64.Vec2{x2, window.DC.CursorPos.Y + 1.0},
+	}
+
+	// NB: we don't provide our width so that it doesn't get feed back into AutoFit, we don't provide height to not alter layout
+	c.ItemSize(f64.Vec2{0, 0})
+	if !c.ItemAdd(bb, 0) {
+		if window.DC.ColumnsSet != nil {
+			c.PushColumnClipRect()
+		}
+		return
+	}
+
+	window.DrawList.AddLine(bb.Min, f64.Vec2{bb.Max.X, bb.Min.Y}, c.GetColorFromStyle(ColSeparator))
+	if c.LogEnabled {
+		c.LogRenderedText("--------------------------------\n")
+	}
+
+	if window.DC.ColumnsSet != nil {
+		c.PushColumnClipRect()
+		window.DC.ColumnsSet.LineMinY = window.DC.CursorPos.Y
+	}
+}
+
+func (c *Context) VerticalSeparator() {
+}
+
+func (c *Context) GuiLayoutTypeHorizontal() {
+}
+
+func (c *Context) LogRenderedText(text string) {
 }

@@ -201,6 +201,7 @@ type ColumnsSet struct {
 	Current            int
 	Count              int
 	MinX, MaxX         float64
+	LineMinY, LineMaxY float64
 	StartPosY          float64
 	StartMaxPosX       float64 // Backup of CursorMaxPos
 	CellMinY, CellMaxY float64
