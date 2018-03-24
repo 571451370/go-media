@@ -31,7 +31,95 @@ func (c *Context) ColorButton(desc_id string, col color.RGBA) bool {
 }
 
 func (c *Context) ColorButtonEx(desc_id string, col color.RGBA, flags ColorEditFlags, size f64.Vec2) bool {
-	return false
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	id := window.GetID(desc_id)
+	default_size := c.GetFrameHeight()
+	if size.X == 0.0 {
+		size.X = default_size
+	}
+	if size.Y == 0.0 {
+		size.Y = default_size
+	}
+
+	bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(size)}
+	bb_size := 0.0
+	if size.Y >= default_size {
+		bb_size = c.Style.FramePadding.Y
+	}
+	c.ItemSizeBBEx(bb, bb_size)
+	if !c.ItemAdd(bb, id) {
+		return false
+	}
+
+	hovered, _, pressed := c.ButtonBehavior(bb, id, 0)
+	if flags&ColorEditFlagsNoAlpha != 0 {
+		flags &^= ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf
+	}
+
+	col_without_alpha := col
+	col_without_alpha.A = 255
+	grid_step := math.Min(size.X, size.Y) / 2.99
+	rounding := math.Min(c.Style.FrameRounding, grid_step*0.5)
+	bb_inner := bb
+
+	// The border (using Col_FrameBg) tends to look off when color is near-opaque and rounding is enabled. This offset seemed like a good middle ground to reduce those artifacts.
+	off := -0.75
+	bb_inner = bb_inner.Expand(off, off)
+	if flags&ColorEditFlagsAlphaPreviewHalf != 0 && col.A < 255 {
+		mid_x := float64(int((bb_inner.Min.X+bb_inner.Max.X)*0.5 + 0.5))
+		c.RenderColorRectWithAlphaCheckerboardEx(
+			f64.Vec2{bb_inner.Min.X + grid_step, bb_inner.Min.Y},
+			bb_inner.Max,
+			col,
+			grid_step,
+			f64.Vec2{-grid_step + off, off},
+			rounding, DrawCornerFlagsTopRight|DrawCornerFlagsBotRight,
+		)
+		window.DrawList.AddRectFilledEx(bb_inner.Min, f64.Vec2{mid_x, bb_inner.Max.Y}, col_without_alpha, rounding, DrawCornerFlagsTopLeft|DrawCornerFlagsBotLeft)
+	} else {
+		// Because GetColorU32() multiplies by the global style Alpha and we don't want to display a checkerboard if the source code had no alpha
+		col_source := col_without_alpha
+		if flags&ColorEditFlagsAlphaPreview != 0 {
+			col_source = col
+		}
+		if col_source.A < 255 {
+			c.RenderColorRectWithAlphaCheckerboardDx(bb_inner.Min, bb_inner.Max, col_source, grid_step, f64.Vec2{off, off}, rounding)
+		} else {
+			window.DrawList.AddRectFilledEx(bb_inner.Min, bb_inner.Max, col_source, rounding, DrawCornerFlagsAll)
+		}
+	}
+	c.RenderNavHighlight(bb, id)
+	if c.Style.FrameBorderSize > 0.0 {
+		c.RenderFrameBorder(bb.Min, bb.Max, rounding)
+	} else {
+		// Color button are often in need of some sort of border
+		window.DrawList.AddRectDx(bb.Min, bb.Max, c.GetColorFromStyle(ColFrameBg), rounding)
+	}
+
+	// Drag and Drop Source
+	if c.ActiveId == id && c.BeginDragDropSource() {
+		if flags&ColorEditFlagsNoAlpha != 0 {
+			c.SetDragDropPayload(col)
+		} else {
+			c.SetDragDropPayload(col)
+		}
+		c.ColorButtonEx(desc_id, col, flags, f64.Vec2{})
+		c.SameLine()
+		c.TextUnformatted("Color")
+		c.EndDragDropSource()
+		hovered = false
+	}
+
+	// Tooltip
+	if flags&ColorEditFlagsNoTooltip == 0 && hovered {
+		c.ColorTooltip(desc_id, col, flags&(ColorEditFlagsNoAlpha|ColorEditFlagsAlphaPreview|ColorEditFlagsAlphaPreviewHalf))
+	}
+
+	return pressed
 }
 
 func (c *Context) Button(label string) bool {

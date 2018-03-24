@@ -1598,6 +1598,10 @@ func (d *DrawList) AddRect(p_min, p_max f64.Vec2, col color.RGBA) {
 	d.AddRectEx(p_min, p_max, col, 0, DrawCornerFlagsAll, 1)
 }
 
+func (d *DrawList) AddRectDx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64) {
+	d.AddRectEx(p_min, p_max, col, rounding, DrawCornerFlagsAll, 1)
+}
+
 func (d *DrawList) AddRectEx(a, b f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags, thickness float64) {
 	if col.A == 0 {
 		return
@@ -2376,4 +2380,18 @@ func (d *DrawList) PathRect(a, b f64.Vec2, rounding float64, rounding_corners Dr
 		d.PathArcToFast(f64.Vec2{b.X - rounding_br, b.Y - rounding_br}, rounding_br, 0, 3)
 		d.PathArcToFast(f64.Vec2{a.X + rounding_bl, b.Y - rounding_bl}, rounding_bl, 3, 6)
 	}
+}
+
+func (c *Context) RenderColorRectWithAlphaCheckerboard(p_min, p_max f64.Vec2, fill_col color.RGBA, grid_step float64, grid_off f64.Vec2) {
+	c.RenderColorRectWithAlphaCheckerboardEx(p_min, p_max, fill_col, grid_step, grid_off, 0, ^0)
+}
+
+func (c *Context) RenderColorRectWithAlphaCheckerboardDx(p_min, p_max f64.Vec2, fill_col color.RGBA, grid_step float64, grid_off f64.Vec2, rounding float64) {
+	c.RenderColorRectWithAlphaCheckerboardEx(p_min, p_max, fill_col, grid_step, grid_off, rounding, ^0)
+}
+
+func (c *Context) RenderColorRectWithAlphaCheckerboardEx(p_min, p_max f64.Vec2, fill_col color.RGBA, grid_step float64, grid_off f64.Vec2, rounding float64, rounding_corners_flags DrawCornerFlags) {
+}
+
+func (c *Context) RenderFrameBorder(p_min, p_max f64.Vec2, rounding float64) {
 }
