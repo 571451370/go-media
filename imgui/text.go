@@ -133,7 +133,7 @@ func (c *Context) Separator() {
 	}
 
 	x1 := window.Pos.X
-	x2 := window.Pos.X + window.Size.Y
+	x2 := window.Pos.X + window.Size.X
 	if len(window.DC.GroupStack) > 0 {
 		x1 += window.DC.IndentX
 	}
@@ -164,9 +164,32 @@ func (c *Context) Separator() {
 }
 
 func (c *Context) VerticalSeparator() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	y1 := window.DC.CursorPos.Y
+	y2 := window.DC.CursorPos.Y + window.DC.CurrentLineHeight
+	bb := f64.Rectangle{
+		f64.Vec2{window.DC.CursorPos.X, y1},
+		f64.Vec2{window.DC.CursorPos.X + 1.0, y2},
+	}
+	c.ItemSize(f64.Vec2{bb.Dx(), 0})
+	if !c.ItemAdd(bb, 0) {
+		return
+	}
+
+	window.DrawList.AddLine(f64.Vec2{bb.Min.X, bb.Min.Y}, f64.Vec2{bb.Min.X, bb.Max.Y}, c.GetColorFromStyle(ColSeparator))
+	if c.LogEnabled {
+		c.LogText(" |")
+	}
 }
 
 func (c *Context) GuiLayoutTypeHorizontal() {
+}
+
+func (c *Context) LogText(text string) {
 }
 
 func (c *Context) LogRenderedText(text string) {
