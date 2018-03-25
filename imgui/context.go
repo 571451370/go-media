@@ -318,3 +318,11 @@ func InvLength(lhs f64.Vec2, fail_value float64) float64 {
 	}
 	return fail_value
 }
+
+type BackendFlags int
+
+const (
+	BackendFlagsHasGamepad      BackendFlags = 1 << 0 // Back-end has a connected gamepad.
+	BackendFlagsHasMouseCursors BackendFlags = 1 << 1 // Back-end can honor GetMouseCursor() values and change the OS cursor shape.
+	BackendFlagsHasSetMousePos  BackendFlags = 1 << 2 // Back-end can honor io.WantSetMousePos and reposition the mouse (only used if ImGuiConfigFlags_NavEnableSetMousePos is set).
+)

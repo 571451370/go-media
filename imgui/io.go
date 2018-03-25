@@ -6,10 +6,10 @@ type IO struct {
 	//------------------------------------------------------------------
 	// Settings (fill once)                 // Default value:
 	//------------------------------------------------------------------
-
+	ConfigFlags             ConfigFlags   // = 0                  // See ImGuiConfigFlags_ enum. Gamepad/keyboard navigation options, etc.
+	BackendFlags            BackendFlags  // = 0                  // See ImGuiConfigFlags_ enum. Set by user/application. Gamepad/keyboard navigation options, etc.
 	DisplaySize             f64.Vec2      // <unset>              // Display size, in pixels. For clamping windows positions.
 	DeltaTime               float64       // = 1.0f/60.0f         // Time elapsed since last frame, in seconds.
-	ConfigFlags             ConfigFlags   // = 0                  // See ImGuiConfigFlags_ enum. Gamepad/keyboard navigation options, etc.
 	IniSavingRate           float64       // = 5.0f               // Maximum time between saving positions/sizes to .ini file, in seconds.
 	IniFilename             string        // = "imgui.ini"        // Path to .ini file. NULL to disable .ini saving.
 	LogFilename             string        // = "imgui_log.txt"    // Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
