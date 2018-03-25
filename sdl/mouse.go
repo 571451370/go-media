@@ -85,7 +85,7 @@ func ShowCursor(toggle int) int {
 	return int(C.SDL_ShowCursor(C.int(toggle)))
 }
 
-func BUTTON(x uint) int {
+func BUTTON(x uint) uint32 {
 	return 1 << (x - 1)
 }
 
@@ -106,3 +106,7 @@ const (
 	MOUSEWHEEL_NORMAL  = C.SDL_MOUSEWHEEL_NORMAL
 	MOUSEWHEEL_FLIPPED = C.SDL_MOUSEWHEEL_FLIPPED
 )
+
+func SetCursor(cursor *Cursor) {
+	C.SDL_SetCursor((*C.SDL_Cursor)(cursor))
+}

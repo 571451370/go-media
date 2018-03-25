@@ -7,42 +7,6 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
-type CustomRect struct {
-	ID            uint     // Input    // User ID. Use <0x10000 to map into a font glyph, >=0x10000 for other/internal/custom texture data.
-	Width, Height uint     // Input    // Desired rectangle dimension
-	X, Y          uint     // Output   // Packed position in Atlas
-	GlyphAdvanceX float64  // Input    // For custom font glyphs only (ID<0x10000): glyph xadvance
-	GlyphOffset   f64.Vec2 // Input    // For custom font glyphs only (ID<0x10000): glyph display offset
-	Font          *Font    // Input    // For custom font glyphs only (ID<0x10000): target font
-}
-
-type FontAtlasFlags int
-
-const (
-	FontAtlasFlagsNoPowerOfTwoHeight FontAtlasFlags = 1 << 0 // Don't round the height to next power of two
-	FontAtlasFlagsNoMouseCursors     FontAtlasFlags = 1 << 1 // Don't build software mouse cursors into the atlas
-)
-
-type FontAtlas struct {
-	Flags           FontAtlasFlags // Build flags (see ImFontAtlasFlags_)
-	TexID           TextureID      // User data to refer to the texture once it has been uploaded to user's graphic systems. It is passed back to you during rendering via the ImDrawCmd structure.
-	TexDesiredWidth int            // Texture width desired by user before Build(). Must be a power-of-two. If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
-	TexGlyphPadding int            // Padding between glyphs within texture in pixels. Defaults to 1.
-
-	// [Internal]
-	// NB: Access texture data via GetTexData*() calls! Which will setup a default font for you.
-	TexPixelsAlpha8 []uint8      // 1 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight
-	TexPixelsRGBA32 []uint32     // 4 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
-	TexWidth        int          // Texture width calculated during Build().
-	TexHeight       int          // Texture height calculated during Build().
-	TexUvScale      f64.Vec2     // = (1.0f/TexWidth, 1.0f/TexHeight)
-	TexUvWhitePixel f64.Vec2     // Texture coordinates to a white pixel
-	Fonts           []*Font      // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font.
-	CustomRects     []CustomRect // Rectangles for packing custom texture data into the atlas.
-	ConfigData      []FontConfig // Internal data
-	CustomRectIds   [1]int       // Identifiers of custom texture rectangle used by ImFontAtlas/ImDrawList
-}
-
 type Font struct {
 	// Members: Hot ~62/78 bytes
 	FontSize         float64     // <user set>   // Height of characters, set during loading (don't change after loading)
@@ -321,73 +285,21 @@ func CharIsSpace(c rune) bool {
 	return c == ' ' || c == '\t' || c == 0x3000
 }
 
-func (f *FontAtlas) GetMouseCursorTexData(cursor_type MouseCursor, out_offset, out_size *f64.Vec2, out_uv_border, out_uv_fill []f64.Vec2) bool {
-	if cursor_type <= MouseCursorNone || cursor_type >= MouseCursorCOUNT {
-		return false
-	}
-
-	if f.Flags&FontAtlasFlagsNoMouseCursors != 0 {
-		return false
-	}
-
-	r := f.CustomRects[f.CustomRectIds[0]]
-	pos := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][0]
-	pos = pos.Add(f64.Vec2{float64(r.X), float64(r.Y)})
-	size := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][1]
-	*out_size = size
-	*out_offset = FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][2]
-	out_uv_border[0] = pos.Scale2(f.TexUvScale)
-	out_uv_border[1] = pos.Add(size).Scale2(f.TexUvScale)
-	pos.X += FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF + 1
-	out_uv_fill[0] = pos.Scale2(f.TexUvScale)
-	out_uv_fill[1] = pos.Add(size).Scale2(f.TexUvScale)
-	return true
-}
-
-// A work of art lies ahead! (. = white layer, X = black layer, others are blank)
-// The white texels on the top left are the ones we'll use everywhere in ImGui to render filled shapes.
-const (
-	FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF = 90
-	FONT_ATLAS_DEFAULT_TEX_DATA_H      = 27
-	FONT_ATLAS_DEFAULT_TEX_DATA_ID     = 0x80000000
-)
-
-var FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS = []byte(
-	"..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX" +
-		"..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X" +
-		"---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X" +
-		"X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X" +
-		"XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X" +
-		"X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X" +
-		"X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX" +
-		"X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      " +
-		"X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       " +
-		"X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        " +
-		"X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         " +
-		"X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          " +
-		"X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           " +
-		"X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            " +
-		"X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           " +
-		"X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          " +
-		"X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          " +
-		"X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       ------------------------------------" +
-		"X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           " +
-		"XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           " +
-		"      X..X          -  X...X  -         X...X         -  X..X           X..X  -           " +
-		"       XX           -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           " +
-		"------------        -    X    -           X           -X.....................X-           " +
-		"                    ----------------------------------- X...XXXXXXXXXXXXX...X -           " +
-		"                                                      -  X..X           X..X  -           " +
-		"                                                      -   X.X           X.X   -           " +
-		"                                                      -    XX           XX    -           ")
-
-var FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA = [MouseCursorCOUNT][3]f64.Vec2{
-	// Pos ........ Size ......... Offset ......
-	{f64.Vec2{0, 3}, f64.Vec2{12, 19}, f64.Vec2{0, 0}},    // ImGuiMouseCursor_Arrow
-	{f64.Vec2{13, 0}, f64.Vec2{7, 16}, f64.Vec2{4, 8}},    // ImGuiMouseCursor_TextInput
-	{f64.Vec2{31, 0}, f64.Vec2{23, 23}, f64.Vec2{11, 11}}, // ImGuiMouseCursor_ResizeAll
-	{f64.Vec2{21, 0}, f64.Vec2{9, 23}, f64.Vec2{5, 11}},   // ImGuiMouseCursor_ResizeNS
-	{f64.Vec2{55, 18}, f64.Vec2{23, 9}, f64.Vec2{11, 5}},  // ImGuiMouseCursor_ResizeEW
-	{f64.Vec2{73, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNESW
-	{f64.Vec2{55, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNWSE
+func (f *FontConfig) Init() {
+	f.FontData = nil
+	f.FontDataSize = 0
+	f.FontDataOwnedByAtlas = true
+	f.FontNo = 0
+	f.SizePixels = 0.0
+	f.OversampleH = 3
+	f.OversampleV = 1
+	f.PixelSnapH = false
+	f.GlyphExtraSpacing = f64.Vec2{0, 0}
+	f.GlyphOffset = f64.Vec2{0, 0}
+	f.GlyphRanges = nil
+	f.MergeMode = false
+	f.RasterizerFlags = 0x00
+	f.RasterizerMultiply = 1
+	f.Name = ""
+	f.DstFont = nil
 }
