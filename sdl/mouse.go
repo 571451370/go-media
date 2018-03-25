@@ -85,6 +85,10 @@ func ShowCursor(toggle int) int {
 	return int(C.SDL_ShowCursor(C.int(toggle)))
 }
 
+func BUTTON(x uint) int {
+	return 1 << (x - 1)
+}
+
 const (
 	BUTTON_LEFT   = C.SDL_BUTTON_LEFT
 	BUTTON_MIDDLE = C.SDL_BUTTON_MIDDLE
