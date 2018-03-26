@@ -68,6 +68,7 @@ type Context struct {
 	NavJustTabbedId            ID            // Just tabbed to this id.
 	NavNextActivateId          ID            // Set by ActivateItem(), queued until next frame
 	NavJustMovedToId           ID            // Just navigated to this id (result of a successfully MoveRequest)
+	NavInputSource             InputSource   // Keyboard or Gamepad mode?
 	NavScoringRectScreen       f64.Rectangle // Rectangle used for scoring, in screen space. Based of window->DC.NavRefRectRel[], modified for directional navigation scoring.
 	NavScoringCount            int           // Metrics for debugging
 	NavWindowingTarget         *Window       // When selecting a window (holding Menu+FocusPrev/Next, or equivalent of CTRL-TAB) this window is temporarily displayed front-most.
@@ -172,7 +173,124 @@ func CreateContext() *Context {
 }
 
 func CreateContextEx(shared_font_atlas *FontAtlas) *Context {
-	return &Context{}
+	c := &Context{}
+	c.Init(shared_font_atlas)
+	return c
+}
+
+func (c *Context) Init(shared_font_atlas *FontAtlas) {
+	io := c.GetIO()
+	c.Font = nil
+	c.FontSize = 0
+	c.FontBaseSize = 0
+	c.FontAtlasOwnedByContext = false
+	io.Fonts = nil
+	if shared_font_atlas == nil {
+		c.FontAtlasOwnedByContext = true
+		io.Fonts = NewFontAtlas()
+	}
+	c.Time = 0
+	c.FrameCount = 0
+	c.FrameCountEnded = -1
+	c.FrameCountRendered = -1
+	c.Initialized = true
+	c.WindowsActiveCount = 0
+	c.CurrentWindow = nil
+	c.HoveredWindow = nil
+	c.HoveredRootWindow = nil
+	c.HoveredId = 0
+	c.HoveredIdAllowOverlap = false
+	c.HoveredIdPreviousFrame = 0
+	c.HoveredIdTimer = 0.0
+	c.ActiveId = 0
+	c.ActiveIdPreviousFrame = 0
+	c.ActiveIdTimer = 0.0
+	c.ActiveIdIsAlive = false
+	c.ActiveIdIsJustActivated = false
+	c.ActiveIdAllowOverlap = false
+	c.ActiveIdAllowNavDirFlags = 0
+	c.ActiveIdClickOffset = f64.Vec2{-1, -1}
+	c.ActiveIdWindow = nil
+	c.ActiveIdSource = InputSourceNone
+	c.MovingWindow = nil
+	c.NextTreeNodeOpenVal = false
+	c.NextTreeNodeOpenCond = 0
+
+	c.NavWindow = nil
+	c.NavId = 0
+	c.NavActivateId = 0
+	c.NavActivateDownId = 0
+	c.NavActivatePressedId = 0
+	c.NavInputId = 0
+	c.NavJustTabbedId = 0
+	c.NavJustMovedToId = 0
+	c.NavNextActivateId = 0
+	c.NavInputSource = InputSourceNone
+	c.NavScoringRectScreen = f64.Rectangle{}
+	c.NavScoringCount = 0
+	c.NavWindowingTarget = nil
+	c.NavWindowingHighlightTimer = 0
+	c.NavWindowingHighlightAlpha = 0
+	c.NavWindowingToggleLayer = false
+	c.NavLayer = 0
+	c.NavIdTabCounter = math.MaxInt32
+	c.NavIdIsAlive = false
+	c.NavMousePosDirty = false
+	c.NavDisableHighlight = true
+	c.NavDisableMouseHover = false
+	c.NavAnyRequest = false
+	c.NavInitRequest = false
+	c.NavInitRequestFromMove = false
+	c.NavInitResultId = 0
+	c.NavMoveFromClampedRefRect = false
+	c.NavMoveRequest = false
+	c.NavMoveRequestForward = NavForwardNone
+	c.NavMoveDir = DirNone
+	c.NavMoveDirLast = DirNone
+
+	c.ModalWindowDarkeningRatio = 0.0
+	c.OverlayDrawList._Data = &c.DrawListSharedData
+	c.OverlayDrawList._OwnerName = "##Overlay" // Give it a name for debugging
+	c.MouseCursor = MouseCursorArrow
+
+	c.DragDropActive = false
+	c.DragDropSourceFlags = 0
+	c.DragDropMouseButton = -1
+	c.DragDropTargetId = 0
+	c.DragDropAcceptIdCurrRectSurface = 0.0
+	c.DragDropAcceptIdPrev = 0
+	c.DragDropAcceptIdCurr = 0
+	c.DragDropAcceptFrameCount = -1
+
+	c.ScalarAsInputTextId = 0
+	c.ColorEditOptions = ColorEditFlags_OptionsDefault
+	c.DragCurrentValue = 0.0
+	c.DragLastMouseDelta = f64.Vec2{0.0, 0.0}
+	c.DragSpeedDefaultRatio = 1.0 / 100.0
+	c.DragSpeedScaleSlow = 1.0 / 100.0
+	c.DragSpeedScaleFast = 10.0
+	c.ScrollbarClickDeltaToGrabCenter = f64.Vec2{0.0, 0.0}
+	c.TooltipOverrideCount = 0
+	c.OsImePosRequest = f64.Vec2{-1.0, -1.0}
+	c.OsImePosSet = f64.Vec2{-1.0, -1.0}
+
+	c.SettingsLoaded = false
+	c.SettingsDirtyTimer = 0.0
+
+	c.LogEnabled = false
+	c.LogFile = nil
+	c.LogClipboard = nil
+	c.LogStartDepth = 0
+	c.LogAutoExpandMaxDepth = 2
+
+	for i := range c.FramerateSecPerFrame {
+		c.FramerateSecPerFrame[i] = 0
+	}
+	c.FramerateSecPerFrameIdx = 0
+	c.FramerateSecPerFrameAccum = 0.0
+	c.WantCaptureMouseNextFrame = -1
+	c.WantCaptureKeyboardNextFrame = -1
+	c.WantTextInputNextFrame = -1
 }
 
 func (c *Context) GetVersion() string {

@@ -1,6 +1,10 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"fmt"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type CustomRect struct {
 	ID            uint     // Input    // User ID. Use <0x10000 to map into a font glyph, >=0x10000 for other/internal/custom texture data.
@@ -19,7 +23,6 @@ const (
 )
 
 type FontAtlas struct {
-	Ctx             *Context
 	Flags           FontAtlasFlags // Build flags (see ImFontAtlasFlags_)
 	TexID           TextureID      // User data to refer to the texture once it has been uploaded to user's graphic systems. It is passed back to you during rendering via the ImDrawCmd structure.
 	TexDesiredWidth int            // Texture width desired by user before Build(). Must be a power-of-two. If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
@@ -39,52 +42,27 @@ type FontAtlas struct {
 	CustomRectIds   [1]int       // Identifiers of custom texture rectangle used by ImFontAtlas/ImDrawList
 }
 
-// A work of art lies ahead! (. = white layer, X = black layer, others are blank)
-// The white texels on the top left are the ones we'll use everywhere in ImGui to render filled shapes.
-const (
-	FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF = 90
-	FONT_ATLAS_DEFAULT_TEX_DATA_H      = 27
-	FONT_ATLAS_DEFAULT_TEX_DATA_ID     = 0x80000000
-)
+func NewFontAtlas() *FontAtlas {
+	f := &FontAtlas{}
+	f.Init()
+	return f
+}
 
-var FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS = []byte(
-	"..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX" +
-		"..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X" +
-		"---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X" +
-		"X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X" +
-		"XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X" +
-		"X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X" +
-		"X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX" +
-		"X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      " +
-		"X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       " +
-		"X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        " +
-		"X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         " +
-		"X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          " +
-		"X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           " +
-		"X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            " +
-		"X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           " +
-		"X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          " +
-		"X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          " +
-		"X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       ------------------------------------" +
-		"X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           " +
-		"XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           " +
-		"      X..X          -  X...X  -         X...X         -  X..X           X..X  -           " +
-		"       XX           -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           " +
-		"------------        -    X    -           X           -X.....................X-           " +
-		"                    ----------------------------------- X...XXXXXXXXXXXXX...X -           " +
-		"                                                      -  X..X           X..X  -           " +
-		"                                                      -   X.X           X.X   -           " +
-		"                                                      -    XX           XX    -           ")
+func (f *FontAtlas) Init() {
+	f.Flags = 0x0
+	f.TexID = nil
+	f.TexDesiredWidth = 0
+	f.TexGlyphPadding = 1
 
-var FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA = [MouseCursorCOUNT][3]f64.Vec2{
-	// Pos ........ Size ......... Offset ......
-	{f64.Vec2{0, 3}, f64.Vec2{12, 19}, f64.Vec2{0, 0}},    // ImGuiMouseCursor_Arrow
-	{f64.Vec2{13, 0}, f64.Vec2{7, 16}, f64.Vec2{4, 8}},    // ImGuiMouseCursor_TextInput
-	{f64.Vec2{31, 0}, f64.Vec2{23, 23}, f64.Vec2{11, 11}}, // ImGuiMouseCursor_ResizeAll
-	{f64.Vec2{21, 0}, f64.Vec2{9, 23}, f64.Vec2{5, 11}},   // ImGuiMouseCursor_ResizeNS
-	{f64.Vec2{55, 18}, f64.Vec2{23, 9}, f64.Vec2{11, 5}},  // ImGuiMouseCursor_ResizeEW
-	{f64.Vec2{73, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNESW
-	{f64.Vec2{55, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNWSE
+	f.TexPixelsAlpha8 = nil
+	f.TexPixelsRGBA32 = nil
+	f.TexWidth = 0
+	f.TexHeight = 0
+	f.TexUvScale = f64.Vec2{0, 0}
+	f.TexUvWhitePixel = f64.Vec2{0, 0}
+	for n := range f.CustomRectIds {
+		f.CustomRectIds[n] = -1
+	}
 }
 
 func (f *FontAtlas) GetMouseCursorTexData(cursor_type MouseCursor, out_offset, out_size *f64.Vec2, out_uv_border, out_uv_fill []f64.Vec2) bool {
@@ -166,6 +144,14 @@ func (f *FontAtlas) AddFontDefault(font_cfg_template *FontConfig) *Font {
 }
 
 func (f *FontAtlas) AddFontFromMemoryCompressedBase85TTF(compressed_ttf_data_base85 []byte, size_pixels float64, font_cfg *FontConfig, glyph_ranges []rune) *Font {
+	compressed_ttf_size := ((len(compressed_ttf_data_base85) + 4) / 5) * 4
+	compressed_ttf := make([]byte, compressed_ttf_size)
+	Decode85(compressed_ttf_data_base85, compressed_ttf)
+	font := f.AddFontFromMemoryCompressedTTF(compressed_ttf, size_pixels, font_cfg, glyph_ranges)
+	return font
+}
+
+func (f *FontAtlas) AddFontFromMemoryCompressedTTF(compressed_ttf_data []byte, size_pixels float64, font_cfg_template *FontConfig, glyph_ranges []rune) *Font {
 	return nil
 }
 
@@ -180,8 +166,100 @@ func (f *FontAtlas) GetGlyphRangesDefault() []rune {
 func (f *FontAtlas) Build() {
 }
 
+// A work of art lies ahead! (. = white layer, X = black layer, others are blank)
+// The white texels on the top left are the ones we'll use everywhere in ImGui to render filled shapes.
+const (
+	FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF = 90
+	FONT_ATLAS_DEFAULT_TEX_DATA_H      = 27
+	FONT_ATLAS_DEFAULT_TEX_DATA_ID     = 0x80000000
+)
+
+var FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS = []byte(
+	"..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX" +
+		"..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X" +
+		"---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X" +
+		"X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X" +
+		"XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X" +
+		"X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X" +
+		"X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX" +
+		"X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      " +
+		"X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       " +
+		"X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        " +
+		"X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         " +
+		"X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          " +
+		"X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           " +
+		"X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            " +
+		"X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           " +
+		"X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          " +
+		"X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          " +
+		"X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       ------------------------------------" +
+		"X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           " +
+		"XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           " +
+		"      X..X          -  X...X  -         X...X         -  X..X           X..X  -           " +
+		"       XX           -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           " +
+		"------------        -    X    -           X           -X.....................X-           " +
+		"                    ----------------------------------- X...XXXXXXXXXXXXX...X -           " +
+		"                                                      -  X..X           X..X  -           " +
+		"                                                      -   X.X           X.X   -           " +
+		"                                                      -    XX           XX    -           ")
+
+var FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA = [MouseCursorCOUNT][3]f64.Vec2{
+	// Pos ........ Size ......... Offset ......
+	{f64.Vec2{0, 3}, f64.Vec2{12, 19}, f64.Vec2{0, 0}},    // ImGuiMouseCursor_Arrow
+	{f64.Vec2{13, 0}, f64.Vec2{7, 16}, f64.Vec2{4, 8}},    // ImGuiMouseCursor_TextInput
+	{f64.Vec2{31, 0}, f64.Vec2{23, 23}, f64.Vec2{11, 11}}, // ImGuiMouseCursor_ResizeAll
+	{f64.Vec2{21, 0}, f64.Vec2{9, 23}, f64.Vec2{5, 11}},   // ImGuiMouseCursor_ResizeNS
+	{f64.Vec2{55, 18}, f64.Vec2{23, 9}, f64.Vec2{11, 5}},  // ImGuiMouseCursor_ResizeEW
+	{f64.Vec2{73, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNESW
+	{f64.Vec2{55, 0}, f64.Vec2{17, 17}, f64.Vec2{9, 9}},   // ImGuiMouseCursor_ResizeNWSE
+}
+
+//-----------------------------------------------------------------------------
+// DEFAULT FONT DATA
+//-----------------------------------------------------------------------------
+// Compressed with stb_compress() then converted to a C array.
+// Use the program in misc/fonts/binary_to_compressed_c.cpp to create the array from a TTF file.
+// Decompression from stb.h (public domain) by Sean Barrett https://github.com/nothings/stb/blob/master/stb.h
+//-----------------------------------------------------------------------------
+
 func GetDefaultCompressedFontDataTTFBase85() []byte {
 	return []byte(proggy_clean_ttf_compressed_data_base85)
+}
+
+type stbCompress struct {
+	barrier, barrier2, barrier3, barrier4 int
+	dout                                  int
+}
+
+func (c *stbCompress) in2(i []byte, x uint32) uint32 {
+	return (uint32(i[x]) << 8) + uint32(i[(x)+1])
+}
+
+func (c *stbCompress) in3(i []byte, x uint32) uint32 {
+	return (uint32(i[x]) << 16) + c.in2(i, x+1)
+}
+
+func (c *stbCompress) in4(i []byte, x uint32) uint32 {
+	return (uint32(i[x]) << 24) + c.in3(i, x+1)
+}
+
+func (c *stbCompress) match(data []byte, dataPos int) {
+}
+
+func (c *stbCompress) DecompressLength(input []byte) uint32 {
+	return (uint32(input[8]) << 24) + (uint32(input[9]) << 16) + (uint32(input[10]) << 8) + uint32(input[11])
+}
+
+func (c *stbCompress) Decompress(output, input []byte) error {
+	if c.in4(input, 0) != 0x57bc0000 {
+		return fmt.Errorf("invalid header")
+	}
+	// error! stream is > 4 GB
+	if c.in4(input, 4) != 0 {
+		return fmt.Errorf("stream too big")
+	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
