@@ -229,7 +229,79 @@ func (f *FontAtlas) GetGlyphRangesDefault() []rune {
 	}
 }
 
-func (f *FontAtlas) Build() {
+func (f *FontAtlas) Build() error {
+	return f.BuildWithStbTruetype()
+}
+
+func (f *FontAtlas) BuildWithStbTruetype() error {
+	assert(len(f.ConfigData) > 0)
+	f.FontAtlasBuildRegisterDefaultCustomRects()
+
+	f.TexID = nil
+	f.TexWidth = 0
+	f.TexHeight = 0
+	f.TexUvScale = f64.Vec2{0, 0}
+	f.TexUvWhitePixel = f64.Vec2{0, 0}
+	f.ClearTexData()
+
+	// Count glyphs/ranges
+	total_glyphs_count := 0
+	total_ranges_count := 0
+	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
+		cfg := &f.ConfigData[input_i]
+		if cfg.GlyphRanges == nil {
+			cfg.GlyphRanges = f.GetGlyphRangesDefault()
+		}
+		for in_range := cfg.GlyphRanges; in_range[0] != 0 && in_range[1] != 0; in_range = in_range[2:] {
+			total_glyphs_count += int(in_range[1]-in_range[0]) + 1
+			total_ranges_count++
+		}
+	}
+
+	// We need a width for the skyline algorithm. Using a dumb heuristic here to decide of width. User can override TexDesiredWidth and TexGlyphPadding if they wish.
+	// Width doesn't really matter much, but some API/GPU have texture size limitations and increasing width can decrease height.
+	if f.TexDesiredWidth > 0 {
+		f.TexWidth = f.TexDesiredWidth
+	} else {
+		if total_glyphs_count > 4000 {
+			f.TexWidth = 4096
+		} else if total_glyphs_count > 2000 {
+			f.TexWidth = 2048
+		} else if total_glyphs_count > 1000 {
+			f.TexWidth = 1024
+		} else {
+			f.TexWidth = 512
+		}
+	}
+	f.TexHeight = 0
+
+	// Start packing
+
+	return nil
+}
+
+func (f *FontAtlas) FontAtlasBuildRegisterDefaultCustomRects() {
+	if f.CustomRectIds[0] >= 0 {
+		return
+	}
+	if f.Flags&FontAtlasFlagsNoMouseCursors == 0 {
+		f.CustomRectIds[0] = f.AddCustomRectRegular(FONT_ATLAS_DEFAULT_TEX_DATA_ID, FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF*2+1, FONT_ATLAS_DEFAULT_TEX_DATA_H)
+	} else {
+		f.CustomRectIds[0] = f.AddCustomRectRegular(FONT_ATLAS_DEFAULT_TEX_DATA_ID, 2, 2)
+	}
+}
+
+func (f *FontAtlas) AddCustomRectRegular(id, width, height uint) int {
+	assert(id >= 0x10000)
+	assert(width > 0 && width <= 0xFFFF)
+	assert(height > 0 && height <= 0xFFFF)
+	r := CustomRect{
+		ID:     id,
+		Width:  width,
+		Height: height,
+	}
+	f.CustomRects = append(f.CustomRects, r)
+	return len(f.CustomRects) - 1
 }
 
 // A work of art lies ahead! (. = white layer, X = black layer, others are blank)
@@ -311,6 +383,18 @@ func (c *stbCompress) in4(i []byte, x uint32) uint32 {
 }
 
 func (c *stbCompress) match(output, data []byte, pos, length uint32) {
+	// INVERSE of memmove... write each byte before copying the next...
+	assert(c.dout+length <= c.barrier)
+	if c.dout+length > c.barrier {
+		c.dout += length
+		return
+	}
+	if pos < c.barrier2 {
+		c.dout = c.barrier + 1
+		return
+	}
+	copy(output[c.dout:], data[pos:pos+length])
+	c.dout += length
 }
 
 func (c *stbCompress) lit(output, data []byte, pos, length uint32) {
@@ -336,25 +420,34 @@ func (c *stbCompress) decompressToken(output, input []byte) uint32 {
 	// use fewer if's for cases that expand small
 	if input[i] >= 0x20 {
 		if input[i] >= 0x80 {
+			c.match(output, input, c.dout-uint32(input[i+1])-1, uint32(input[i+0])-0x80+1)
 			i += 2
 		} else if input[i] >= 0x40 {
+			c.match(output, input, c.dout-c.in2(input[i:], 0)-0x4000+1, uint32(input[i+2]+1))
 			i += 3
 		} else {
+			c.lit(output, input, i+1, uint32(input[i+0]-0x20+1))
 			i += 1 + (uint32(input[i]) - 0x20 + 1)
 		}
 	} else {
 		// more ifs for cases that expand large, since overhead is amortized
 		if input[i] >= 0x18 {
+			c.match(output, input, c.dout-c.in3(input[i:], 0)-0x180000+1, uint32(input[i+3]+1))
 			i += 4
 		} else if input[i] >= 0x10 {
+			c.match(output, input, c.dout-c.in3(input[i:], 0)-0x100000+1, c.in2(input[i:], 3))
 			i += 5
 		} else if input[i] >= 0x08 {
+			c.lit(output, input, i+2, c.in2(input[i:], 0)-0x0800+1)
 			i += 2 + c.in2(input[i:], 0) - 0x0800 + 1
 		} else if input[i] == 0x07 {
+			c.lit(output, input, i+3, c.in2(input[i:], 1)+1)
 			i += 3 + c.in2(input[i:], 1) + 1
 		} else if input[i] == 0x06 {
+			c.match(output, input, c.dout-c.in3(input[i:], 1)+1, uint32(input[i+4]+1))
 			i += 5
 		} else if input[i] == 0x04 {
+			c.match(output, input, c.dout-c.in3(input[i:], 1)+1, c.in2(input[i:], 4)+1)
 			i += 6
 		}
 	}
