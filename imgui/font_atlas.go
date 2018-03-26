@@ -31,7 +31,7 @@ type FontAtlas struct {
 	// [Internal]
 	// NB: Access texture data via GetTexData*() calls! Which will setup a default font for you.
 	TexPixelsAlpha8 []uint8      // 1 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight
-	TexPixelsRGBA32 []uint32     // 4 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
+	TexPixelsRGBA32 []uint8      // 4 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
 	TexWidth        int          // Texture width calculated during Build().
 	TexHeight       int          // Texture height calculated during Build().
 	TexUvScale      f64.Vec2     // = (1.0f/TexWidth, 1.0f/TexHeight)
@@ -106,8 +106,17 @@ func (f *FontAtlas) GetTexDataAsRGBA32() (out_pixels []byte, out_width, out_heig
 	// Convert to RGBA32 format on demand
 	// Although it is likely to be the most commonly used format, our font rendering is 1 channel / 8 bpp
 	if f.TexPixelsRGBA32 == nil {
+		pixels, _, _, _ := f.GetTexDataAsAlpha8()
+		f.TexPixelsRGBA32 = make([]byte, f.TexWidth*f.TexHeight*4)
+		for i := 0; i < f.TexWidth*f.TexHeight; i += 4 {
+			f.TexPixelsRGBA32[i+0] = 255
+			f.TexPixelsRGBA32[i+1] = 255
+			f.TexPixelsRGBA32[i+2] = 255
+			f.TexPixelsRGBA32[i+3] = pixels[i/4]
+		}
 	}
 
+	out_pixels = f.TexPixelsRGBA32
 	out_width = f.TexWidth
 	out_height = f.TexHeight
 	out_bytes_per_pixel = 4
@@ -152,7 +161,64 @@ func (f *FontAtlas) AddFontFromMemoryCompressedBase85TTF(compressed_ttf_data_bas
 }
 
 func (f *FontAtlas) AddFontFromMemoryCompressedTTF(compressed_ttf_data []byte, size_pixels float64, font_cfg_template *FontConfig, glyph_ranges []rune) *Font {
-	return nil
+	var comp stbCompress
+	buf_decompressed_size := comp.DecompressLength(compressed_ttf_data)
+	buf_decompressed_data := make([]byte, buf_decompressed_size)
+	comp.Decompress(buf_decompressed_data, compressed_ttf_data)
+
+	var font_cfg FontConfig
+	if font_cfg_template != nil {
+		font_cfg = *font_cfg_template
+	} else {
+		font_cfg.Init()
+	}
+	font_cfg.FontDataOwnedByAtlas = true
+
+	return f.AddFontFromMemoryTTF(buf_decompressed_data, size_pixels, &font_cfg, glyph_ranges)
+}
+
+// NB: Transfer ownership of 'ttf_data' to ImFontAtlas, unless font_cfg_template->FontDataOwnedByAtlas == false. Owned TTF buffer will be deleted after Build().
+func (f *FontAtlas) AddFontFromMemoryTTF(ttf_data []byte, size_pixels float64, font_cfg_template *FontConfig, glyph_ranges []rune) *Font {
+	var font_cfg FontConfig
+	if font_cfg_template != nil {
+		font_cfg = *font_cfg_template
+	} else {
+		font_cfg.Init()
+	}
+	font_cfg.FontData = ttf_data
+	font_cfg.FontDataSize = len(ttf_data)
+	font_cfg.SizePixels = size_pixels
+	if glyph_ranges != nil {
+		font_cfg.GlyphRanges = glyph_ranges
+	}
+	return f.AddFont(&font_cfg)
+}
+
+func (f *FontAtlas) AddFont(font_cfg *FontConfig) *Font {
+	// Create new font
+	if !font_cfg.MergeMode {
+		f.Fonts = append(f.Fonts, NewFont())
+	}
+
+	f.ConfigData = append(f.ConfigData, *font_cfg)
+	new_font_cfg := &f.ConfigData[len(f.ConfigData)-1]
+	if new_font_cfg.DstFont == nil {
+		new_font_cfg.DstFont = f.Fonts[len(f.Fonts)-1]
+	}
+	if !new_font_cfg.FontDataOwnedByAtlas {
+		new_font_cfg.FontData = make([]byte, new_font_cfg.FontDataSize)
+		new_font_cfg.FontDataOwnedByAtlas = true
+		copy(new_font_cfg.FontData, font_cfg.FontData)
+	}
+
+	// Invalidate texture
+	f.ClearTexData()
+	return new_font_cfg.DstFont
+}
+
+func (f *FontAtlas) ClearTexData() {
+	f.TexPixelsAlpha8 = nil
+	f.TexPixelsRGBA32 = nil
 }
 
 // Retrieve list of range (2 int per range, values are inclusive)

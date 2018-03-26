@@ -1,7 +1,7 @@
 package imgui
 
 func Decode85Byte(c byte) uint {
-	if c >= '\'' {
+	if c >= '\\' {
 		return uint(c - 36)
 	}
 	return uint(c - 35)

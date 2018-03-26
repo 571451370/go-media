@@ -24,7 +24,8 @@ type Font struct {
 	ConfigData          *FontConfig //              // Pointer within ContainerAtlas->ConfigData
 	ContainerAtlas      *FontAtlas  //              // What we has been loaded into
 	Ascent, Descent     float64     //              // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
-	MetricsTotalSurface int         //              // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
+	DirtyLookupTables   bool
+	MetricsTotalSurface int //              // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
 }
 
 type FontConfig struct {
@@ -52,6 +53,35 @@ type FontGlyph struct {
 	AdvanceX       float64 // Distance to next character (= data from font + ImFontConfig::GlyphExtraSpacing.x baked in)
 	X0, Y0, X1, Y1 float64 // Glyph corners
 	U0, V0, U1, V1 float64 // Texture coordinates
+}
+
+func NewFont() *Font {
+	f := &Font{}
+	f.Init()
+	return f
+}
+
+func (f *Font) Init() {
+	f.Scale = 1
+	f.FallbackChar = '?'
+	f.DisplayOffset = f64.Vec2{0, 0}
+	f.ClearOutputData()
+}
+
+func (f *Font) ClearOutputData() {
+	f.FontSize = 0.0
+	f.Glyphs = f.Glyphs[:0]
+	f.IndexAdvanceX = f.IndexAdvanceX[:0]
+	f.IndexLookup = f.IndexLookup[:0]
+	f.FallbackGlyph = nil
+	f.FallbackAdvanceX = 0.0
+	f.ConfigDataCount = 0
+	f.ConfigData = nil
+	f.ContainerAtlas = nil
+	f.Ascent = 0.0
+	f.Descent = 0.0
+	f.DirtyLookupTables = true
+	f.MetricsTotalSurface = 0
 }
 
 func (c *Context) GetFont() *Font {
