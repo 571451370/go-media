@@ -293,8 +293,9 @@ func GetDefaultCompressedFontDataTTFBase85() []byte {
 }
 
 type stbCompress struct {
-	barrier, barrier2, barrier3, barrier4 int
-	dout                                  int
+	barrier, barrier2, barrier3, barrier4 uint32
+	din                                   uint32
+	dout                                  uint32
 }
 
 func (c *stbCompress) in2(i []byte, x uint32) uint32 {
@@ -309,7 +310,86 @@ func (c *stbCompress) in4(i []byte, x uint32) uint32 {
 	return (uint32(i[x]) << 24) + c.in3(i, x+1)
 }
 
-func (c *stbCompress) match(data []byte, dataPos int) {
+func (c *stbCompress) match(output, data []byte, pos, length uint32) {
+}
+
+func (c *stbCompress) lit(output, data []byte, pos, length uint32) {
+	assert(c.dout+length <= c.barrier)
+	if c.dout+length > c.barrier {
+		c.dout += length
+		return
+	}
+	if pos < c.barrier4 {
+		c.dout = c.barrier + 1
+		return
+	}
+	i := 0
+	for ; length != 0; length-- {
+		output[c.dout] = data[i]
+		i++
+		c.dout++
+	}
+}
+
+func (c *stbCompress) decompressToken(output, input []byte) uint32 {
+	i := c.din
+	// use fewer if's for cases that expand small
+	if input[i] >= 0x20 {
+		if input[i] >= 0x80 {
+			i += 2
+		} else if input[i] >= 0x40 {
+			i += 3
+		} else {
+			i += 1 + (uint32(input[i]) - 0x20 + 1)
+		}
+	} else {
+		// more ifs for cases that expand large, since overhead is amortized
+		if input[i] >= 0x18 {
+			i += 4
+		} else if input[i] >= 0x10 {
+			i += 5
+		} else if input[i] >= 0x08 {
+			i += 2 + c.in2(input[i:], 0) - 0x0800 + 1
+		} else if input[i] == 0x07 {
+			i += 3 + c.in2(input[i:], 1) + 1
+		} else if input[i] == 0x06 {
+			i += 5
+		} else if input[i] == 0x04 {
+			i += 6
+		}
+	}
+
+	return i
+}
+
+func (c *stbCompress) adler32(adler32 uint32, buffer []byte) uint32 {
+	const ADLER_MOD = 65521
+	s1 := adler32 & 0xffff
+	s2 := adler32 >> 16
+
+	buflen := len(buffer)
+	blocklen := buflen % 5552
+	var i int
+	for buflen != 0 {
+		for i = 0; i+7 < blocklen; i += 8 {
+			for j := 0; j < 8; j++ {
+				s1 += uint32(buffer[i+j])
+				s2 += s1
+			}
+		}
+
+		for ; i < blocklen; i++ {
+			s1 += uint32(buffer[i])
+			s2 += s1
+		}
+
+		s1 %= ADLER_MOD
+		s2 %= ADLER_MOD
+		buflen -= blocklen
+		blocklen = 5552
+	}
+
+	return s2<<16 | s1
 }
 
 func (c *stbCompress) DecompressLength(input []byte) uint32 {
@@ -323,6 +403,37 @@ func (c *stbCompress) Decompress(output, input []byte) error {
 	// error! stream is > 4 GB
 	if c.in4(input, 4) != 0 {
 		return fmt.Errorf("stream too big")
+	}
+
+	olen := c.DecompressLength(input)
+	c.barrier2 = 0
+	c.barrier3 = uint32(len(input))
+	c.barrier = olen
+	c.barrier4 = 0
+
+	c.din = 16
+	c.dout = 0
+	for {
+		old_i := uint32(input[c.din])
+		c.din = c.decompressToken(output, input)
+		if c.din == old_i {
+			if input[c.din] == 0x05 && input[c.din+1] == 0xfa {
+				assert(c.dout == olen)
+				if c.dout != olen {
+					return fmt.Errorf("corruption of olen")
+				}
+				if c.adler32(1, output[:olen]) != c.in4(input[c.din:], 2) {
+					return fmt.Errorf("adler32 mismatch")
+				}
+				return nil
+			} else {
+				panic("unreachable")
+			}
+		}
+
+		if c.dout > olen {
+			return nil
+		}
 	}
 
 	return nil

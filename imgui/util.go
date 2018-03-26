@@ -20,3 +20,9 @@ func Decode85(src, dst []byte) {
 		j += 4
 	}
 }
+
+func assert(x bool) {
+	if !x {
+		panic("assertion failed")
+	}
+}
