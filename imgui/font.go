@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 type Font struct {
@@ -336,4 +337,88 @@ func (f *FontConfig) Init() {
 
 func (f *Font) IsLoaded() bool {
 	return f.ContainerAtlas != nil
+}
+
+func (f *Font) BuildLookupTable() {
+	max_codepoint := 0
+	for i := range f.Glyphs {
+		max_codepoint = mathutil.Max(max_codepoint, int(f.Glyphs[i].Codepoint))
+	}
+
+	assert(len(f.Glyphs) < 0xFFFF) // -1 is reserved
+	f.IndexAdvanceX = f.IndexAdvanceX[:0]
+	f.IndexLookup = f.IndexLookup[:0]
+	f.DirtyLookupTables = false
+	f.GrowIndex(max_codepoint + 1)
+	for i := range f.Glyphs {
+		codepoint := f.Glyphs[i].Codepoint
+		f.IndexAdvanceX[codepoint] = f.Glyphs[i].AdvanceX
+		f.IndexLookup[codepoint] = i
+	}
+
+	// Create a glyph to handle TAB
+	// FIXME: Needs proper TAB handling but it needs to be contextualized (or we could arbitrary say that each string starts at "column 0" ?)
+	if f.FindGlyph(' ') != nil {
+		// So we can call this function multiple times
+		if f.Glyphs[len(f.Glyphs)-1].Codepoint != '\t' {
+			f.Glyphs = append(f.Glyphs, FontGlyph{})
+		}
+		tab_glyph := &f.Glyphs[len(f.Glyphs)-1]
+		*tab_glyph = *f.FindGlyph(' ')
+		tab_glyph.Codepoint = '\t'
+		tab_glyph.AdvanceX *= 4
+		f.IndexAdvanceX[tab_glyph.Codepoint] = tab_glyph.AdvanceX
+		f.IndexLookup[tab_glyph.Codepoint] = len(f.Glyphs) - 1
+	}
+
+	f.FallbackGlyph = f.FindGlyphNoFallback(f.FallbackChar)
+	f.FallbackAdvanceX = 0.0
+	if f.FallbackGlyph != nil {
+		f.FallbackAdvanceX = f.FallbackGlyph.AdvanceX
+	}
+	for i := 0; i < max_codepoint+1; i++ {
+		if f.IndexAdvanceX[i] < 0.0 {
+			f.IndexAdvanceX[i] = f.FallbackAdvanceX
+		}
+	}
+}
+
+func (f *Font) SetFallbackChar(c rune) {
+	f.FallbackChar = c
+	f.BuildLookupTable()
+}
+
+func (f *Font) GrowIndex(new_size int) {
+	assert(len(f.IndexAdvanceX) == len(f.IndexLookup))
+	if new_size <= len(f.IndexLookup) {
+		return
+	}
+	for i := len(f.IndexAdvanceX); i < new_size; i++ {
+		f.IndexAdvanceX = append(f.IndexAdvanceX, -1)
+	}
+	for i := len(f.IndexLookup); i < new_size; i++ {
+		f.IndexAdvanceX = append(f.IndexAdvanceX, 0xffff)
+	}
+}
+
+func (f *Font) FindGlyph(c rune) *FontGlyph {
+	if int(c) >= len(f.IndexLookup) {
+		return f.FallbackGlyph
+	}
+	i := f.IndexLookup[c]
+	if i == 0xffff {
+		return f.FallbackGlyph
+	}
+	return &f.Glyphs[i]
+}
+
+func (f *Font) FindGlyphNoFallback(c rune) *FontGlyph {
+	if int(c) >= len(f.IndexLookup) {
+		return nil
+	}
+	i := f.IndexLookup[c]
+	if i == 0xffff {
+		return nil
+	}
+	return &f.Glyphs[i]
 }

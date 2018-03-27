@@ -374,11 +374,65 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	spc.SetHeight(f.TexHeight)
 
 	// Second pass: render font characters
-	// TODO
+	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
+		cfg := &f.ConfigData[input_i]
+		tmp := &tmp_array[input_i]
+		spc.SetOversampling(uint(cfg.OversampleH), uint(cfg.OversampleV))
+		spc.FontRangesRenderIntoRects(&tmp.FontInfo, tmp.Ranges, tmp.Rects)
+		if cfg.RasterizerMultiply != 1.0 {
+			var multiply_table [256]byte
+			f.BuildMultiplyCalcLookupTable(multiply_table[:], cfg.RasterizerMultiply)
+			for i := range tmp.Rects {
+				r := &tmp.Rects[i]
+				if r.WasPacked() != 0 {
+					f.BuildMultiplyRectAlpha8(multiply_table[:], spc.Pixels(), r.X(), r.Y(), r.W(), r.H(), spc.StrideInBytes())
+				}
+			}
+		}
+		tmp.Rects = nil
+	}
+
+	// End packing
+	spc.End()
+
+	// Third pass: setup ImFont and glyphs for runtime
+	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
+		cfg := &f.ConfigData[input_i]
+		tmp := &tmp_array[input_i]
+		// We can have multiple input fonts writing into a same destination font (when using MergeMode=true)
+		dst_font := cfg.DstFont
+		if cfg.MergeMode {
+			dst_font.BuildLookupTable()
+		}
+		font_scale := tmp.FontInfo.ScaleForPixelHeight(cfg.SizePixels)
+		unscaled_ascent, unscaled_descent, unscaled_line_gap := tmp.FontInfo.GetFontVMetrics()
+		_ = font_scale
+		_, _, _ = unscaled_ascent, unscaled_descent, unscaled_line_gap
+	}
 
 	f.BuildFinish()
 
 	return nil
+}
+
+func (f *FontAtlas) BuildMultiplyCalcLookupTable(out_table []uint8, in_brighten_factor float64) {
+	for i := range out_table {
+		value := uint(float64(i) * in_brighten_factor)
+		if value > 255 {
+			out_table[i] = 255
+		} else {
+			out_table[i] = uint8(value)
+		}
+	}
+}
+
+func (f *FontAtlas) BuildMultiplyRectAlpha8(table, pixels []byte, x, y, w, h, stride int) {
+	n := x + y*stride
+	for j := h; j > 0; j, n = j-1, n+stride {
+		for i := 0; i < w; i++ {
+			pixels[n] = table[pixels[n]]
+		}
+	}
 }
 
 func (f *FontAtlas) BuildFinish() {
