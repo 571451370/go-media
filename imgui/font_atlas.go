@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
+	"github.com/qeedquan/go-media/stb/stbtt"
 )
 
 type CustomRect struct {
@@ -276,8 +278,113 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	f.TexHeight = 0
 
 	// Start packing
+	const max_tex_height = 1024 * 32
+	var spc stbtt.PackContext
+	err := spc.Begin(nil, f.TexWidth, max_tex_height, 0, f.TexGlyphPadding)
+	if err != nil {
+		return err
+	}
+	spc.SetOversampling(1, 1)
+
+	// Pack our extra data rectangles first, so it will be on the upper-left corner of our texture (UV will have small values).
+	f.BuildPackCustomRects(&spc)
+
+	// Initialize font information (so we can error without any cleanup)
+	type FontTempBuildData struct {
+		FontInfo stbtt.FontInfo
+		Rects    []stbtt.Rect
+		Ranges   []stbtt.PackRange
+	}
+	tmp_array := make([]FontTempBuildData, len(f.ConfigData))
+	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
+		cfg := &f.ConfigData[input_i]
+		tmp := &tmp_array[input_i]
+		assert(cfg.DstFont != nil && (!cfg.DstFont.IsLoaded() || cfg.DstFont.ContainerAtlas == f))
+
+		font_offset := stbtt.GetFontOffsetForIndex(cfg.FontData, cfg.FontNo)
+		assert(font_offset >= 0)
+		err := tmp.FontInfo.Init(cfg.FontData, font_offset)
+		if err != nil {
+			// Reset output on failure
+			f.TexWidth = 0
+			f.TexHeight = 0
+			return err
+		}
+	}
+
+	// Allocate packing character data and flag packed characters buffer as non-packed (x0=y0=x1=y1=0)
+	buf_packedchars_n, buf_rects_n, buf_ranges_n := 0, 0, 0
+	buf_packedchars := make([]stbtt.PackedChar, total_glyphs_count)
+	buf_rects := make([]stbtt.Rect, total_glyphs_count)
+	buf_ranges := make([]stbtt.PackRange, total_ranges_count)
+
+	// First font pass: pack all glyphs (no rendering at this point, we are working with rectangles in an infinitely tall texture at this point)
+	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
+		cfg := &f.ConfigData[input_i]
+		tmp := &tmp_array[input_i]
+
+		// Setup ranges
+		font_glyphs_count := 0
+		font_ranges_count := 0
+		for in_range := cfg.GlyphRanges; in_range[0] != 0 && in_range[1] != 0; in_range = in_range[2:] {
+			font_glyphs_count += int(in_range[1]-in_range[0]) + 1
+			font_ranges_count++
+		}
+		tmp.Ranges = buf_ranges[buf_ranges_n : buf_ranges_n+font_ranges_count]
+		buf_ranges_n += font_ranges_count
+
+		for i := 0; i < font_ranges_count; i++ {
+			in_range := cfg.GlyphRanges[i*2:]
+			range_ := &tmp.Ranges[i]
+			range_.SetFontSize(cfg.SizePixels)
+			range_.SetFirstUnicodeCodepointInRange(int(in_range[0]))
+			range_.SetNumChars(int(in_range[1] - in_range[0] + 1))
+			range_.SetChardataForRange(buf_packedchars[buf_packedchars_n:])
+			buf_packedchars_n += range_.NumChars()
+		}
+
+		// Pack
+		tmp.Rects = buf_rects[buf_rects_n : buf_rects_n+font_glyphs_count]
+		buf_rects_n += font_glyphs_count
+		spc.SetOversampling(uint(cfg.OversampleH), uint(cfg.OversampleV))
+		n := spc.FontRangesGatherRects(&tmp.FontInfo, tmp.Ranges, tmp.Rects)
+		assert(n == font_glyphs_count)
+		spc.FontRangesPackRects(tmp.Rects[:n])
+
+		// Extend texture height
+		for i := 0; i < n; i++ {
+			if tmp.Rects[i].WasPacked() != 0 {
+				f.TexHeight = mathutil.Max(f.TexHeight, tmp.Rects[i].Y()+tmp.Rects[i].H())
+			}
+		}
+	}
+	assert(buf_rects_n == total_glyphs_count)
+	assert(buf_packedchars_n == total_glyphs_count)
+	assert(buf_ranges_n == total_ranges_count)
+
+	// Create texture
+	if f.Flags&FontAtlasFlagsNoPowerOfTwoHeight != 0 {
+		f.TexHeight = f.TexHeight + 1
+	} else {
+		f.TexHeight = UpperPowerOfTwo(f.TexHeight)
+	}
+	f.TexUvScale = f64.Vec2{1.0 / float64(f.TexWidth), 1.0 / float64(f.TexHeight)}
+	f.TexPixelsAlpha8 = make([]byte, f.TexWidth*f.TexHeight)
+	spc.SetPixels(f.TexPixelsAlpha8)
+	spc.SetHeight(f.TexHeight)
+
+	// Second pass: render font characters
+	// TODO
+
+	f.BuildFinish()
 
 	return nil
+}
+
+func (f *FontAtlas) BuildFinish() {
+}
+
+func (f *FontAtlas) BuildPackCustomRects(spc *stbtt.PackContext) {
 }
 
 func (f *FontAtlas) FontAtlasBuildRegisterDefaultCustomRects() {

@@ -333,3 +333,7 @@ func (f *FontConfig) Init() {
 	f.Name = ""
 	f.DstFont = nil
 }
+
+func (f *Font) IsLoaded() bool {
+	return f.ContainerAtlas != nil
+}
