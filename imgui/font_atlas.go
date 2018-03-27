@@ -527,7 +527,7 @@ func (f *FontAtlas) BuildFinish() {
 	// Build all fonts lookup tables
 	for i := range f.Fonts {
 		if f.Fonts[i].DirtyLookupTables {
-			f.Fonts[i].BuildLookupTables()
+			f.Fonts[i].BuildLookupTable()
 		}
 	}
 }

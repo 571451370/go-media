@@ -423,9 +423,6 @@ func (f *Font) FindGlyphNoFallback(c rune) *FontGlyph {
 	return &f.Glyphs[i]
 }
 
-func (f *Font) BuildLookupTables() {
-}
-
 func (f *Font) AddGlyph(codepoint rune, x0, y0, x1, y1, u0, v0, u1, v1, advance_x float64) {
 	var glyph FontGlyph
 	glyph.Codepoint = codepoint

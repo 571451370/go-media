@@ -2394,4 +2394,10 @@ func (c *Context) RenderColorRectWithAlphaCheckerboardEx(p_min, p_max f64.Vec2, 
 }
 
 func (c *Context) RenderFrameBorder(p_min, p_max f64.Vec2, rounding float64) {
+	window := c.CurrentWindow
+	border_size := c.Style.FrameBorderSize
+	if border_size > 0 {
+		window.DrawList.AddRectEx(p_min.Add(f64.Vec2{1, 1}), p_max.Add(f64.Vec2{1, 1}), c.GetColorFromStyle(ColBorderShadow), rounding, DrawCornerFlagsAll, border_size)
+		window.DrawList.AddRectEx(p_min, p_max, c.GetColorFromStyle(ColBorder), rounding, DrawCornerFlagsAll, border_size)
+	}
 }
