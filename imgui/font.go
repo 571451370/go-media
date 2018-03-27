@@ -422,3 +422,52 @@ func (f *Font) FindGlyphNoFallback(c rune) *FontGlyph {
 	}
 	return &f.Glyphs[i]
 }
+
+func (f *Font) BuildLookupTables() {
+}
+
+func (f *Font) AddGlyph(codepoint rune, x0, y0, x1, y1, u0, v0, u1, v1, advance_x float64) {
+	var glyph FontGlyph
+	glyph.Codepoint = codepoint
+	glyph.X0 = x0
+	glyph.Y0 = y0
+	glyph.X1 = x1
+	glyph.Y1 = y1
+	glyph.U0 = u0
+	glyph.V0 = v0
+	glyph.U1 = u1
+	glyph.V1 = v1
+	glyph.AdvanceX = advance_x + f.ConfigData.GlyphExtraSpacing.X // Bake spacing into AdvanceX
+	if f.ConfigData.PixelSnapH {
+		glyph.AdvanceX = float64(int(glyph.AdvanceX + 0.5))
+	}
+	f.Glyphs = append(f.Glyphs, glyph)
+
+	// Compute rough surface usage metrics (+1 to account for average padding, +0.99 to round)
+	f.DirtyLookupTables = true
+	f.MetricsTotalSurface += int((glyph.U1-glyph.U0)*float64(f.ContainerAtlas.TexWidth)+1.99) * (int)((glyph.V1-glyph.V0)*float64(f.ContainerAtlas.TexHeight)+1.99)
+}
+
+func (f *Font) AddRemapChar(dst, src rune, overwrite_dst bool) {
+	// Currently this can only be called AFTER the font has been built, aka after calling ImFontAtlas::GetTexDataAs*() function.
+	assert(len(f.IndexLookup) > 0)
+	index_size := len(f.IndexLookup)
+
+	// 'dst' already exists
+	if int(dst) < index_size && f.IndexLookup[dst] == 0xFFFF && !overwrite_dst {
+		return
+	}
+
+	// both 'dst' and 'src' don't exist -> no-op
+	if int(src) >= index_size && int(dst) >= index_size {
+		return
+	}
+
+	f.GrowIndex(int(dst) + 1)
+	f.IndexLookup[dst] = 0xFFFF
+	f.IndexAdvanceX[dst] = 1
+	if int(src) < index_size {
+		f.IndexLookup[dst] = f.IndexLookup[src]
+		f.IndexAdvanceX[dst] = f.IndexAdvanceX[src]
+	}
+}

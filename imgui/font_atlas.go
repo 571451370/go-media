@@ -2,6 +2,7 @@ package imgui
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/math/mathutil"
@@ -44,6 +45,21 @@ type FontAtlas struct {
 	CustomRectIds   [1]int       // Identifiers of custom texture rectangle used by ImFontAtlas/ImDrawList
 }
 
+func (c *CustomRect) Init() {
+	c.ID = 0xFFFFFFFF
+	c.Width = 0
+	c.Height = 0
+	c.X = 0xFFFF
+	c.Y = 0xFFFF
+	c.GlyphAdvanceX = 0.0
+	c.GlyphOffset = f64.Vec2{0, 0}
+	c.Font = nil
+}
+
+func (c *CustomRect) IsPacked() bool {
+	return c.X != 0xFFFF
+}
+
 func NewFontAtlas() *FontAtlas {
 	f := &FontAtlas{}
 	f.Init()
@@ -76,7 +92,7 @@ func (f *FontAtlas) GetMouseCursorTexData(cursor_type MouseCursor, out_offset, o
 		return false
 	}
 
-	r := f.CustomRects[f.CustomRectIds[0]]
+	r := &f.CustomRects[f.CustomRectIds[0]]
 	pos := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][0]
 	pos = pos.Add(f64.Vec2{float64(r.X), float64(r.Y)})
 	size := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][1]
@@ -405,14 +421,53 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 			dst_font.BuildLookupTable()
 		}
 		font_scale := tmp.FontInfo.ScaleForPixelHeight(cfg.SizePixels)
-		unscaled_ascent, unscaled_descent, unscaled_line_gap := tmp.FontInfo.GetFontVMetrics()
-		_ = font_scale
-		_, _, _ = unscaled_ascent, unscaled_descent, unscaled_line_gap
+		unscaled_ascent, unscaled_descent, _ := tmp.FontInfo.GetFontVMetrics()
+
+		sign := -1.0
+		if unscaled_ascent > 0 {
+			sign = 1
+		}
+		ascent := math.Floor(float64(unscaled_ascent)*font_scale + sign)
+
+		sign = -1.0
+		if unscaled_descent > 0 {
+			sign = 1
+		}
+		descent := math.Floor(float64(unscaled_descent)*font_scale + sign)
+
+		f.BuildSetupFont(dst_font, cfg, ascent, descent)
+		off_x := cfg.GlyphOffset.X
+		off_y := cfg.GlyphOffset.Y + float64(int(dst_font.Ascent+0.5))
+
+		for i := range tmp.Ranges {
+			range_ := tmp.Ranges[i]
+			for char_idx := 0; char_idx < range_.NumChars(); char_idx += 1 {
+				chardata_for_range := range_.CharDataForRange()
+				pc := &chardata_for_range[char_idx]
+				if pc.X0() == 0 && pc.X1() == 0 && pc.Y0() == 0 && pc.Y1() == 0 {
+					continue
+				}
+
+				first_unicode_codepoint_in_range := range_.FirstUnicodepointInRange()
+				codepoint := rune(first_unicode_codepoint_in_range + char_idx)
+				if cfg.MergeMode && dst_font.FindGlyphNoFallback(codepoint) == nil {
+					continue
+				}
+
+				var q stbtt.AlignedQuad
+				var dummy_x, dummy_y float64
+				stbtt.GetPackedQuad(chardata_for_range, f.TexWidth, f.TexHeight, char_idx, &dummy_x, &dummy_y, &q, 0)
+				dst_font.AddGlyph(codepoint, q.X0()+off_x, q.Y0()+off_y, q.X1()+off_x, q.Y1()+off_y, q.S0(), q.T0(), q.S1(), q.T1(), pc.XAdvance())
+			}
+		}
 	}
 
 	f.BuildFinish()
 
 	return nil
+}
+
+func (f *FontAtlas) BuildSetupFont(dst_font *Font, cfg *FontConfig, ascent, descent float64) {
 }
 
 func (f *FontAtlas) BuildMultiplyCalcLookupTable(out_table []uint8, in_brighten_factor float64) {
@@ -435,7 +490,46 @@ func (f *FontAtlas) BuildMultiplyRectAlpha8(table, pixels []byte, x, y, w, h, st
 	}
 }
 
+func (f *FontAtlas) BuildRenderDefaultTexData() {
+}
+
+func (f *FontAtlas) CalcCustomRectUV(rect *CustomRect) (out_uv_min, out_uv_max f64.Vec2) {
+	// Font atlas needs to be built before we can calculate UV coordinates
+	assert(f.TexWidth > 0 && f.TexHeight > 0)
+	// Make sure the rectangle has been packed
+	assert(rect.IsPacked())
+	out_uv_min = f64.Vec2{
+		float64(rect.X) * f.TexUvScale.X,
+		float64(rect.Y) * f.TexUvScale.Y,
+	}
+	out_uv_max = f64.Vec2{
+		float64(rect.X+rect.Width) * f.TexUvScale.X,
+		float64(rect.Y+rect.Height) * f.TexUvScale.Y,
+	}
+	return
+}
+
 func (f *FontAtlas) BuildFinish() {
+	// Render into our custom data block
+	f.BuildRenderDefaultTexData()
+
+	// Register custom rectangle glyphs
+	for i := range f.CustomRects {
+		r := f.CustomRects[i]
+		if r.Font == nil || r.ID > 0x10000 {
+			continue
+		}
+
+		assert(r.Font.ContainerAtlas == f)
+		f.CalcCustomRectUV(&r)
+	}
+
+	// Build all fonts lookup tables
+	for i := range f.Fonts {
+		if f.Fonts[i].DirtyLookupTables {
+			f.Fonts[i].BuildLookupTables()
+		}
+	}
 }
 
 func (f *FontAtlas) BuildPackCustomRects(spc *stbtt.PackContext) {
@@ -456,11 +550,11 @@ func (f *FontAtlas) AddCustomRectRegular(id, width, height uint) int {
 	assert(id >= 0x10000)
 	assert(width > 0 && width <= 0xFFFF)
 	assert(height > 0 && height <= 0xFFFF)
-	r := CustomRect{
-		ID:     id,
-		Width:  width,
-		Height: height,
-	}
+	r := CustomRect{}
+	r.Init()
+	r.ID = id
+	r.Width = width
+	r.Height = height
 	f.CustomRects = append(f.CustomRects, r)
 	return len(f.CustomRects) - 1
 }
