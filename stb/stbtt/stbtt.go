@@ -21,6 +21,52 @@ type (
 	AlignedQuad C.stbtt_aligned_quad
 )
 
+func NewPackContext() *PackContext {
+	return (*PackContext)(C.calloc(1, C.sizeof_stbtt_pack_context))
+}
+
+func NewFontInfo() *FontInfo {
+	return (*FontInfo)(C.calloc(1, C.sizeof_stbtt_fontinfo))
+}
+
+func MakePackedChars(n int) []PackedChar {
+	p := C.calloc(C.ulong(n), C.sizeof_stbtt_packedchar)
+	s := ((*[1 << 30]PackedChar)(unsafe.Pointer(p)))[:n:n]
+	return s
+}
+
+func MakeRects(n int) []Rect {
+	p := C.calloc(C.ulong(n), C.sizeof_stbrp_rect)
+	s := ((*[1 << 30]Rect)(unsafe.Pointer(p)))[:n:n]
+	return s
+}
+
+func MakePackRanges(n int) []PackRange {
+	p := C.calloc(C.ulong(n), C.sizeof_stbtt_pack_range)
+	s := ((*[1 << 30]PackRange)(unsafe.Pointer(p)))[:n:n]
+	return s
+}
+
+func FreePackContext(p *PackContext) {
+	C.free(unsafe.Pointer(p))
+}
+
+func FreeFontInfo(p *FontInfo) {
+	C.free(unsafe.Pointer(p))
+}
+
+func FreePackedChars(p []PackedChar) {
+	C.free(unsafe.Pointer(&p[0]))
+}
+
+func FreePackRanges(p []PackRange) {
+	C.free(unsafe.Pointer(&p[0]))
+}
+
+func FreeRects(p []Rect) {
+	C.free(unsafe.Pointer(&p[0]))
+}
+
 func (p *PackContext) Pixels() []byte {
 	len := p.width * p.height * p.stride_in_bytes
 	buf := ((*[1 << 30]byte)(unsafe.Pointer(p.pixels)))[:len:len]
@@ -32,7 +78,11 @@ func (p *PackContext) StrideInBytes() int {
 }
 
 func (p *PackContext) Begin(pixels []byte, width, height, stride_in_bytes, padding int) error {
-	rc := C.stbtt_PackBegin((*C.stbtt_pack_context)(p), (*C.uchar)(&pixels[0]), C.int(width), C.int(height), C.int(stride_in_bytes), C.int(padding), nil)
+	var ptr *byte
+	if pixels != nil {
+		ptr = &pixels[0]
+	}
+	rc := C.stbtt_PackBegin((*C.stbtt_pack_context)(p), (*C.uchar)(ptr), C.int(width), C.int(height), C.int(stride_in_bytes), C.int(padding), nil)
 	if rc == 0 {
 		return fmt.Errorf("out of memory")
 	}

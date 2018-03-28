@@ -397,7 +397,7 @@ func (f *Font) GrowIndex(new_size int) {
 		f.IndexAdvanceX = append(f.IndexAdvanceX, -1)
 	}
 	for i := len(f.IndexLookup); i < new_size; i++ {
-		f.IndexAdvanceX = append(f.IndexAdvanceX, 0xffff)
+		f.IndexLookup = append(f.IndexLookup, 0xffff)
 	}
 }
 

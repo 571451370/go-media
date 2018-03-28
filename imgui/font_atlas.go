@@ -113,6 +113,7 @@ func (f *FontAtlas) GetTexDataAsAlpha8() (out_pixels []byte, out_width, out_heig
 		}
 		f.Build()
 	}
+	out_pixels = f.TexPixelsAlpha8
 	out_width = f.TexWidth
 	out_height = f.TexHeight
 	out_bytes_per_pixel = 1
@@ -294,7 +295,8 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 
 	// Start packing
 	const max_tex_height = 1024 * 32
-	var spc stbtt.PackContext
+	spc := stbtt.NewPackContext()
+	defer stbtt.FreePackContext(spc)
 	err := spc.Begin(nil, f.TexWidth, max_tex_height, 0, f.TexGlyphPadding)
 	if err != nil {
 		return err
@@ -302,15 +304,19 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	spc.SetOversampling(1, 1)
 
 	// Pack our extra data rectangles first, so it will be on the upper-left corner of our texture (UV will have small values).
-	f.BuildPackCustomRects(&spc)
+	f.BuildPackCustomRects(spc)
 
 	// Initialize font information (so we can error without any cleanup)
 	type FontTempBuildData struct {
-		FontInfo stbtt.FontInfo
+		FontInfo *stbtt.FontInfo
 		Rects    []stbtt.Rect
 		Ranges   []stbtt.PackRange
 	}
 	tmp_array := make([]FontTempBuildData, len(f.ConfigData))
+	for i := range tmp_array {
+		tmp_array[i].FontInfo = stbtt.NewFontInfo()
+		defer stbtt.FreeFontInfo(tmp_array[i].FontInfo)
+	}
 	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
 		cfg := &f.ConfigData[input_i]
 		tmp := &tmp_array[input_i]
@@ -329,9 +335,12 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 
 	// Allocate packing character data and flag packed characters buffer as non-packed (x0=y0=x1=y1=0)
 	buf_packedchars_n, buf_rects_n, buf_ranges_n := 0, 0, 0
-	buf_packedchars := make([]stbtt.PackedChar, total_glyphs_count)
-	buf_rects := make([]stbtt.Rect, total_glyphs_count)
-	buf_ranges := make([]stbtt.PackRange, total_ranges_count)
+	buf_packedchars := stbtt.MakePackedChars(total_glyphs_count)
+	buf_rects := stbtt.MakeRects(total_glyphs_count)
+	buf_ranges := stbtt.MakePackRanges(total_ranges_count)
+	defer stbtt.FreePackedChars(buf_packedchars)
+	defer stbtt.FreeRects(buf_rects)
+	defer stbtt.FreePackRanges(buf_ranges)
 
 	// First font pass: pack all glyphs (no rendering at this point, we are working with rectangles in an infinitely tall texture at this point)
 	for input_i := 0; input_i < len(f.ConfigData); input_i++ {
@@ -362,7 +371,7 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		tmp.Rects = buf_rects[buf_rects_n : buf_rects_n+font_glyphs_count]
 		buf_rects_n += font_glyphs_count
 		spc.SetOversampling(uint(cfg.OversampleH), uint(cfg.OversampleV))
-		n := spc.FontRangesGatherRects(&tmp.FontInfo, tmp.Ranges, tmp.Rects)
+		n := spc.FontRangesGatherRects(tmp.FontInfo, tmp.Ranges, tmp.Rects)
 		assert(n == font_glyphs_count)
 		spc.FontRangesPackRects(tmp.Rects[:n])
 
@@ -393,7 +402,7 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		cfg := &f.ConfigData[input_i]
 		tmp := &tmp_array[input_i]
 		spc.SetOversampling(uint(cfg.OversampleH), uint(cfg.OversampleV))
-		spc.FontRangesRenderIntoRects(&tmp.FontInfo, tmp.Ranges, tmp.Rects)
+		spc.FontRangesRenderIntoRects(tmp.FontInfo, tmp.Ranges, tmp.Rects)
 		if cfg.RasterizerMultiply != 1.0 {
 			var multiply_table [256]byte
 			f.BuildMultiplyCalcLookupTable(multiply_table[:], cfg.RasterizerMultiply)
@@ -506,7 +515,7 @@ func (f *FontAtlas) BuildRenderDefaultTexData() {
 	assert(r.IsPacked())
 
 	w := f.TexWidth
-	if f.Flags&FontAtlasFlagsNoMouseCursors != 0 {
+	if f.Flags&FontAtlasFlagsNoMouseCursors == 0 {
 		// Render/copy pixels
 		assert(r.Width == FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF*2+1 && r.Height == FONT_ATLAS_DEFAULT_TEX_DATA_H)
 		for y, n := 0, 0; y < FONT_ATLAS_DEFAULT_TEX_DATA_H; y++ {
