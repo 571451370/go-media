@@ -467,7 +467,16 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	return nil
 }
 
-func (f *FontAtlas) BuildSetupFont(dst_font *Font, cfg *FontConfig, ascent, descent float64) {
+func (f *FontAtlas) BuildSetupFont(font *Font, font_config *FontConfig, ascent, descent float64) {
+	if !font_config.MergeMode {
+		font.ClearOutputData()
+		font.FontSize = font_config.SizePixels
+		font.ConfigData = font_config
+		font.ContainerAtlas = f
+		font.Ascent = ascent
+		font.Descent = descent
+	}
+	font.ConfigDataCount++
 }
 
 func (f *FontAtlas) BuildMultiplyCalcLookupTable(out_table []uint8, in_brighten_factor float64) {
@@ -491,6 +500,39 @@ func (f *FontAtlas) BuildMultiplyRectAlpha8(table, pixels []byte, x, y, w, h, st
 }
 
 func (f *FontAtlas) BuildRenderDefaultTexData() {
+	assert(f.CustomRectIds[0] >= 0)
+	assert(f.TexPixelsAlpha8 != nil)
+	r := &f.CustomRects[f.CustomRectIds[0]]
+	assert(r.ID == FONT_ATLAS_DEFAULT_TEX_DATA_ID)
+	assert(r.IsPacked())
+
+	w := f.TexWidth
+	if f.Flags&FontAtlasFlagsNoMouseCursors != 0 {
+		// Render/copy pixels
+		assert(r.Width == FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF*2+1 && r.Height == FONT_ATLAS_DEFAULT_TEX_DATA_H)
+		for y, n := 0, 0; y < FONT_ATLAS_DEFAULT_TEX_DATA_H; y++ {
+			for x := 0; x < FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF; x, n = x+1, n+1 {
+				offset0 := int(int(r.X)+x) + int(int(r.Y)+y)*w
+				offset1 := offset0 + FONT_ATLAS_DEFAULT_TEX_DATA_W_HALF + 1
+				f.TexPixelsAlpha8[offset0] = 0x00
+				if FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS[n] == '.' {
+					f.TexPixelsAlpha8[offset0] = 0xFF
+				}
+				f.TexPixelsAlpha8[offset1] = 0x00
+				if FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS[n] == 'X' {
+					f.TexPixelsAlpha8[offset1] = 0xFF
+				}
+			}
+		}
+	} else {
+		assert(r.Width == 2 && r.Height == 2)
+		offset := int(r.X) + int(r.Y)*w
+		f.TexPixelsAlpha8[offset] = 0xFF
+		f.TexPixelsAlpha8[offset+1] = 0xFF
+		f.TexPixelsAlpha8[offset+w] = 0xFF
+		f.TexPixelsAlpha8[offset+w+1] = 0xFF
+	}
+	f.TexUvWhitePixel = f64.Vec2{(float64(r.X) + 0.5) * f.TexUvScale.X, (float64(r.Y) + 0.5) * f.TexUvScale.Y}
 }
 
 func (f *FontAtlas) CalcCustomRectUV(rect *CustomRect) (out_uv_min, out_uv_max f64.Vec2) {
@@ -533,6 +575,26 @@ func (f *FontAtlas) BuildFinish() {
 }
 
 func (f *FontAtlas) BuildPackCustomRects(spc *stbtt.PackContext) {
+	user_rects := f.CustomRects
+	// We expect at least the default custom rects to be registered, else something went wrong.
+	assert(len(user_rects) >= 1)
+
+	pack_rects := make([]stbtt.Rect, len(user_rects))
+	for i := range pack_rects {
+		pack_rects[i].SetW(int(user_rects[i].Width))
+		pack_rects[i].SetH(int(user_rects[i].Height))
+	}
+
+	spc.FontRangesPackRects(pack_rects)
+
+	for i := range pack_rects {
+		if pack_rects[i].WasPacked() != 0 {
+			user_rects[i].X = uint(pack_rects[i].X())
+			user_rects[i].Y = uint(pack_rects[i].Y())
+			assert(pack_rects[i].W() == int(user_rects[i].Width) && pack_rects[i].H() == int(user_rects[i].Height))
+			f.TexHeight = mathutil.Max(f.TexHeight, pack_rects[i].Y()+pack_rects[i].H())
+		}
+	}
 }
 
 func (f *FontAtlas) FontAtlasBuildRegisterDefaultCustomRects() {
