@@ -2926,3 +2926,25 @@ func (d *DrawList) Init(shared_data *DrawListSharedData) {
 	d._OwnerName = ""
 	d.Clear()
 }
+
+func (c *Context) GetDrawData() *DrawData {
+	if c.DrawData.Valid {
+		return &c.DrawData
+	}
+	return nil
+}
+
+// Helper to scale the ClipRect field of each ImDrawCmd. Use if your final output buffer is at a different scale than ImGui expects, or if there is a difference between your window resolution and framebuffer resolution.
+func (d *DrawData) ScaleClipRects(scale f64.Vec2) {
+	for _, cmd_list := range d.CmdLists {
+		for cmd_i := 0; cmd_i < len(cmd_list.CmdBuffer); cmd_i++ {
+			cmd := &cmd_list.CmdBuffer[cmd_i]
+			cmd.ClipRect = f64.Vec4{
+				cmd.ClipRect.X * scale.X,
+				cmd.ClipRect.Y * scale.Y,
+				cmd.ClipRect.Z * scale.X,
+				cmd.ClipRect.W * scale.Y,
+			}
+		}
+	}
+}
