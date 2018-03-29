@@ -1903,6 +1903,21 @@ func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
 }
 
 func (d *DrawList) AddImageEx(user_texture_id TextureID, a, b, uv_a, uv_b f64.Vec2, col color.RGBA) {
+	if col.A == 0 {
+		return
+	}
+
+	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id == d._TextureIdStack[len(d._TextureIdStack)-1]
+	if push_texture_id {
+		d.PushTextureID(user_texture_id)
+	}
+
+	d.PrimReserve(6, 4)
+	d.PrimRectUV(a, b, uv_a, uv_b, col)
+
+	if push_texture_id {
+		d.PopTextureID()
+	}
 }
 
 func (d *DrawList) Clear() {
@@ -2070,6 +2085,95 @@ func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
 	d._VtxWritePtr += 4
 	d._VtxCurrentIdx += 4
 	d._IdxWritePtr += 6
+}
+
+func (d *DrawList) AddImageQuad(user_texture_id TextureID, a, b, c, d_ f64.Vec2) {
+	d.AddImageQuadEx(user_texture_id, a, b, c, d_, f64.Vec2{0, 0}, f64.Vec2{1, 0}, f64.Vec2{1, 1}, f64.Vec2{0, 1}, color.RGBA{255, 255, 255, 255})
+}
+
+func (d *DrawList) AddImageQuadEx(user_texture_id TextureID, a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col color.RGBA) {
+	if col.A == 0 {
+		return
+	}
+
+	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id != d._TextureIdStack[len(d._TextureIdStack)-1]
+	if push_texture_id {
+		d.PushTextureID(user_texture_id)
+	}
+
+	d.PrimReserve(6, 4)
+	d.PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d, col)
+
+	if push_texture_id {
+		d.PopTextureID()
+	}
+}
+
+func (d *DrawList) AddImageRounded(user_texture_id TextureID, a, b, uv_a, uv_b f64.Vec2, col color.RGBA, rounding float64) {
+	d.AddImageRoundedEx(user_texture_id, a, b, uv_a, uv_b, col, rounding, DrawCornerFlagsAll)
+}
+
+func (d *DrawList) AddImageRoundedEx(user_texture_id TextureID, a, b, uv_a, uv_b f64.Vec2, col color.RGBA, rounding float64, rounding_corners DrawCornerFlags) {
+	if col.A == 0 {
+		return
+	}
+
+	if rounding <= 0.0 || (rounding_corners&DrawCornerFlagsAll) == 0 {
+		d.AddImageEx(user_texture_id, a, b, uv_a, uv_b, col)
+		return
+	}
+
+	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id != d._TextureIdStack[len(d._TextureIdStack)-1]
+	if push_texture_id {
+		d.PushTextureID(user_texture_id)
+	}
+
+	vert_start_idx := len(d.VtxBuffer)
+	d.PathRect(a, b, rounding, rounding_corners)
+	d.PathFillConvex(col)
+	vert_end_idx := len(d.VtxBuffer)
+
+	d.ShadeVertsLinearUV(vert_start_idx, vert_end_idx, a, b, uv_a, uv_b, true)
+
+	if push_texture_id {
+		d.PopTextureID()
+	}
+}
+
+func (d *DrawList) ShadeVertsLinearUV(vert_start, vert_end int, a, b, uv_a, uv_b f64.Vec2, clamp bool) {
+	size := b.Sub(a)
+	uv_size := uv_b.Sub(uv_a)
+	scale := f64.Vec2{}
+	if size.X != 0 {
+		scale.X = uv_size.X / size.X
+	}
+	if size.Y != 0 {
+		scale.Y = uv_size.Y / size.Y
+	}
+
+	if clamp {
+		min := uv_a.Min(uv_b)
+		max := uv_a.Max(uv_b)
+
+		for v := vert_start; v < vert_end; v++ {
+			vertex := &d.VtxBuffer[v]
+			pos := vertex.Pos.Sub(a)
+			pos = pos.Scale2(scale)
+			pos = uv_a.Add(pos)
+			vertex.UV = f64.Vec2{
+				f64.Clamp(pos.X, min.X, max.X),
+				f64.Clamp(pos.Y, min.Y, max.Y),
+			}
+		}
+	} else {
+		for v := vert_start; v < vert_end; v++ {
+			vertex := &d.VtxBuffer[v]
+			pos := vertex.Pos.Sub(a)
+			pos = pos.Scale2(scale)
+			pos = uv_a.Add(pos)
+			vertex.UV = pos
+		}
+	}
 }
 
 func (d *DrawList) PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col color.RGBA) {
