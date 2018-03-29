@@ -2811,6 +2811,12 @@ func (c *Context) RenderFrameBorder(p_min, p_max f64.Vec2, rounding float64) {
 	}
 }
 
+func NewDrawList(shared_data *DrawListSharedData) *DrawList {
+	d := &DrawList{}
+	d.Init(shared_data)
+	return d
+}
+
 func (d *DrawList) Init(shared_data *DrawListSharedData) {
 	d._Data = shared_data
 	d._OwnerName = ""

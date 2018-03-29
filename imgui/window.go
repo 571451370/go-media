@@ -1456,7 +1456,7 @@ func (w *Window) Init(ctx *Context, name string) {
 	w.ItemWidthDefault = 0.0
 	w.FontWindowScale = 1.0
 
-	w.DrawList.Init(&w.Ctx.DrawListSharedData)
+	w.DrawList = NewDrawList(&w.Ctx.DrawListSharedData)
 	w.DrawList._OwnerName = w.Name
 	w.ParentWindow = nil
 	w.RootWindow = nil
