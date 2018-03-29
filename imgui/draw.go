@@ -2810,3 +2810,9 @@ func (c *Context) RenderFrameBorder(p_min, p_max f64.Vec2, rounding float64) {
 		window.DrawList.AddRectEx(p_min, p_max, c.GetColorFromStyle(ColBorder), rounding, DrawCornerFlagsAll, border_size)
 	}
 }
+
+func (d *DrawList) Init(shared_data *DrawListSharedData) {
+	d._Data = shared_data
+	d._OwnerName = ""
+	d.Clear()
+}

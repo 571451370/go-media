@@ -291,3 +291,13 @@ func RGBA32(c color.RGBA) uint32 {
 func BGRA32(c color.RGBA) uint32 {
 	return uint32(c.B) | uint32(c.G)<<8 | uint32(c.R)<<16 | uint32(c.A)<<24
 }
+
+func AlphaBlendRGBA(a, b color.RGBA) color.RGBA {
+	t := float64(b.A) / 255.0
+	return color.RGBA{
+		uint8(f64.Lerp(t, float64(a.R), float64(b.R))),
+		uint8(f64.Lerp(t, float64(a.G), float64(b.G))),
+		uint8(f64.Lerp(t, float64(a.B), float64(b.B))),
+		255,
+	}
+}

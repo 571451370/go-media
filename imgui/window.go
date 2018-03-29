@@ -1402,9 +1402,85 @@ func (d *DrawData) Clear() {
 	d.TotalIdxCount = 0
 }
 
+func (w *Window) Init(ctx *Context, name string) {
+	h := fnv.New32()
+	h.Write([]byte(name))
+	id := ID(h.Sum32())
+
+	w.Ctx = ctx
+	w.Name = name
+	w.IDStack = append(w.IDStack, id)
+	w.Flags = 0
+	w.PosFloat = f64.Vec2{0, 0}
+	w.Pos = f64.Vec2{0, 0}
+	w.Size = f64.Vec2{0, 0}
+	w.SizeFull = f64.Vec2{0, 0}
+	w.SizeContents = f64.Vec2{0, 0}
+	w.SizeContentsExplicit = f64.Vec2{0, 0}
+	w.WindowPadding = f64.Vec2{0, 0}
+	w.WindowRounding = 0.0
+	w.WindowBorderSize = 0.0
+	w.MoveId = w.GetID("#MOVE")
+	w.ChildId = 0
+	w.Scroll = f64.Vec2{0, 0}
+	w.ScrollTarget = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+	w.ScrollTargetCenterRatio = f64.Vec2{0.5, 0.5}
+	w.ScrollbarX = false
+	w.ScrollbarY = false
+	w.ScrollbarSizes = f64.Vec2{0.0, 0.0}
+	w.Active = false
+	w.WasActive = false
+	w.WriteAccessed = false
+	w.Collapsed = false
+	w.CollapseToggleWanted = false
+	w.SkipItems = false
+	w.Appearing = false
+	w.CloseButton = false
+	w.BeginOrderWithinParent = -1
+	w.BeginOrderWithinContext = -1
+	w.BeginCount = 0
+	w.PopupId = 0
+	w.AutoFitFramesX = -1
+	w.AutoFitFramesY = -1
+	w.AutoFitOnlyGrows = false
+	w.AutoFitChildAxises = 0x00
+	w.AutoPosLastDirection = DirNone
+	w.HiddenFrames = 0
+	w.SetWindowPosAllowFlags = CondAlways | CondOnce | CondFirstUseEver | CondAppearing
+	w.SetWindowSizeAllowFlags = w.SetWindowPosAllowFlags
+	w.SetWindowCollapsedAllowFlags = w.SetWindowPosAllowFlags
+	w.SetWindowPosVal = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+	w.SetWindowPosPivot = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+
+	w.LastFrameActive = -1
+	w.ItemWidthDefault = 0.0
+	w.FontWindowScale = 1.0
+
+	w.DrawList.Init(&w.Ctx.DrawListSharedData)
+	w.DrawList._OwnerName = w.Name
+	w.ParentWindow = nil
+	w.RootWindow = nil
+	w.RootWindowForTitleBarHighlight = nil
+	w.RootWindowForTabbing = nil
+	w.RootWindowForNav = nil
+
+	w.NavLastIds[0] = 0
+	w.NavLastIds[1] = 0
+	w.NavRectRel[0] = f64.Rectangle{}
+	w.NavRectRel[1] = f64.Rectangle{}
+	w.NavLastChildNavWindow = nil
+
+	w.FocusIdxAllCounter = -1
+	w.FocusIdxTabCounter = -1
+	w.FocusIdxAllRequestCurrent = math.MaxInt32
+	w.FocusIdxTabRequestCurrent = math.MaxInt32
+	w.FocusIdxAllRequestNext = math.MaxInt32
+	w.FocusIdxTabRequestNext = math.MaxInt32
+}
+
 func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags) *Window {
 	window := &Window{}
-	window.Ctx = c
+	window.Init(c, name)
 	window.Flags = flags
 
 	// User can disable loading and saving of settings. Tooltip and child windows also don't store settings.

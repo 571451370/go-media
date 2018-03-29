@@ -179,6 +179,7 @@ func CreateContextEx(shared_font_atlas *FontAtlas) *Context {
 }
 
 func (c *Context) Init(shared_font_atlas *FontAtlas) {
+	c.OverlayDrawList.Init(nil)
 	io := c.GetIO()
 	c.Font = nil
 	c.FontSize = 0
