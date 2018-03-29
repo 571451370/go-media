@@ -1591,6 +1591,248 @@ func (d *DrawList) AddLineEx(a, b f64.Vec2, col color.RGBA, thickness float64) {
 }
 
 func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, thickness float64) {
+	points_count := len(points)
+	if points_count < 2 {
+		return
+	}
+
+	uv := d._Data.TexUvWhitePixel
+	count := points_count
+	if !closed {
+		count = points_count - 1
+	}
+
+	thick_line := thickness > 1.0
+	if d.Flags&DrawListFlagsAntiAliasedLines != 0 {
+		// Anti-aliased stroke
+		const AA_SIZE = 1.0
+		col_trans := col.A
+
+		idx_count := count * 12
+		vtx_count := points_count * 3
+		if thick_line {
+			idx_count = count * 18
+			vtx_count = points_count * 4
+		}
+		d.PrimReserve(idx_count, vtx_count)
+
+		// Temporary buffer
+		normals_count := points_count * 3
+		if thick_line {
+			normals_count = points_count * 5
+		}
+		temp_normals := make([]f64.Vec2, normals_count)
+		temp_points := temp_normals[points_count:]
+
+		for i1 := 0; i1 < count; i1++ {
+			i2 := (i1 + 1) % points_count
+			diff := points[i2].Sub(points[i1])
+			diff.Scale(InvLength(diff, 1))
+			temp_normals[i1].X = diff.Y
+			temp_normals[i1].Y = -diff.X
+		}
+		if !closed {
+			temp_normals[points_count-1] = temp_normals[points_count-2]
+		}
+
+		if !thick_line {
+			if !closed {
+				temp_points[0] = points[0].Add(temp_normals[0].Scale(AA_SIZE))
+				temp_points[1] = points[0].Sub(temp_normals[0].Scale(AA_SIZE))
+				temp_points[(points_count-1)*2+0] = points[points_count-1].Add(temp_normals[points_count-1].Scale(AA_SIZE))
+				temp_points[(points_count-1)*2+1] = points[points_count-1].Sub(temp_normals[points_count-1].Scale(AA_SIZE))
+			}
+
+			// FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
+			idx1 := d._VtxCurrentIdx
+			for i1 := 0; i1 < count; i1++ {
+				i2 := (i1 + 1) % points_count
+				idx2 := idx1 + 3
+				if idx1+1 == uint(points_count) {
+					idx2 = d._VtxCurrentIdx
+				}
+
+				// Average normals
+				dm := (temp_normals[i1].Add(temp_normals[i2])).Scale(0.5)
+				dmr2 := dm.X*dm.X + dm.Y*dm.Y
+				if dmr2 > 0.000001 {
+					scale := 1.0 / dmr2
+					if scale > 100.0 {
+						scale = 100.0
+					}
+					dm = dm.Scale2(f64.Vec2{scale, scale})
+				}
+				dm = dm.Scale2(f64.Vec2{AA_SIZE, AA_SIZE})
+				temp_points[i2*2+0] = points[i2].Add(dm)
+				temp_points[i2*2+1] = points[i2].Sub(dm)
+
+				// Add indexes
+				_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+				_IdxWritePtr[0] = DrawIdx(idx2 + 0)
+				_IdxWritePtr[1] = DrawIdx(idx1 + 0)
+				_IdxWritePtr[2] = DrawIdx(idx1 + 2)
+				_IdxWritePtr[3] = DrawIdx(idx1 + 2)
+				_IdxWritePtr[4] = DrawIdx(idx2 + 2)
+				_IdxWritePtr[5] = DrawIdx(idx2 + 0)
+				_IdxWritePtr[6] = DrawIdx(idx2 + 1)
+				_IdxWritePtr[7] = DrawIdx(idx1 + 1)
+				_IdxWritePtr[8] = DrawIdx(idx1 + 0)
+				_IdxWritePtr[9] = DrawIdx(idx1 + 0)
+				_IdxWritePtr[10] = DrawIdx(idx2 + 0)
+				_IdxWritePtr[11] = DrawIdx(idx2 + 1)
+				d._IdxWritePtr += 12
+
+				idx1 = idx2
+			}
+
+			// Add vertexes
+			for i := 0; i < points_count; i++ {
+				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+				_VtxWritePtr[0].Pos = points[i]
+				_VtxWritePtr[0].UV = uv
+				_VtxWritePtr[0].Col = chroma.RGBA32(col)
+				_VtxWritePtr[1].Pos = temp_points[i*2+0]
+				_VtxWritePtr[1].UV = uv
+				_VtxWritePtr[1].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+				_VtxWritePtr[2].Pos = temp_points[i*2+1]
+				_VtxWritePtr[2].UV = uv
+				_VtxWritePtr[2].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+				d._VtxWritePtr += 3
+			}
+		} else {
+			half_inner_thickness := (thickness - AA_SIZE) * 0.5
+			if !closed {
+				halfThicknessScaleAA := f64.Vec2{half_inner_thickness + AA_SIZE, half_inner_thickness + AA_SIZE}
+				halfThicknessScale := f64.Vec2{half_inner_thickness, half_inner_thickness}
+				temp_points[0] = points[0].Add(temp_normals[0].Scale2(halfThicknessScaleAA))
+				temp_points[1] = points[1].Add(temp_normals[0].Scale2(halfThicknessScale))
+				temp_points[2] = points[2].Sub(temp_normals[0].Scale2(halfThicknessScale))
+				temp_points[3] = points[3].Sub(temp_normals[0].Scale2(halfThicknessScaleAA))
+				temp_points[(points_count-1)*4+0] = points[points_count-1].Add(temp_normals[points_count-1].Scale2(halfThicknessScaleAA))
+				temp_points[(points_count-1)*4+1] = points[points_count-1].Add(temp_normals[points_count-1].Scale2(halfThicknessScale))
+				temp_points[(points_count-1)*4+2] = points[points_count-1].Sub(temp_normals[points_count-1].Scale2(halfThicknessScale))
+				temp_points[(points_count-1)*4+3] = points[points_count-1].Sub(temp_normals[points_count-1].Scale2(halfThicknessScaleAA))
+			}
+			// FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
+			idx1 := d._VtxCurrentIdx
+			for i1 := 0; i1 < count; i1++ {
+				i2 := (i1 + 1) % points_count
+				idx2 := idx1 + 4
+				if i1+1 == points_count {
+					idx2 = d._VtxCurrentIdx
+				}
+
+				// Average normals
+				dm := (temp_normals[i1].Add(temp_normals[i2])).Scale2(f64.Vec2{0.5, 0.5})
+				dmr2 := dm.X*dm.X + dm.Y*dm.Y
+				if dmr2 > 0.000001 {
+					scale := 1.0 / dmr2
+					if scale > 100.0 {
+						scale = 100.0
+					}
+					dm = dm.Scale(scale)
+				}
+				dm_out := dm.Scale(half_inner_thickness + AA_SIZE)
+				dm_in := dm.Scale(half_inner_thickness)
+				temp_points[i2*4+0] = points[i2].Add(dm_out)
+				temp_points[i2*4+1] = points[i2].Add(dm_in)
+				temp_points[i2*4+2] = points[i2].Sub(dm_in)
+				temp_points[i2*4+3] = points[i2].Sub(dm_out)
+
+				// Add indexes
+				_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+				_IdxWritePtr[0] = DrawIdx(idx2 + 1)
+				_IdxWritePtr[1] = DrawIdx(idx1 + 1)
+				_IdxWritePtr[2] = DrawIdx(idx1 + 2)
+				_IdxWritePtr[3] = DrawIdx(idx1 + 2)
+				_IdxWritePtr[4] = (DrawIdx)(idx2 + 2)
+				_IdxWritePtr[5] = (DrawIdx)(idx2 + 1)
+				_IdxWritePtr[6] = (DrawIdx)(idx2 + 1)
+				_IdxWritePtr[7] = (DrawIdx)(idx1 + 1)
+				_IdxWritePtr[8] = (DrawIdx)(idx1 + 0)
+				_IdxWritePtr[9] = (DrawIdx)(idx1 + 0)
+				_IdxWritePtr[10] = (DrawIdx)(idx2 + 0)
+				_IdxWritePtr[11] = (DrawIdx)(idx2 + 1)
+				_IdxWritePtr[12] = (DrawIdx)(idx2 + 2)
+				_IdxWritePtr[13] = (DrawIdx)(idx1 + 2)
+				_IdxWritePtr[14] = (DrawIdx)(idx1 + 3)
+				_IdxWritePtr[15] = (DrawIdx)(idx1 + 3)
+				_IdxWritePtr[16] = (DrawIdx)(idx2 + 3)
+				_IdxWritePtr[17] = (DrawIdx)(idx2 + 2)
+				d._IdxWritePtr += 18
+
+				idx1 = idx2
+			}
+
+			// Add vertexes
+
+			col_trans_32 := chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+			col_32 := chroma.RGBA32(col)
+			for i := 0; i < points_count; i++ {
+				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+				_VtxWritePtr[0].Pos = temp_points[i*4+0]
+				_VtxWritePtr[0].UV = uv
+				_VtxWritePtr[0].Col = col_trans_32
+				_VtxWritePtr[1].Pos = temp_points[i*4+1]
+				_VtxWritePtr[1].UV = uv
+				_VtxWritePtr[1].Col = col_32
+				_VtxWritePtr[2].Pos = temp_points[i*4+2]
+				_VtxWritePtr[2].UV = uv
+				_VtxWritePtr[2].Col = col_32
+				_VtxWritePtr[3].Pos = temp_points[i*4+3]
+				_VtxWritePtr[3].UV = uv
+				_VtxWritePtr[3].Col = col_trans_32
+				d._VtxWritePtr += 4
+			}
+		}
+		d._VtxCurrentIdx += uint(vtx_count)
+	} else {
+		// Non Anti-aliased Stroke
+		idx_count := count * 6
+		vtx_count := count * 4 // FIXME-OPT: Not sharing edges
+		d.PrimReserve(idx_count, vtx_count)
+
+		col_32 := chroma.RGBA32(col)
+		for i1 := 0; i1 < count; i1++ {
+			i2 := (i1 + 1) % points_count
+			p1 := points[i1]
+			p2 := points[i2]
+			diff := p2.Sub(p1)
+			diff = diff.Scale(InvLength(diff, 1.0))
+
+			dx := diff.X * (thickness * 0.5)
+			dy := diff.Y * (thickness * 0.5)
+
+			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+			_VtxWritePtr[0].Pos.X = p1.X + dy
+			_VtxWritePtr[0].Pos.Y = p1.Y - dx
+			_VtxWritePtr[0].UV = uv
+			_VtxWritePtr[0].Col = col_32
+			_VtxWritePtr[1].Pos.X = p2.X + dy
+			_VtxWritePtr[1].Pos.Y = p2.Y - dx
+			_VtxWritePtr[1].UV = uv
+			_VtxWritePtr[1].Col = col_32
+			_VtxWritePtr[2].Pos.X = p2.X - dy
+			_VtxWritePtr[2].Pos.Y = p2.Y + dx
+			_VtxWritePtr[2].UV = uv
+			_VtxWritePtr[2].Col = col_32
+			_VtxWritePtr[3].Pos.X = p1.X - dy
+			_VtxWritePtr[3].Pos.Y = p1.Y + dx
+			_VtxWritePtr[3].UV = uv
+			_VtxWritePtr[3].Col = col_32
+			d._VtxWritePtr += 4
+
+			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+			_IdxWritePtr[0] = DrawIdx(d._VtxCurrentIdx)
+			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + 1)
+			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + 2)
+			_IdxWritePtr[3] = DrawIdx(d._VtxCurrentIdx)
+			_IdxWritePtr[4] = DrawIdx(d._VtxCurrentIdx + 2)
+			_IdxWritePtr[5] = DrawIdx(d._VtxCurrentIdx + 3)
+			d._IdxWritePtr += 6
+			d._VtxCurrentIdx += 4
+		}
+	}
 }
 
 // a: upper-left, b: lower-right. we don't render 1 px sized rectangles properly.
@@ -1628,7 +1870,18 @@ func (d *DrawList) AddRectFilled(p_min, p_max f64.Vec2, col color.RGBA) {
 	d.AddRectFilledEx(p_min, p_max, col, 0, DrawCornerFlagsAll)
 }
 
-func (d *DrawList) AddRectFilledEx(p_min, p_max f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags) {
+func (d *DrawList) AddRectFilledEx(a, b f64.Vec2, col color.RGBA, rounding float64, rounding_corners_flags DrawCornerFlags) {
+	if col.A == 0 {
+		return
+	}
+
+	if rounding > 0.0 {
+		d.PathRect(a, b, rounding, rounding_corners_flags)
+		d.PathFillConvex(col)
+	} else {
+		d.PrimReserve(6, 4)
+		d.PrimRect(a, b, col)
+	}
 }
 
 func (d *DrawList) AddCircleFilled(centre f64.Vec2, radius float64, col color.RGBA) {
@@ -1636,6 +1889,13 @@ func (d *DrawList) AddCircleFilled(centre f64.Vec2, radius float64, col color.RG
 }
 
 func (d *DrawList) AddCircleFilledEx(centre f64.Vec2, radius float64, col color.RGBA, num_segments int) {
+	if col.A == 0 {
+		return
+	}
+
+	a_max := math.Pi * 2.0 * float64(num_segments-1.0) / float64(num_segments)
+	d.PathArcTo(centre, radius, 0.0, a_max, num_segments)
+	d.PathFillConvex(col)
 }
 
 func (d *DrawList) AddImage(user_texture_id TextureID, a, b f64.Vec2) {
@@ -1742,6 +2002,104 @@ func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_curren
 
 	d._ClipRectStack = append(d._ClipRectStack, cr)
 	d.UpdateClipRect()
+}
+
+// Fully unrolled with inline call to keep our debug builds decently fast.
+func (d *DrawList) PrimRect(a, c f64.Vec2, col color.RGBA) {
+	b := f64.Vec2{c.X, a.Y}
+	d_ := f64.Vec2{a.X, c.Y}
+	uv := d._Data.TexUvWhitePixel
+	idx := d._VtxCurrentIdx
+	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+	_IdxWritePtr[0] = DrawIdx(idx)
+	_IdxWritePtr[1] = DrawIdx(idx + 1)
+	_IdxWritePtr[2] = DrawIdx(idx + 2)
+	_IdxWritePtr[3] = DrawIdx(idx)
+	_IdxWritePtr[4] = DrawIdx(idx + 2)
+	_IdxWritePtr[5] = DrawIdx(idx + 3)
+
+	col32 := chroma.RGBA32(col)
+	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+	_VtxWritePtr[0].Pos = a
+	_VtxWritePtr[0].UV = uv
+	_VtxWritePtr[0].Col = col32
+	_VtxWritePtr[1].Pos = b
+	_VtxWritePtr[1].UV = uv
+	_VtxWritePtr[1].Col = col32
+	_VtxWritePtr[2].Pos = c
+	_VtxWritePtr[2].UV = uv
+	_VtxWritePtr[2].Col = col32
+	_VtxWritePtr[3].Pos = d_
+	_VtxWritePtr[3].UV = uv
+	_VtxWritePtr[3].Col = col32
+
+	d._VtxWritePtr += 4
+	d._VtxCurrentIdx += 4
+	d._IdxWritePtr += 6
+}
+
+func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
+	b := f64.Vec2{c.X, a.Y}
+	d_ := f64.Vec2{a.X, c.Y}
+	uv_b := f64.Vec2{uv_c.X, uv_a.Y}
+	uv_d := f64.Vec2{uv_a.X, uv_c.Y}
+	idx := DrawIdx(d._VtxCurrentIdx)
+	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+	_IdxWritePtr[0] = idx
+	_IdxWritePtr[1] = idx + 1
+	_IdxWritePtr[2] = idx + 2
+	_IdxWritePtr[3] = idx
+	_IdxWritePtr[4] = idx + 2
+	_IdxWritePtr[5] = idx + 3
+
+	col32 := chroma.RGBA32(col)
+	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+	_VtxWritePtr[0].Pos = a
+	_VtxWritePtr[0].UV = uv_a
+	_VtxWritePtr[0].Col = col32
+	_VtxWritePtr[1].Pos = b
+	_VtxWritePtr[1].UV = uv_b
+	_VtxWritePtr[1].Col = col32
+	_VtxWritePtr[2].Pos = c
+	_VtxWritePtr[2].UV = uv_c
+	_VtxWritePtr[2].Col = col32
+	_VtxWritePtr[3].Pos = d_
+	_VtxWritePtr[3].UV = uv_d
+	_VtxWritePtr[3].Col = col32
+
+	d._VtxWritePtr += 4
+	d._VtxCurrentIdx += 4
+	d._IdxWritePtr += 6
+}
+
+func (d *DrawList) PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col color.RGBA) {
+	idx := DrawIdx(d._VtxCurrentIdx)
+	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+	_IdxWritePtr[0] = idx
+	_IdxWritePtr[1] = (idx + 1)
+	_IdxWritePtr[2] = (idx + 2)
+	_IdxWritePtr[3] = idx
+	_IdxWritePtr[4] = (idx + 2)
+	_IdxWritePtr[5] = (idx + 3)
+
+	col32 := chroma.RGBA32(col)
+	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+	_VtxWritePtr[0].Pos = a
+	_VtxWritePtr[0].UV = uv_a
+	_VtxWritePtr[0].Col = col32
+	_VtxWritePtr[1].Pos = b
+	_VtxWritePtr[1].UV = uv_b
+	_VtxWritePtr[1].Col = col32
+	_VtxWritePtr[2].Pos = c
+	_VtxWritePtr[2].UV = uv_c
+	_VtxWritePtr[2].Col = col32
+	_VtxWritePtr[3].Pos = d_
+	_VtxWritePtr[3].UV = uv_d
+	_VtxWritePtr[3].Col = col32
+
+	d._VtxWritePtr += 4
+	d._VtxCurrentIdx += 4
+	d._IdxWritePtr += 6
 }
 
 // Our scheme may appears a bit unusual, basically we want the most-common calls AddLine AddRect etc. to not have to perform any check so we always have a command ready in the stack.
@@ -2390,7 +2748,58 @@ func (c *Context) RenderColorRectWithAlphaCheckerboardDx(p_min, p_max f64.Vec2, 
 	c.RenderColorRectWithAlphaCheckerboardEx(p_min, p_max, fill_col, grid_step, grid_off, rounding, ^0)
 }
 
-func (c *Context) RenderColorRectWithAlphaCheckerboardEx(p_min, p_max f64.Vec2, fill_col color.RGBA, grid_step float64, grid_off f64.Vec2, rounding float64, rounding_corners_flags DrawCornerFlags) {
+// NB: This is rather brittle and will show artifact when rounding this enabled if rounded corners overlap multiple cells. Caller currently responsible for avoiding that.
+// I spent a non reasonable amount of time trying to getting this right for ColorButton with rounding+anti-aliasing+ImGuiColorEditFlags_HalfAlphaPreview flag + various grid sizes and offsets, and eventually gave up... probably more reasonable to disable rounding alltogether.
+func (c *Context) RenderColorRectWithAlphaCheckerboardEx(p_min, p_max f64.Vec2, col color.RGBA, grid_step float64, grid_off f64.Vec2, rounding float64, rounding_corners_flags DrawCornerFlags) {
+	window := c.GetCurrentWindow()
+	if col.A < 0xFF {
+		col_bg1 := chroma.AlphaBlendRGBA(color.RGBA{204, 204, 204, 255}, col)
+		col_bg2 := chroma.AlphaBlendRGBA(color.RGBA{128, 128, 128, 255}, col)
+		window.DrawList.AddRectFilledEx(p_min, p_max, col_bg1, rounding, rounding_corners_flags)
+
+		yi := 0
+		for y := p_min.Y + grid_off.Y; y < p_max.Y; y, yi = y+grid_step, yi+1 {
+			y1 := f64.Clamp(y, p_min.Y, p_max.Y)
+			y2 := math.Min(y+grid_step, p_max.Y)
+			if y2 <= y1 {
+				continue
+			}
+
+			for x := p_min.X + grid_off.X + float64(yi&1)*grid_step; x < p_max.X; x += grid_step * 2 {
+				x1 := f64.Clamp(x, p_min.X, p_max.X)
+				x2 := math.Min(x+grid_step, p_max.X)
+				if x2 <= x1 {
+					continue
+				}
+
+				rounding_corners_flags_cell := DrawCornerFlags(0)
+				if y1 <= p_min.Y {
+					if x1 <= p_min.X {
+						rounding_corners_flags_cell |= DrawCornerFlagsTopLeft
+					}
+					if x2 >= p_max.X {
+						rounding_corners_flags_cell |= DrawCornerFlagsTopRight
+					}
+				}
+				if y2 >= p_max.Y {
+					if x1 <= p_min.X {
+						rounding_corners_flags_cell |= DrawCornerFlagsBotLeft
+					}
+					if x2 >= p_max.X {
+						rounding_corners_flags_cell |= DrawCornerFlagsBotRight
+					}
+				}
+				rounding_corners_flags_cell &= rounding_corners_flags
+				round := 0.0
+				if rounding_corners_flags_cell != 0 {
+					round = rounding
+				}
+				window.DrawList.AddRectFilledEx(f64.Vec2{x1, y1}, f64.Vec2{x2, y2}, col_bg2, round, rounding_corners_flags_cell)
+			}
+		}
+	} else {
+		window.DrawList.AddRectFilledEx(p_min, p_max, col, rounding, rounding_corners_flags)
+	}
 }
 
 func (c *Context) RenderFrameBorder(p_min, p_max f64.Vec2, rounding float64) {

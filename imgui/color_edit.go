@@ -5,6 +5,7 @@ import (
 
 	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 type ColorEditFlags int
@@ -49,6 +50,9 @@ func (c *Context) SetColorEditOptions(flags ColorEditFlags) {
 	if flags&ColorEditFlags_PickerMask == 0 {
 		flags |= ColorEditFlags_OptionsDefault & ColorEditFlags_PickerMask
 	}
+	assert(mathutil.IsPow2(int(flags & ColorEditFlags_InputsMask)))   // Check only 1 option is selected
+	assert(mathutil.IsPow2(int(flags & ColorEditFlags_DataTypeMask))) // Check only 1 option is selected
+	assert(mathutil.IsPow2(int(flags & ColorEditFlags_PickerMask)))   // Check only 1 option is selected
 	c.ColorEditOptions = flags
 }
 

@@ -186,9 +186,6 @@ func (c *Context) VerticalSeparator() {
 	}
 }
 
-func (c *Context) GuiLayoutTypeHorizontal() {
-}
-
 func (c *Context) LogText(text string) {
 }
 
