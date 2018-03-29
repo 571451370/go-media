@@ -212,7 +212,7 @@ func GetNumberOfFonts(data []byte) int {
 }
 
 func (r *Rect) X() int {
-	return int(r.y)
+	return int(r.x)
 }
 
 func (r *Rect) Y() int {
