@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/qeedquan/go-media/image/chroma"
+	"github.com/qeedquan/go-media/math/f32"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -66,8 +67,8 @@ type DrawCmd struct {
 type DrawIdx uint32
 
 type DrawVert struct {
-	Pos f64.Vec2
-	UV  f64.Vec2
+	Pos f32.Vec2
+	UV  f32.Vec2
 	Col uint32
 }
 
@@ -1687,15 +1688,20 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 
 			// Add vertexes
 			for i := 0; i < points_count; i++ {
+				p0 := f32.Vec2{float32(points[i].X), float32(points[i].Y)}
+				p1 := f32.Vec2{float32(temp_points[i*2+0].X), float32(temp_points[i*2+0].Y)}
+				p2 := f32.Vec2{float32(temp_points[i*2+1].X), float32(temp_points[i*2+1].Y)}
+				t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
+
 				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-				_VtxWritePtr[0].Pos = points[i]
-				_VtxWritePtr[0].UV = uv
+				_VtxWritePtr[0].Pos = p0
+				_VtxWritePtr[0].UV = t0
 				_VtxWritePtr[0].Col = chroma.RGBA32(col)
-				_VtxWritePtr[1].Pos = temp_points[i*2+0]
-				_VtxWritePtr[1].UV = uv
+				_VtxWritePtr[1].Pos = p1
+				_VtxWritePtr[1].UV = t0
 				_VtxWritePtr[1].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
-				_VtxWritePtr[2].Pos = temp_points[i*2+1]
-				_VtxWritePtr[2].UV = uv
+				_VtxWritePtr[2].Pos = p2
+				_VtxWritePtr[2].UV = t0
 				_VtxWritePtr[2].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
 				d._VtxWritePtr += 3
 			}
@@ -1769,18 +1775,24 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			col_trans_32 := chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
 			col_32 := chroma.RGBA32(col)
 			for i := 0; i < points_count; i++ {
+				p0 := f32.Vec2{float32(temp_points[i*4+0].X), float32(temp_points[i*4+0].Y)}
+				p1 := f32.Vec2{float32(temp_points[i*4+1].X), float32(temp_points[i*4+1].Y)}
+				p2 := f32.Vec2{float32(temp_points[i*4+2].X), float32(temp_points[i*4+2].Y)}
+				p3 := f32.Vec2{float32(temp_points[i*4+3].X), float32(temp_points[i*4+3].Y)}
+				t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
+
 				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-				_VtxWritePtr[0].Pos = temp_points[i*4+0]
-				_VtxWritePtr[0].UV = uv
+				_VtxWritePtr[0].Pos = p0
+				_VtxWritePtr[0].UV = t0
 				_VtxWritePtr[0].Col = col_trans_32
-				_VtxWritePtr[1].Pos = temp_points[i*4+1]
-				_VtxWritePtr[1].UV = uv
+				_VtxWritePtr[1].Pos = p1
+				_VtxWritePtr[1].UV = t0
 				_VtxWritePtr[1].Col = col_32
-				_VtxWritePtr[2].Pos = temp_points[i*4+2]
-				_VtxWritePtr[2].UV = uv
+				_VtxWritePtr[2].Pos = p2
+				_VtxWritePtr[2].UV = t0
 				_VtxWritePtr[2].Col = col_32
-				_VtxWritePtr[3].Pos = temp_points[i*4+3]
-				_VtxWritePtr[3].UV = uv
+				_VtxWritePtr[3].Pos = p3
+				_VtxWritePtr[3].UV = t0
 				_VtxWritePtr[3].Col = col_trans_32
 				d._VtxWritePtr += 4
 			}
@@ -1803,22 +1815,23 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			dx := diff.X * (thickness * 0.5)
 			dy := diff.Y * (thickness * 0.5)
 
+			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-			_VtxWritePtr[0].Pos.X = p1.X + dy
-			_VtxWritePtr[0].Pos.Y = p1.Y - dx
-			_VtxWritePtr[0].UV = uv
+			_VtxWritePtr[0].Pos.X = float32(p1.X + dy)
+			_VtxWritePtr[0].Pos.Y = float32(p1.Y - dx)
+			_VtxWritePtr[0].UV = t0
 			_VtxWritePtr[0].Col = col_32
-			_VtxWritePtr[1].Pos.X = p2.X + dy
-			_VtxWritePtr[1].Pos.Y = p2.Y - dx
-			_VtxWritePtr[1].UV = uv
+			_VtxWritePtr[1].Pos.X = float32(p2.X + dy)
+			_VtxWritePtr[1].Pos.Y = float32(p2.Y - dx)
+			_VtxWritePtr[1].UV = t0
 			_VtxWritePtr[1].Col = col_32
-			_VtxWritePtr[2].Pos.X = p2.X - dy
-			_VtxWritePtr[2].Pos.Y = p2.Y + dx
-			_VtxWritePtr[2].UV = uv
+			_VtxWritePtr[2].Pos.X = float32(p2.X - dy)
+			_VtxWritePtr[2].Pos.Y = float32(p2.Y + dx)
+			_VtxWritePtr[2].UV = t0
 			_VtxWritePtr[2].Col = col_32
-			_VtxWritePtr[3].Pos.X = p1.X - dy
-			_VtxWritePtr[3].Pos.Y = p1.Y + dx
-			_VtxWritePtr[3].UV = uv
+			_VtxWritePtr[3].Pos.X = float32(p1.X - dy)
+			_VtxWritePtr[3].Pos.Y = float32(p1.Y + dx)
+			_VtxWritePtr[3].UV = t0
 			_VtxWritePtr[3].Col = col_32
 			d._VtxWritePtr += 4
 
@@ -2033,19 +2046,25 @@ func (d *DrawList) PrimRect(a, c f64.Vec2, col color.RGBA) {
 	_IdxWritePtr[4] = DrawIdx(idx + 2)
 	_IdxWritePtr[5] = DrawIdx(idx + 3)
 
+	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
+	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
+	p2 := f32.Vec2{float32(c.X), float32(c.Y)}
+	p3 := f32.Vec2{float32(d_.X), float32(d_.Y)}
+	t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
+
 	col32 := chroma.RGBA32(col)
 	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = a
-	_VtxWritePtr[0].UV = uv
+	_VtxWritePtr[0].Pos = p0
+	_VtxWritePtr[0].UV = t0
 	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = b
-	_VtxWritePtr[1].UV = uv
+	_VtxWritePtr[1].Pos = p1
+	_VtxWritePtr[1].UV = t0
 	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = c
-	_VtxWritePtr[2].UV = uv
+	_VtxWritePtr[2].Pos = p2
+	_VtxWritePtr[2].UV = t0
 	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = d_
-	_VtxWritePtr[3].UV = uv
+	_VtxWritePtr[3].Pos = p3
+	_VtxWritePtr[3].UV = t0
 	_VtxWritePtr[3].Col = col32
 
 	d._VtxWritePtr += 4
@@ -2067,19 +2086,28 @@ func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
 	_IdxWritePtr[4] = idx + 2
 	_IdxWritePtr[5] = idx + 3
 
+	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
+	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
+	p2 := f32.Vec2{float32(c.X), float32(c.Y)}
+	p3 := f32.Vec2{float32(d_.X), float32(d_.Y)}
+	t0 := f32.Vec2{float32(uv_a.X), float32(uv_a.Y)}
+	t1 := f32.Vec2{float32(uv_b.X), float32(uv_b.Y)}
+	t2 := f32.Vec2{float32(uv_c.X), float32(uv_c.Y)}
+	t3 := f32.Vec2{float32(uv_d.X), float32(uv_d.Y)}
+
 	col32 := chroma.RGBA32(col)
 	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = a
-	_VtxWritePtr[0].UV = uv_a
+	_VtxWritePtr[0].Pos = p0
+	_VtxWritePtr[0].UV = t0
 	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = b
-	_VtxWritePtr[1].UV = uv_b
+	_VtxWritePtr[1].Pos = p1
+	_VtxWritePtr[1].UV = t1
 	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = c
-	_VtxWritePtr[2].UV = uv_c
+	_VtxWritePtr[2].Pos = p2
+	_VtxWritePtr[2].UV = t2
 	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = d_
-	_VtxWritePtr[3].UV = uv_d
+	_VtxWritePtr[3].Pos = p3
+	_VtxWritePtr[3].UV = t3
 	_VtxWritePtr[3].Col = col32
 
 	d._VtxWritePtr += 4
@@ -2151,26 +2179,31 @@ func (d *DrawList) ShadeVertsLinearUV(vert_start, vert_end int, a, b, uv_a, uv_b
 		scale.Y = uv_size.Y / size.Y
 	}
 
+	x_a := f32.Vec2{float32(a.X), float32(a.Y)}
+	x_uv_a := f32.Vec2{float32(uv_a.X), float32(uv_a.Y)}
+	x_uv_b := f32.Vec2{float32(uv_b.X), float32(uv_b.Y)}
+	x_scale := f32.Vec2{float32(scale.X), float32(scale.Y)}
+
 	if clamp {
-		min := uv_a.Min(uv_b)
-		max := uv_a.Max(uv_b)
+		min := x_uv_a.Min(x_uv_b)
+		max := x_uv_a.Max(x_uv_b)
 
 		for v := vert_start; v < vert_end; v++ {
 			vertex := &d.VtxBuffer[v]
-			pos := vertex.Pos.Sub(a)
-			pos = pos.Scale2(scale)
-			pos = uv_a.Add(pos)
-			vertex.UV = f64.Vec2{
-				f64.Clamp(pos.X, min.X, max.X),
-				f64.Clamp(pos.Y, min.Y, max.Y),
+			pos := vertex.Pos.Sub(x_a)
+			pos = pos.Scale2(x_scale)
+			pos = x_uv_a.Add(pos)
+			vertex.UV = f32.Vec2{
+				f32.Clamp(pos.X, min.X, max.X),
+				f32.Clamp(pos.Y, min.Y, max.Y),
 			}
 		}
 	} else {
 		for v := vert_start; v < vert_end; v++ {
 			vertex := &d.VtxBuffer[v]
-			pos := vertex.Pos.Sub(a)
-			pos = pos.Scale2(scale)
-			pos = uv_a.Add(pos)
+			pos := vertex.Pos.Sub(x_a)
+			pos = pos.Scale2(x_scale)
+			pos = x_uv_a.Add(pos)
 			vertex.UV = pos
 		}
 	}
@@ -2186,19 +2219,28 @@ func (d *DrawList) PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col 
 	_IdxWritePtr[4] = (idx + 2)
 	_IdxWritePtr[5] = (idx + 3)
 
+	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
+	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
+	p2 := f32.Vec2{float32(c.X), float32(c.Y)}
+	p3 := f32.Vec2{float32(d_.X), float32(d_.Y)}
+	t0 := f32.Vec2{float32(uv_a.X), float32(uv_a.Y)}
+	t1 := f32.Vec2{float32(uv_b.X), float32(uv_b.Y)}
+	t2 := f32.Vec2{float32(uv_c.X), float32(uv_c.Y)}
+	t3 := f32.Vec2{float32(uv_d.X), float32(uv_d.Y)}
+
 	col32 := chroma.RGBA32(col)
 	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = a
-	_VtxWritePtr[0].UV = uv_a
+	_VtxWritePtr[0].Pos = p0
+	_VtxWritePtr[0].UV = t0
 	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = b
-	_VtxWritePtr[1].UV = uv_b
+	_VtxWritePtr[1].Pos = p1
+	_VtxWritePtr[1].UV = t1
 	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = c
-	_VtxWritePtr[2].UV = uv_c
+	_VtxWritePtr[2].Pos = p2
+	_VtxWritePtr[2].UV = t2
 	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = d_
-	_VtxWritePtr[3].UV = uv_d
+	_VtxWritePtr[3].Pos = p3
+	_VtxWritePtr[3].UV = t3
 	_VtxWritePtr[3].Col = col32
 
 	d._VtxWritePtr += 4
@@ -2326,9 +2368,10 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 		vtx_inner_idx := d._VtxCurrentIdx
 		vtx_outer_idx := d._VtxCurrentIdx + 1
 		for i := uint(2); i < uint(points_count); i++ {
-			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(vtx_inner_idx)
-			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
-			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(vtx_inner_idx + (i << 1))
+			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx)
+			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
+			_IdxWritePtr[2] = DrawIdx(vtx_inner_idx + (i << 1))
 			d._IdxWritePtr += 3
 		}
 
@@ -2362,22 +2405,31 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 
 			// Add vertices
 			// Inner
-			d.VtxBuffer[d._VtxWritePtr].Pos = points[i1].Sub(dm)
-			d.VtxBuffer[d._VtxWritePtr].UV = uv
-			d.VtxBuffer[d._VtxWritePtr].Col = chroma.RGBA32(col)
+			q0 := points[i1].Sub(dm)
+			q1 := points[i1].Add(dm)
+
+			p0 := f32.Vec2{float32(q0.X), float32(q0.Y)}
+			p1 := f32.Vec2{float32(q1.X), float32(q1.Y)}
+			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
+
+			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+			_VtxWritePtr[0].Pos = p0
+			_VtxWritePtr[0].UV = t0
+			_VtxWritePtr[0].Col = chroma.RGBA32(col)
 			// Outer
-			d.VtxBuffer[d._VtxWritePtr+1].Pos = points[i1].Add(dm)
-			d.VtxBuffer[d._VtxWritePtr+1].UV = uv
-			d.VtxBuffer[d._VtxWritePtr+1].Col = chroma.RGBA32(col_trans)
+			_VtxWritePtr[1].Pos = p1
+			_VtxWritePtr[1].UV = t0
+			_VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
 			d._VtxWritePtr += 2
 
 			// Add indexes for fringes
-			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(vtx_inner_idx + uint(i1<<1))
-			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(vtx_inner_idx + uint(i0<<1))
-			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(vtx_outer_idx + uint(i0<<1))
-			d.IdxBuffer[d._IdxWritePtr+3] = DrawIdx(vtx_outer_idx + uint(i0<<1))
-			d.IdxBuffer[d._IdxWritePtr+4] = DrawIdx(vtx_outer_idx + uint(i1<<1))
-			d.IdxBuffer[d._IdxWritePtr+5] = DrawIdx(vtx_inner_idx + uint(i1<<1))
+			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx + uint(i1<<1))
+			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + uint(i0<<1))
+			_IdxWritePtr[2] = DrawIdx(vtx_outer_idx + uint(i0<<1))
+			_IdxWritePtr[3] = DrawIdx(vtx_outer_idx + uint(i0<<1))
+			_IdxWritePtr[4] = DrawIdx(vtx_outer_idx + uint(i1<<1))
+			_IdxWritePtr[5] = DrawIdx(vtx_inner_idx + uint(i1<<1))
 			d._IdxWritePtr += 6
 		}
 		d._VtxCurrentIdx += uint(vtx_count)
@@ -2387,15 +2439,20 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 		vtx_count := points_count
 		d.PrimReserve(idx_count, vtx_count)
 		for i := 0; i < vtx_count; i++ {
-			d.VtxBuffer[d._VtxWritePtr].Pos = points[i]
-			d.VtxBuffer[d._VtxWritePtr+1].UV = uv
-			d.VtxBuffer[d._VtxWritePtr+2].Col = chroma.RGBA32(col)
+			p0 := f32.Vec2{float32(points[i].X), float32(points[i].Y)}
+			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
+
+			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
+			_VtxWritePtr[0].Pos = p0
+			_VtxWritePtr[0].UV = t0
+			_VtxWritePtr[0].Col = chroma.RGBA32(col)
 			d._VtxWritePtr++
 		}
 		for i := 2; i < points_count; i++ {
-			d.IdxBuffer[d._IdxWritePtr] = DrawIdx(d._VtxCurrentIdx)
-			d.IdxBuffer[d._IdxWritePtr+1] = DrawIdx(d._VtxCurrentIdx + uint(i-1))
-			d.IdxBuffer[d._IdxWritePtr+2] = DrawIdx(d._VtxCurrentIdx + uint(i))
+			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
+			_IdxWritePtr[0] = DrawIdx(d._VtxCurrentIdx)
+			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + uint(i-1))
+			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + uint(i))
 			d._IdxWritePtr += 3
 		}
 		d._VtxCurrentIdx += uint(vtx_count)

@@ -1171,57 +1171,6 @@ func (c *Context) GetFrontMostModalRootWindow() *Window {
 	return nil
 }
 
-func (c *Context) ClosePopupsOverWindow(ref_window *Window) {
-	if len(c.OpenPopupStack) == 0 {
-		return
-	}
-
-	// When popups are stacked, clicking on a lower level popups puts focus back to it and close popups above it.
-	// Don't close our own child popup windows.
-	var n int
-	if ref_window != nil {
-		for n = range c.OpenPopupStack {
-			popup := &c.OpenPopupStack[n]
-			if popup.Window == nil {
-				continue
-			}
-			if popup.Window.Flags&WindowFlagsChildWindow != 0 {
-				continue
-			}
-
-			// Trim the stack if popups are not direct descendant of the reference window (which is often the NavWindow)
-			has_focus := false
-			for m := n; m < len(c.OpenPopupStack) && !has_focus; m++ {
-				has_focus = c.OpenPopupStack[m].Window != nil && c.OpenPopupStack[m].Window.RootWindow == ref_window.RootWindow
-			}
-			if !has_focus {
-				break
-			}
-		}
-	}
-
-	// This test is not required but it allows to set a convenient breakpoint on the block below
-	if n < len(c.OpenPopupStack) {
-		c.ClosePopupToLevel(n)
-	}
-}
-
-func (c *Context) ClosePopupToLevel(remaining int) {
-	var focus_window *Window
-	if remaining > 0 {
-		focus_window = c.OpenPopupStack[remaining-1].Window
-	} else {
-		focus_window = c.OpenPopupStack[0].ParentWindow
-	}
-
-	if c.NavLayer == 0 {
-		focus_window = c.NavRestoreLastChildNavWindow(focus_window)
-	}
-	c.FocusWindow(focus_window)
-	focus_window.DC.NavHideHighlightOneFrame = true
-	c.OpenPopupStack = c.OpenPopupStack[:remaining]
-}
-
 // Call when we are expected to land on Layer 0 after FocusWindow()
 func (c *Context) NavRestoreLastChildNavWindow(window *Window) *Window {
 	if window.NavLastChildNavWindow != nil {
