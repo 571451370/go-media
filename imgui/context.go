@@ -128,14 +128,14 @@ type Context struct {
 	DragSpeedScaleFast              float64
 	ScrollbarClickDeltaToGrabCenter f64.Vec2 // Distance between mouse and center of grab box, normalized in parent space. Use storage?
 	TooltipOverrideCount            int
-	PrivateClipboard                []int8   // If no custom clipboard handler is defined
+	PrivateClipboard                string   // If no custom clipboard handler is defined
 	OsImePosRequest, OsImePosSet    f64.Vec2 // Cursor position request & last passed to the OS Input Method Editor
 
 	// Settings
 	SettingsLoaded     bool
-	SettingsDirtyTimer float64          // Save .ini Settings on disk when time reaches zero
-	SettingsWindows    []WindowSettings // .ini settings for ImGuiWindow
-	SettingsHandlers   []func()         // List of .ini settings handlers
+	SettingsDirtyTimer float64                     // Save .ini Settings on disk when time reaches zero
+	SettingsWindows    map[string]*WindowSettings  // .ini settings for ImGuiWindow
+	SettingsHandlers   map[string]*SettingsHandler // List of .ini settings handlers
 
 	// Logging
 	LogEnabled            bool
@@ -182,6 +182,7 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.OverlayDrawList.Init(nil)
 	c.Style.Init()
 	c.StyleColorsDark(nil)
+	c.IO.Init(c)
 	io := c.GetIO()
 	c.Font = nil
 	c.FontSize = 0
@@ -196,7 +197,6 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.FrameCount = 0
 	c.FrameCountEnded = -1
 	c.FrameCountRendered = -1
-	c.Initialized = true
 	c.WindowsActiveCount = 0
 	c.CurrentWindow = nil
 	c.HoveredWindow = nil
@@ -277,6 +277,8 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.OsImePosRequest = f64.Vec2{-1.0, -1.0}
 	c.OsImePosSet = f64.Vec2{-1.0, -1.0}
 
+	c.SettingsWindows = make(map[string]*WindowSettings)
+	c.SettingsHandlers = make(map[string]*SettingsHandler)
 	c.SettingsLoaded = false
 	c.SettingsDirtyTimer = 0.0
 
@@ -294,6 +296,17 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.WantCaptureMouseNextFrame = -1
 	c.WantCaptureKeyboardNextFrame = -1
 	c.WantTextInputNextFrame = -1
+
+	// Add .ini handle for ImGuiWindow type
+	ini_handler := &SettingsHandler{
+		TypeName:   "Window",
+		ReadOpenFn: c.SettingsHandlerWindow_ReadOpen,
+		ReadLineFn: c.SettingsHandlerWindow_ReadLine,
+		WriteAllFn: c.SettingsHandlerWindow_WriteAll,
+	}
+	c.SettingsHandlers[ini_handler.TypeName] = ini_handler
+
+	c.Initialized = true
 }
 
 func (c *Context) GetVersion() string {
@@ -414,31 +427,6 @@ func (c *Context) LogFinish() {
 func (c *Context) PushID(str_id string) {
 	window := c.GetCurrentWindowRead()
 	window.IDStack = append(window.IDStack, window.GetID(str_id))
-}
-
-func (c *Context) MarkIniSettingsDirty() {
-	if c.SettingsDirtyTimer <= 0 {
-		c.SettingsDirtyTimer = c.IO.IniSavingRate
-	}
-}
-
-func (c *Context) MarkIniSettingsDirtyEx(window *Window) {
-	if window.Flags&WindowFlagsNoSavedSettings == 0 {
-		if c.SettingsDirtyTimer <= 0 {
-			c.SettingsDirtyTimer = c.IO.IniSavingRate
-		}
-	}
-}
-
-func (c *Context) SaveIniSettingsToDisk(ini_filename string) {
-}
-
-func InvLength(lhs f64.Vec2, fail_value float64) float64 {
-	d := lhs.X*lhs.X + lhs.Y*lhs.Y
-	if d > 0.0 {
-		return 1.0 / math.Sqrt(d)
-	}
-	return fail_value
 }
 
 type BackendFlags int

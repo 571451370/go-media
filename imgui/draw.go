@@ -110,6 +110,8 @@ func (c *Context) NewFrame() {
 
 	// Load settings on first frame
 	if !c.SettingsLoaded {
+		assert(len(c.SettingsWindows) == 0)
+		c.LoadIniSettingsFromDisk(c.IO.IniFilename)
 		c.SettingsLoaded = true
 	}
 
@@ -119,6 +121,7 @@ func (c *Context) NewFrame() {
 	c.WindowsActiveCount = 0
 
 	c.SetCurrentFont(c.GetDefaultFont())
+	assert(c.Font.IsLoaded())
 	c.DrawListSharedData.ClipRectFullscreen = f64.Vec4{0, 0, c.IO.DisplaySize.X, c.IO.DisplaySize.Y}
 	c.DrawListSharedData.CurveTessellationTol = c.Style.CurveTessellationTol
 

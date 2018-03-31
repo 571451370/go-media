@@ -1,6 +1,19 @@
 package imgui
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
+
+func InvLength(lhs f64.Vec2, fail_value float64) float64 {
+	d := lhs.X*lhs.X + lhs.Y*lhs.Y
+	if d > 0.0 {
+		return 1.0 / math.Sqrt(d)
+	}
+	return fail_value
+}
 
 func Decode85Byte(c byte) uint {
 	if c >= '\\' {

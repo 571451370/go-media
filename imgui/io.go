@@ -1,11 +1,17 @@
 package imgui
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"math"
+	"runtime"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 type IO struct {
 	//------------------------------------------------------------------
 	// Settings (fill once)                 // Default value:
 	//------------------------------------------------------------------
+	Ctx                     *Context
 	ConfigFlags             ConfigFlags   // = 0                  // See ImGuiConfigFlags_ enum. Gamepad/keyboard navigation options, etc.
 	BackendFlags            BackendFlags  // = 0                  // See ImGuiConfigFlags_ enum. Set by user/application. Gamepad/keyboard navigation options, etc.
 	DisplaySize             f64.Vec2      // <unset>              // Display size, in pixels. For clamping windows positions.
@@ -100,4 +106,72 @@ type IO struct {
 	KeysDownDurationPrev      [512]float64 // Previous duration the key has been down
 	NavInputsDownDuration     [NavInputCOUNT]float64
 	NavInputsDownDurationPrev [NavInputCOUNT]float64
+}
+
+func (c *IO) Init(ctx *Context) {
+	*c = IO{
+		Ctx: ctx,
+	}
+
+	// Settings
+	c.ConfigFlags = 0x00
+	c.BackendFlags = 0x00
+	c.DisplaySize = f64.Vec2{-1.0, -1.0}
+	c.DeltaTime = 1.0 / 60.0
+	c.IniSavingRate = 5.0
+	c.IniFilename = "imgui.ini"
+	c.LogFilename = "imgui_log.txt"
+	c.MouseDoubleClickTime = 0.30
+	c.MouseDoubleClickMaxDist = 6.0
+	for i := range c.KeyMap {
+		c.KeyMap[i] = -1
+	}
+	c.KeyRepeatDelay = 0.250
+	c.KeyRepeatRate = 0.050
+
+	c.Fonts = nil
+	c.FontGlobalScale = 1.0
+	c.FontDefault = nil
+	c.FontAllowUserScaling = false
+	c.DisplayFramebufferScale = f64.Vec2{1.0, 1.0}
+	c.DisplayVisibleMin = f64.Vec2{0.0, 0.0}
+	c.DisplayVisibleMax = f64.Vec2{0.0, 0.0}
+
+	if runtime.GOOS == "darwin" {
+		c.OptMacOSXBehaviors = true
+	} else {
+		c.OptMacOSXBehaviors = false
+	}
+	c.OptCursorBlink = true
+
+	// Settings (User Functions)
+	c.GetClipboardTextFn = ctx.GetClipboardTextFn_DefaultImpl
+	c.SetClipboardTextFn = ctx.SetClipboardTextFn_DefaultImpl
+	c.ImeSetInputScreenPosFn = ImeSetInputScreenPosFn_DefaultImpl
+	c.ImeWindowHandle = nil
+
+	// Input (NB: we already have memset zero the entire structure)
+	c.MousePos = f64.Vec2{-math.MaxFloat32, -math.MaxFloat32}
+	c.MousePosPrev = f64.Vec2{-math.MaxFloat32, -math.MaxFloat32}
+	c.MouseDragThreshold = 6.0
+	for i := range c.MouseDownDuration {
+		c.MouseDownDuration[i] = -1
+	}
+	for i := range c.KeysDownDuration {
+		c.KeysDownDuration[i] = -1
+	}
+	for i := range c.NavInputsDownDuration {
+		c.NavInputsDownDuration[i] = -1
+	}
+}
+
+func ImeSetInputScreenPosFn_DefaultImpl(x, y int) {
+}
+
+func (c *Context) GetClipboardTextFn_DefaultImpl() string {
+	return c.PrivateClipboard
+}
+
+func (c *Context) SetClipboardTextFn_DefaultImpl(text string) {
+	c.PrivateClipboard = text
 }

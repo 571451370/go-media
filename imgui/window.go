@@ -1918,3 +1918,23 @@ func (w *Window) MenuBarRect() f64.Rectangle {
 	y1 := w.Pos.Y + w.TitleBarHeight()
 	return f64.Rect(w.Pos.X, y1, w.Pos.X+w.SizeFull.X, y1+w.MenuBarHeight())
 }
+
+func (c *Context) FindWindowSettings(name string) *WindowSettings {
+	return c.SettingsWindows[name]
+}
+
+func (c *Context) AddWindowSettings(name string) *WindowSettings {
+	settings := &WindowSettings{}
+	settings.Init()
+	settings.Name = name
+	c.SettingsWindows[name] = settings
+	return settings
+}
+
+func (s *WindowSettings) Init() {
+	s.Name = ""
+	s.Id = 0
+	s.Pos = f64.Vec2{0, 0}
+	s.Size = f64.Vec2{0, 0}
+	s.Collapsed = false
+}
