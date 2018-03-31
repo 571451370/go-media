@@ -165,3 +165,35 @@ func (c *Context) GetColorFromStyleWithAlpha(idx Col, alpha_mul float64) color.R
 	col.W *= style.Alpha * alpha_mul
 	return col.ToRGBA()
 }
+
+func (s *Style) Init() {
+	s.Alpha = 1.0                             // Global alpha applies to everything in ImGui
+	s.WindowPadding = f64.Vec2{8, 8}          // Padding within a window
+	s.WindowRounding = 7.0                    // Radius of window corners rounding. Set to 0.0f to have rectangular windows
+	s.WindowBorderSize = 1.0                  // Thickness of border around windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+	s.WindowMinSize = f64.Vec2{32, 32}        // Minimum window size
+	s.WindowTitleAlign = f64.Vec2{0.0, 0.5}   // Alignment for title bar text
+	s.ChildRounding = 0.0                     // Radius of child window corners rounding. Set to 0.0f to have rectangular child windows
+	s.ChildBorderSize = 1.0                   // Thickness of border around child windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+	s.PopupRounding = 0.0                     // Radius of popup window corners rounding. Set to 0.0f to have rectangular child windows
+	s.PopupBorderSize = 1.0                   // Thickness of border around popup or tooltip windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+	s.FramePadding = f64.Vec2{4, 3}           // Padding within a framed rectangle (used by most widgets)
+	s.FrameRounding = 0.0                     // Radius of frame corners rounding. Set to 0.0f to have rectangular frames (used by most widgets).
+	s.FrameBorderSize = 0.0                   // Thickness of border around frames. Generally set to 0.0f or 1.0f. Other values not well tested.
+	s.ItemSpacing = f64.Vec2{8, 4}            // Horizontal and vertical spacing between widgets/lines
+	s.ItemInnerSpacing = f64.Vec2{4, 4}       // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label)
+	s.TouchExtraPadding = f64.Vec2{0, 0}      // Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+	s.IndentSpacing = 21.0                    // Horizontal spacing when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+	s.ColumnsMinSpacing = 6.0                 // Minimum horizontal spacing between two columns
+	s.ScrollbarSize = 16.0                    // Width of the vertical scrollbar, Height of the horizontal scrollbar
+	s.ScrollbarRounding = 9.0                 // Radius of grab corners rounding for scrollbar
+	s.GrabMinSize = 10.0                      // Minimum width/height of a grab box for slider/scrollbar
+	s.GrabRounding = 0.0                      // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+	s.ButtonTextAlign = f64.Vec2{0.5, 0.5}    // Alignment of button text when button is larger than text.
+	s.DisplayWindowPadding = f64.Vec2{22, 22} // Window positions are clamped to be visible within the display area by at least this amount. Only covers regular windows.
+	s.DisplaySafeAreaPadding = f64.Vec2{4, 4} // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
+	s.MouseCursorScale = 1.0                  // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
+	s.AntiAliasedLines = true                 // Enable anti-aliasing on lines/borders. Disable if you are really short on CPU/GPU.
+	s.AntiAliasedFill = true                  // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
+	s.CurveTessellationTol = 1.25             // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+}

@@ -57,11 +57,11 @@ type DrawList struct {
 }
 
 type DrawCmd struct {
-	ElemCount        int         // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
-	ClipRect         f64.Vec4    // Clipping rectangle (x1, y1, x2, y2)
-	TextureId        TextureID   // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
-	UserCallback     func()      // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
-	UserCallbackData interface{} // The draw callback code can access this.
+	ElemCount        int                      // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
+	ClipRect         f64.Vec4                 // Clipping rectangle (x1, y1, x2, y2)
+	TextureId        TextureID                // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
+	UserCallback     func(cmd_list *DrawList) // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
+	UserCallbackData interface{}              // The draw callback code can access this.
 }
 
 type DrawIdx uint32
@@ -97,6 +97,17 @@ const (
 )
 
 func (c *Context) NewFrame() {
+	// Check user data
+	// (We pass an error message in the assert expression as a trick to get it visible to programmers who are not using a debugger, as most assert handlers display their argument)
+	assert(c.Initialized)
+	assert(c.IO.DeltaTime >= 0.0)
+	assert(c.IO.DisplaySize.X >= 0.0 && c.IO.DisplaySize.Y >= 0.0)
+	assert(len(c.IO.Fonts.Fonts) > 0)
+	assert(c.IO.Fonts.Fonts[0].IsLoaded())
+	assert(c.Style.CurveTessellationTol > 0.0)
+	assert(c.Style.Alpha >= 0.0 && c.Style.Alpha <= 1.0)
+	assert(c.FrameCount == 0 || c.FrameCountEnded == c.FrameCount)
+
 	// Load settings on first frame
 	if !c.SettingsLoaded {
 		c.SettingsLoaded = true
