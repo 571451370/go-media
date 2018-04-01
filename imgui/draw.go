@@ -45,7 +45,7 @@ type DrawList struct {
 	Flags            DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
 	_Data            *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
 	_OwnerName       string              // Pointer to owner window's name for debugging
-	_VtxCurrentIdx   uint                // [Internal] == VtxBuffer.Size
+	_VtxCurrentIdx   int                 // [Internal] == VtxBuffer.Size
 	_VtxWritePtr     int                 // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
 	_IdxWritePtr     int                 // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
 	_ClipRectStack   []f64.Vec4          // [Internal]
@@ -922,6 +922,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		window_border_size := window.WindowBorderSize
 		title_bar_is_highlight := want_focus || (c.NavWindow != nil && window.RootWindowForTitleBarHighlight == c.NavWindow.RootWindowForTitleBarHighlight)
 		title_bar_rect := window.TitleBarRect()
+
 		if window.Collapsed {
 			// Title bar only
 			backup_border_size := style.FrameBorderSize
@@ -933,7 +934,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			} else {
 				title_bar_col = c.GetColorFromStyle(ColTitleBgCollapsed)
 			}
-
 			c.RenderFrameEx(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, true, window_rounding)
 			c.Style.FrameBorderSize = backup_border_size
 		} else {
@@ -1303,15 +1303,13 @@ func (c *Context) Render() {
 	}
 
 	for _, window := range c.Windows {
-		if window.Active && window.HiddenFrames <= 0 && window.Flags&WindowFlagsChildWindow == 0 &&
-			window != window_to_render_front_most {
+		if window.Active && window.HiddenFrames <= 0 && window.Flags&WindowFlagsChildWindow == 0 && window != window_to_render_front_most {
 			c.AddWindowToDrawDataSelectLayer(window)
 		}
 	}
 
 	// NavWindowingTarget is always temporarily displayed as the front-most window
-	if window_to_render_front_most != nil && window_to_render_front_most.Active &&
-		window_to_render_front_most.HiddenFrames <= 0 {
+	if window_to_render_front_most != nil && window_to_render_front_most.Active && window_to_render_front_most.HiddenFrames <= 0 {
 		c.AddWindowToDrawDataSelectLayer(window_to_render_front_most)
 	}
 	c.DrawDataBuilder.FlattenIntoSingleLayer()
@@ -1553,11 +1551,20 @@ func (c *Context) RenderCheckMark(pos f64.Vec2, col color.RGBA, sz float64) {
 	window.DrawList.PathStrokeEx(col, false, thickness)
 }
 
+// Render a rectangle shaped with optional rounding and borders
 func (c *Context) RenderFrame(p_min, p_max f64.Vec2, col color.RGBA) {
 	c.RenderFrameEx(p_min, p_max, col, true, 0)
 }
 
-func (c *Context) RenderFrameEx(p_min, p_max f64.Vec2, col color.RGBA, border bool, rounding float64) {
+func (c *Context) RenderFrameEx(p_min, p_max f64.Vec2, fill_col color.RGBA, border bool, rounding float64) {
+	window := c.CurrentWindow
+	window.DrawList.AddRectFilledEx(p_min, p_max, fill_col, rounding, DrawCornerFlagsAll)
+	border_size := c.Style.FrameBorderSize
+	if border && border_size > 0.0 {
+		one := f64.Vec2{1, 1}
+		window.DrawList.AddRectEx(p_min.Add(one), p_max.Add(one), c.GetColorFromStyle(ColBorderShadow), rounding, DrawCornerFlagsAll, border_size)
+		window.DrawList.AddRectEx(p_min, p_max, c.GetColorFromStyle(ColBorder), rounding, DrawCornerFlagsAll, border_size)
+	}
 }
 
 func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
@@ -1663,7 +1670,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			for i1 := 0; i1 < count; i1++ {
 				i2 := (i1 + 1) % points_count
 				idx2 := idx1 + 3
-				if idx1+1 == uint(points_count) {
+				if i1+1 == points_count {
 					idx2 = d._VtxCurrentIdx
 				}
 
@@ -1811,7 +1818,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				d._VtxWritePtr += 4
 			}
 		}
-		d._VtxCurrentIdx += uint(vtx_count)
+		d._VtxCurrentIdx += vtx_count
 	} else {
 		// Non Anti-aliased Stroke
 		idx_count := count * 6
@@ -2381,7 +2388,7 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 		// Add indexes for fill
 		vtx_inner_idx := d._VtxCurrentIdx
 		vtx_outer_idx := d._VtxCurrentIdx + 1
-		for i := uint(2); i < uint(points_count); i++ {
+		for i := 2; i < points_count; i++ {
 			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
 			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx)
 			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
@@ -2396,7 +2403,7 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 			p1 := points[i1]
 			diff := p1.Sub(p0)
 			invLength := InvLength(diff, 1)
-			diff = diff.Scale2(f64.Vec2{invLength, invLength})
+			diff = diff.Scale(invLength)
 			temp_normals[i0].X = diff.Y
 			temp_normals[i0].Y = -diff.X
 		}
@@ -2430,6 +2437,7 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 			_VtxWritePtr[0].Pos = p0
 			_VtxWritePtr[0].UV = t0
 			_VtxWritePtr[0].Col = chroma.RGBA32(col)
+
 			// Outer
 			_VtxWritePtr[1].Pos = p1
 			_VtxWritePtr[1].UV = t0
@@ -2438,15 +2446,15 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 
 			// Add indexes for fringes
 			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx + uint(i1<<1))
-			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + uint(i0<<1))
-			_IdxWritePtr[2] = DrawIdx(vtx_outer_idx + uint(i0<<1))
-			_IdxWritePtr[3] = DrawIdx(vtx_outer_idx + uint(i0<<1))
-			_IdxWritePtr[4] = DrawIdx(vtx_outer_idx + uint(i1<<1))
-			_IdxWritePtr[5] = DrawIdx(vtx_inner_idx + uint(i1<<1))
+			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx + i1<<1)
+			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + i0<<1)
+			_IdxWritePtr[2] = DrawIdx(vtx_outer_idx + i0<<1)
+			_IdxWritePtr[3] = DrawIdx(vtx_outer_idx + i0<<1)
+			_IdxWritePtr[4] = DrawIdx(vtx_outer_idx + i1<<1)
+			_IdxWritePtr[5] = DrawIdx(vtx_inner_idx + i1<<1)
 			d._IdxWritePtr += 6
 		}
-		d._VtxCurrentIdx += uint(vtx_count)
+		d._VtxCurrentIdx += vtx_count
 	} else {
 		// Non Anti-aliased Fill
 		idx_count := (points_count - 2) * 3
@@ -2465,11 +2473,11 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 		for i := 2; i < points_count; i++ {
 			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
 			_IdxWritePtr[0] = DrawIdx(d._VtxCurrentIdx)
-			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + uint(i-1))
-			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + uint(i))
+			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + i - 1)
+			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + i)
 			d._IdxWritePtr += 3
 		}
-		d._VtxCurrentIdx += uint(vtx_count)
+		d._VtxCurrentIdx += vtx_count
 	}
 }
 
@@ -2479,11 +2487,23 @@ func (d *DrawList) PrimReserve(idx_count, vtx_count int) {
 	draw_cmd.ElemCount += idx_count
 
 	vtx_buffer_old_size := len(d.VtxBuffer)
-	d.VtxBuffer = make([]DrawVert, vtx_buffer_old_size+vtx_count)
+	if vtx_buffer_old_size+vtx_count > len(d.VtxBuffer) {
+		vtx_buffer := make([]DrawVert, vtx_buffer_old_size+vtx_count)
+		copy(vtx_buffer, d.VtxBuffer)
+		d.VtxBuffer = vtx_buffer
+	} else {
+		d.VtxBuffer = d.VtxBuffer[:vtx_buffer_old_size+vtx_count]
+	}
 	d._VtxWritePtr = vtx_buffer_old_size
 
 	idx_buffer_old_size := len(d.IdxBuffer)
-	d.IdxBuffer = make([]DrawIdx, idx_buffer_old_size+idx_count)
+	if idx_buffer_old_size+idx_count > len(d.IdxBuffer) {
+		idx_buffer := make([]DrawIdx, idx_buffer_old_size+idx_count)
+		copy(idx_buffer, d.IdxBuffer)
+		d.IdxBuffer = idx_buffer
+	} else {
+		d.IdxBuffer = d.IdxBuffer[:idx_buffer_old_size+idx_count]
+	}
 	d._IdxWritePtr = idx_buffer_old_size
 }
 
@@ -2547,7 +2567,7 @@ func (d *DrawDataBuilder) Clear() {
 
 func (c *Context) AddWindowToDrawData(out_render_list *[]*DrawList, window *Window) {
 	c.AddDrawListToDrawData(out_render_list, window.DrawList)
-	for i := 0; i < len(window.DC.ChildWindows); i++ {
+	for i := range window.DC.ChildWindows {
 		child := window.DC.ChildWindows[i]
 		// clipped children may have been marked not active
 		if child.Active && child.HiddenFrames <= 0 {
@@ -2570,6 +2590,11 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 			return
 		}
 	}
+
+	// Draw list sanity check. Detect mismatch between PrimReserve() calls and incrementing _VtxCurrentIdx, _VtxWritePtr etc. May trigger for you if you are using PrimXXX functions incorrectly.
+	assert(len(draw_list.VtxBuffer) == 0 || draw_list._VtxWritePtr == len(draw_list.VtxBuffer))
+	assert(len(draw_list.IdxBuffer) == 0 || draw_list._IdxWritePtr == len(draw_list.IdxBuffer))
+	assert(draw_list._VtxCurrentIdx == len(draw_list.VtxBuffer))
 
 	*out_render_list = append(*out_render_list, draw_list)
 }
@@ -3017,5 +3042,27 @@ func (d *DrawData) ScaleClipRects(scale f64.Vec2) {
 				cmd.ClipRect.W * scale.Y,
 			}
 		}
+	}
+}
+
+func (c *Context) AddWindowToDrawDataSelectLayer(window *Window) {
+	c.IO.MetricsActiveWindows++
+	if window.Flags&WindowFlagsTooltip != 0 {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[1], window)
+	} else {
+		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[0], window)
+	}
+}
+
+func (d *DrawListSharedData) Init() {
+	d.Font = nil
+	d.FontSize = 0.0
+	d.CurveTessellationTol = 0.0
+	d.ClipRectFullscreen = f64.Vec4{-8192.0, -8192.0, +8192.0, +8192.0}
+
+	// Const data
+	for i := range d.CircleVtx12 {
+		a := float64(i) * 2 * math.Pi / float64(len(d.CircleVtx12))
+		d.CircleVtx12[i] = f64.Vec2{math.Cos(a), math.Sin(a)}
 	}
 }

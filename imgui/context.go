@@ -29,7 +29,7 @@ type Context struct {
 	Windows                  []*Window
 	WindowsSortBuffer        []*Window
 	CurrentWindowStack       []*Window
-	WindowsById              map[ID]*Window
+	WindowsById              map[string]*Window
 	WindowsActiveCount       int
 	CurrentWindow            *Window // Being drawn into
 	HoveredWindow            *Window // Will catch mouse inputs
@@ -179,6 +179,7 @@ func CreateContextEx(shared_font_atlas *FontAtlas) *Context {
 }
 
 func (c *Context) Init(shared_font_atlas *FontAtlas) {
+	c.DrawListSharedData.Init()
 	c.OverlayDrawList.Init(nil)
 	c.Style.Init()
 	c.StyleColorsDark(nil)
@@ -219,6 +220,7 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.NextTreeNodeOpenVal = false
 	c.NextTreeNodeOpenCond = 0
 
+	c.WindowsById = make(map[string]*Window)
 	c.NavWindow = nil
 	c.NavId = 0
 	c.NavActivateId = 0

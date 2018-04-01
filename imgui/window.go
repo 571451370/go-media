@@ -1179,15 +1179,6 @@ func (c *Context) NavRestoreLastChildNavWindow(window *Window) *Window {
 	return window
 }
 
-func (c *Context) AddWindowToDrawDataSelectLayer(window *Window) {
-	c.IO.MetricsActiveWindows++
-	if window.Flags&WindowFlagsTooltip != 0 {
-		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[1], window)
-	} else {
-		c.AddWindowToDrawData(&c.DrawDataBuilder.Layers[0], window)
-	}
-}
-
 func (c *Context) IsRectVisible(rect_min, rect_max f64.Vec2) bool {
 	window := c.GetCurrentWindowRead()
 	return window.ClipRect.Overlaps(f64.Rectangle{rect_min, rect_max})
@@ -1431,6 +1422,7 @@ func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags)
 	window := &Window{}
 	window.Init(c, name)
 	window.Flags = flags
+	c.WindowsById[name] = window
 
 	// User can disable loading and saving of settings. Tooltip and child windows also don't store settings.
 	if flags&WindowFlagsNoSavedSettings == 0 {
@@ -1438,6 +1430,17 @@ func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags)
 		// Use SetWindowPos() or SetNextWindowPos() with the appropriate condition flag to change the initial position of a window.
 		window.Pos = f64.Vec2{60, 60}
 		window.PosFloat = window.Pos
+
+		settings := c.FindWindowSettings(window.Name)
+		if settings != nil {
+			c.SetWindowConditionAllowFlags(window, CondFirstUseEver, false)
+			window.PosFloat = settings.Pos
+			window.Pos = window.PosFloat.Floor()
+			window.Collapsed = settings.Collapsed
+			if settings.Size.LenSquared() > 0.00001 {
+				size = settings.Size
+			}
+		}
 	}
 	window.Size = size
 	window.SizeFull = size
@@ -1637,10 +1640,7 @@ func (c *Context) SetNextWindowSize(size f64.Vec2, cond Cond) {
 }
 
 func (c *Context) FindWindowByName(name string) *Window {
-	h := fnv.New32()
-	h.Sum([]byte(name))
-	id := h.Sum32()
-	return c.WindowsById[ID(id)]
+	return c.WindowsById[name]
 }
 
 func (c *Context) SetWindowConditionAllowFlags(window *Window, flags Cond, enabled bool) {

@@ -354,7 +354,7 @@ func (p Vec3) MaxComp() float64 {
 	return math.Max(p.X, math.Max(p.Y, p.Z))
 }
 
-func (p Vec3) RGBA() (r, g, b, a uint32) {
+func (p Vec3) ToRGBA() color.RGBA {
 	if 0 <= p.X && p.X <= 1 {
 		p.X *= 255
 	}
@@ -364,12 +364,17 @@ func (p Vec3) RGBA() (r, g, b, a uint32) {
 	if 0 <= p.Z && p.Z <= 1 {
 		p.Z *= 255
 	}
-	c := color.RGBA{
+	return color.RGBA{
 		uint8(Clamp(p.X, 0, 255)),
 		uint8(Clamp(p.Y, 0, 255)),
 		uint8(Clamp(p.Z, 0, 255)),
 		255,
 	}
+
+}
+
+func (p Vec3) RGBA() (r, g, b, a uint32) {
+	c := p.ToRGBA()
 	return c.RGBA()
 }
 
@@ -498,6 +503,9 @@ func (p Vec4) ToRGBA() color.RGBA {
 	}
 	if 0 <= p.Z && p.Z <= 1 {
 		p.Z *= 255
+	}
+	if 0 <= p.W && p.W <= 1 {
+		p.W *= 255
 	}
 	c := color.RGBA{
 		uint8(Clamp(p.X, 0, 255)),

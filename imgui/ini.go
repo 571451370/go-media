@@ -124,19 +124,19 @@ func (c *Context) SettingsHandlerWindow_ReadLine(_ *Context, _ *SettingsHandler,
 	settings := entry.(*WindowSettings)
 
 	var x, y float64
-	n, _ := fmt.Sscanf("Pos=%f,%f", line, &x, &y)
+	n, _ := fmt.Sscanf(line, "Pos=%f,%f", &x, &y)
 	if n == 2 {
 		settings.Pos = f64.Vec2{x, y}
 		return
 	}
 
-	n, _ = fmt.Sscanf(line, "Size=%f,%f", line, &x, &y)
+	n, _ = fmt.Sscanf(line, "Size=%f,%f", &x, &y)
 	if n == 2 {
 		settings.Size = f64.Vec2{x, y}.Max(c.Style.WindowMinSize)
 		return
 	}
 
-	n, _ = fmt.Sscanf(line, "Collapsed=%d", line, &x)
+	n, _ = fmt.Sscanf(line, "Collapsed=%d", &x)
 	if n == 1 {
 		settings.Collapsed = x != 0
 		return
