@@ -1567,11 +1567,56 @@ func (c *Context) RenderFrameEx(p_min, p_max f64.Vec2, fill_col color.RGBA, bord
 	}
 }
 
-func (c *Context) RenderArrow(pos f64.Vec2, dir Dir) {
-	c.RenderArrowEx(pos, dir, 1)
+func (c *Context) RenderArrow(p_min f64.Vec2, dir Dir) {
+	c.RenderArrowEx(p_min, dir, 1)
 }
 
-func (c *Context) RenderArrowEx(pos f64.Vec2, dir Dir, scale float64) {
+func (c *Context) RenderArrowEx(p_min f64.Vec2, dir Dir, scale float64) {
+	window := c.CurrentWindow
+
+	h := c.FontSize * 1.0
+	r := h * 0.40 * scale
+	center := p_min.Add(f64.Vec2{h * 0.50, h * 0.50 * scale})
+
+	var a, b, c_ f64.Vec2
+	switch dir {
+	case DirUp:
+		r = -r
+		fallthrough
+	case DirDown:
+		center.Y -= r * 0.25
+		a = f64.Vec2{0, 1}.Scale(r)
+		b = f64.Vec2{-0.866, -0.5}.Scale(r)
+		c_ = f64.Vec2{+0.866, -0.5}.Scale(r)
+	case DirLeft:
+		r = -r
+		fallthrough
+	case DirRight:
+		center.X -= r * 0.25
+		a = f64.Vec2{1, 0}.Scale(r)
+		b = f64.Vec2{-0.500, +0.866}.Scale(r)
+		c_ = f64.Vec2{-0.500, -0.866}.Scale(r)
+	case DirNone, DirCOUNT:
+		assert(false)
+	}
+
+	window.DrawList.AddTriangleFilled(
+		center.Add(a),
+		center.Add(b),
+		center.Add(c_),
+		c.GetColorFromStyle(ColText),
+	)
+}
+
+func (d *DrawList) AddTriangleFilled(a, b, c f64.Vec2, col color.RGBA) {
+	if col.A == 0 {
+		return
+	}
+
+	d.PathLineTo(a)
+	d.PathLineTo(b)
+	d.PathLineTo(c)
+	d.PathFillConvex(col)
 }
 
 func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2) {
