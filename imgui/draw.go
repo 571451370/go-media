@@ -1774,16 +1774,14 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 		} else {
 			half_inner_thickness := (thickness - AA_SIZE) * 0.5
 			if !closed {
-				halfThicknessScaleAA := f64.Vec2{half_inner_thickness + AA_SIZE, half_inner_thickness + AA_SIZE}
-				halfThicknessScale := f64.Vec2{half_inner_thickness, half_inner_thickness}
-				temp_points[0] = points[0].Add(temp_normals[0].Scale2(halfThicknessScaleAA))
-				temp_points[1] = points[1].Add(temp_normals[0].Scale2(halfThicknessScale))
-				temp_points[2] = points[2].Sub(temp_normals[0].Scale2(halfThicknessScale))
-				temp_points[3] = points[3].Sub(temp_normals[0].Scale2(halfThicknessScaleAA))
-				temp_points[(points_count-1)*4+0] = points[points_count-1].Add(temp_normals[points_count-1].Scale2(halfThicknessScaleAA))
-				temp_points[(points_count-1)*4+1] = points[points_count-1].Add(temp_normals[points_count-1].Scale2(halfThicknessScale))
-				temp_points[(points_count-1)*4+2] = points[points_count-1].Sub(temp_normals[points_count-1].Scale2(halfThicknessScale))
-				temp_points[(points_count-1)*4+3] = points[points_count-1].Sub(temp_normals[points_count-1].Scale2(halfThicknessScaleAA))
+				temp_points[0] = points[0].Add(temp_normals[0].Scale(half_inner_thickness + AA_SIZE))
+				temp_points[1] = points[0].Add(temp_normals[0].Scale(half_inner_thickness))
+				temp_points[2] = points[0].Sub(temp_normals[0].Scale(half_inner_thickness))
+				temp_points[3] = points[0].Sub(temp_normals[0].Scale(half_inner_thickness + AA_SIZE))
+				temp_points[(points_count-1)*4+0] = points[points_count-1].Add(temp_normals[points_count-1].Scale(half_inner_thickness + AA_SIZE))
+				temp_points[(points_count-1)*4+1] = points[points_count-1].Add(temp_normals[points_count-1].Scale(half_inner_thickness))
+				temp_points[(points_count-1)*4+2] = points[points_count-1].Sub(temp_normals[points_count-1].Scale(half_inner_thickness))
+				temp_points[(points_count-1)*4+3] = points[points_count-1].Sub(temp_normals[points_count-1].Scale(half_inner_thickness + AA_SIZE))
 			}
 			// FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
 			idx1 := d._VtxCurrentIdx
@@ -1795,7 +1793,8 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				}
 
 				// Average normals
-				dm := (temp_normals[i1].Add(temp_normals[i2])).Scale2(f64.Vec2{0.5, 0.5})
+				dm := temp_normals[i1].Add(temp_normals[i2])
+				dm = dm.Scale(0.5)
 				dmr2 := dm.X*dm.X + dm.Y*dm.Y
 				if dmr2 > 0.000001 {
 					scale := 1.0 / dmr2
@@ -1837,7 +1836,6 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			}
 
 			// Add vertexes
-
 			col_trans_32 := chroma.RGBA32(col_trans)
 			col_32 := chroma.RGBA32(col)
 			for i := 0; i < points_count; i++ {

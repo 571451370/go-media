@@ -154,7 +154,7 @@ func (c *Context) Separator() {
 
 	window.DrawList.AddLine(bb.Min, f64.Vec2{bb.Max.X, bb.Min.Y}, c.GetColorFromStyle(ColSeparator))
 	if c.LogEnabled {
-		c.LogRenderedText("--------------------------------\n")
+		c.LogRenderedText(nil, "--------------------------------\n")
 	}
 
 	if window.DC.ColumnsSet != nil {
@@ -189,7 +189,7 @@ func (c *Context) VerticalSeparator() {
 func (c *Context) LogText(text string) {
 }
 
-func (c *Context) LogRenderedText(text string) {
+func (c *Context) LogRenderedText(ref_pos *f64.Vec2, text string) {
 }
 
 func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags) bool {
