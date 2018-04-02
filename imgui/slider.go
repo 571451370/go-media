@@ -124,7 +124,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 				if is_horizontal {
 					mouse_abs_pos = c.IO.MousePos.X
 				}
-				clicked_t := 0.0
+				clicked_t = 0.0
 				if slider_usable_sz > 0 {
 					clicked_t = f64.Clamp((mouse_abs_pos-slider_usable_pos_min)/slider_usable_sz, 0.0, 1.0)
 				}
@@ -298,7 +298,7 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	}
 
 	if start_text_input || (c.ActiveId == id && c.ScalarAsInputTextId == id) {
-		return c.InputScalarAsWidgetReplacement(frame_bb, label, DataTypeFloat, v, id, decimal_precision)
+		return c.InputScalarAsWidgetReplacement(frame_bb, label, *v, id, decimal_precision)
 	}
 
 	// Actual slider behavior + render grab
@@ -321,6 +321,28 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 
 // Create text input in place of a slider (when CTRL+Clicking on slider)
 // FIXME: Logic is messy and confusing.
-func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label string, data_type DataType, data_ptr interface{}, id ID, decimal_precision int) bool {
+func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label string, data interface{}, id ID, decimal_precision int) bool {
+	window := c.GetCurrentWindow()
+
+	// Our replacement widget will override the focus ID (registered previously to allow for a TAB focus to happen)
+	// On the first frame, g.ScalarAsInputTextId == 0, then on subsequent frames it becomes == id
+	c.SetActiveID(c.ScalarAsInputTextId, window)
+	c.ActiveIdAllowNavDirFlags = (1 << uint(DirUp)) | (1 << uint(DirDown))
+	c.SetHoveredID(0)
+	c.FocusableItemUnregister(window)
+
+	buf := DataTypeFormatString(data, decimal_precision)
+	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), InputTextFlagsCharsDecimal|InputTextFlagsAutoSelectAll)
+	// First frame we started displaying the InputText widget
+	if c.ScalarAsInputTextId == 0 {
+		// InputText ID expected to match the Slider ID (else we'd need to store them both, which is also possible)
+		assert(c.ActiveId == id)
+		c.ScalarAsInputTextId = c.ActiveId
+		c.SetHoveredID(id)
+	}
+	if text_value_changed {
+		return DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, "")
+	}
+
 	return false
 }

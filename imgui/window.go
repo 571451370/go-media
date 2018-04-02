@@ -1974,3 +1974,8 @@ func (c *Context) FocusableItemRegisterEx(window *Window, id ID, tab_stop bool) 
 
 	return false
 }
+
+func (c *Context) FocusableItemUnregister(window *Window) {
+	window.FocusIdxAllCounter--
+	window.FocusIdxTabCounter--
+}

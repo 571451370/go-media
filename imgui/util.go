@@ -261,3 +261,35 @@ func ParseFormatPrecision(format string, default_precision int) int {
 	}
 	return precision
 }
+
+func DataTypeFormatString(data interface{}, decimal_precision int) string {
+	switch v := data.(type) {
+	case int:
+		if decimal_precision < 0 {
+			return fmt.Sprintf("%d", v)
+		} else {
+			return fmt.Sprintf("%.*d", v)
+		}
+	case float32:
+		// Ideally we'd have a minimum decimal precision of 1 to visually denote that it is a float, while hiding non-significant digits?
+		if decimal_precision < 0 {
+			return fmt.Sprintf("%f", v)
+		} else {
+			return fmt.Sprintf("%.*f", v)
+		}
+	case float64:
+		if decimal_precision < 0 {
+			return fmt.Sprintf("%f", v)
+		} else {
+			return fmt.Sprintf("%.*f", v)
+		}
+	default:
+		panic("unreachable")
+	}
+}
+
+// User can input math operators (e.g. +100) to edit a numerical values.
+// NB: This is _not_ a full expression evaluator. We should probably add one though..
+func DataTypeApplyOpFromText(buf, initial_value_buf string, data interface{}, scalar_format string) bool {
+	return false
+}

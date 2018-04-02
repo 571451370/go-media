@@ -191,3 +191,11 @@ func (c *Context) LogText(text string) {
 
 func (c *Context) LogRenderedText(text string) {
 }
+
+func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags) bool {
+	return c.InputTextExCallback(label, buf, size_arg, flags, nil)
+}
+
+func (c *Context) InputTextExCallback(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback func()) bool {
+	return false
+}
