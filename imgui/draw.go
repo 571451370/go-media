@@ -3116,3 +3116,17 @@ func (c *Context) RenderText(pos f64.Vec2, text string) {
 
 func (c *Context) RenderTextEx(pos f64.Vec2, label string, hide_text_after_hash bool) {
 }
+
+func (d *DrawList) AddCircle(centre f64.Vec2, radius float64, col color.RGBA) {
+	d.AddCircleEx(centre, radius, col, 12, 1)
+}
+
+func (d *DrawList) AddCircleEx(centre f64.Vec2, radius float64, col color.RGBA, num_segments int, thickness float64) {
+	if col.A == 0 {
+		return
+	}
+
+	a_max := math.Pi * 2.0 * float64(num_segments-1) / float64(num_segments)
+	d.PathArcTo(centre, radius-0.5, 0.0, a_max, num_segments)
+	d.PathStrokeEx(col, true, thickness)
+}

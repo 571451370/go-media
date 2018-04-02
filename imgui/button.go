@@ -447,3 +447,91 @@ func (c *Context) PushButtonRepeat(repeat bool) {
 func (c *Context) PopButtonRepeat() {
 	c.PopItemFlag()
 }
+
+func (c *Context) RadioButton(label string, active bool) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	id := window.GetID(label)
+	label_size := c.CalcTextSizeEx(label, true, -1)
+	check_bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(f64.Vec2{
+			label_size.Y + style.FramePadding.Y*2 - 1,
+			label_size.Y + style.FramePadding.Y*2 - 1,
+		}),
+	}
+	c.ItemSizeBBEx(check_bb, style.FramePadding.Y)
+
+	total_bb := check_bb
+	if label_size.X > 0 {
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+	}
+
+	text_bb := f64.Rectangle{
+		window.DC.CursorPos.Add(f64.Vec2{0, style.FramePadding.Y}),
+		window.DC.CursorPos.Add(f64.Vec2{0, style.FramePadding.Y}.Add(label_size)),
+	}
+	if label_size.X > 0 {
+		c.ItemSizeEx(f64.Vec2{text_bb.Dx(), check_bb.Dy()}, style.FramePadding.Y)
+		total_bb = total_bb.Union(text_bb)
+	}
+
+	if !c.ItemAdd(total_bb, id) {
+		return false
+	}
+
+	center := check_bb.Center()
+	center.X = float64(int(center.X + 0.5))
+	center.Y = float64(int(center.Y + 0.5))
+	radius := check_bb.Dy() * 0.5
+
+	hovered, held, pressed := c.ButtonBehavior(total_bb, id, 0)
+
+	var col color.RGBA
+	switch {
+	case hovered && held:
+		col = c.GetColorFromStyle(ColFrameBgActive)
+	case hovered:
+		col = c.GetColorFromStyle(ColFrameBgHovered)
+	default:
+		col = c.GetColorFromStyle(ColFrameBg)
+	}
+
+	c.RenderNavHighlight(total_bb, id)
+	window.DrawList.AddCircleFilledEx(center, radius, col, 16)
+	if active {
+		check_sz := math.Min(check_bb.Dx(), check_bb.Dy())
+		pad := math.Max(1.0, float64(int(check_sz/6.0)))
+		window.DrawList.AddCircleFilledEx(center, radius-pad, c.GetColorFromStyle(ColCheckMark), 16)
+	}
+
+	if style.FrameBorderSize > 0.0 {
+		window.DrawList.AddCircleEx(center.Add(f64.Vec2{1, 1}), radius, c.GetColorFromStyle(ColBorderShadow), 16, style.FrameBorderSize)
+		window.DrawList.AddCircleEx(center, radius, c.GetColorFromStyle(ColBorder), 16, style.FrameBorderSize)
+	}
+
+	if c.LogEnabled {
+		if active {
+			c.LogRenderedText(&text_bb.Min, "(x)")
+		} else {
+			c.LogRenderedText(&text_bb.Min, "( )")
+		}
+	}
+	if label_size.X > 0.0 {
+		c.RenderText(text_bb.Min, label)
+	}
+
+	return pressed
+}
+
+func (c *Context) RadioButtonEx(label string, v *int, v_button int) bool {
+	pressed := c.RadioButton(label, *v == v_button)
+	if pressed {
+		*v = v_button
+	}
+	return pressed
+}
