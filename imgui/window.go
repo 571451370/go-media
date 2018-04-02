@@ -1938,3 +1938,39 @@ func (s *WindowSettings) Init() {
 	s.Size = f64.Vec2{0, 0}
 	s.Collapsed = false
 }
+
+func (c *Context) FocusableItemRegister(window *Window, id ID) bool {
+	return c.FocusableItemRegisterEx(window, id, true)
+}
+
+func (c *Context) FocusableItemRegisterEx(window *Window, id ID, tab_stop bool) bool {
+	allow_keyboard_focus := window.DC.ItemFlags&(ItemFlagsAllowKeyboardFocus|ItemFlagsDisabled) == ItemFlagsAllowKeyboardFocus
+	window.FocusIdxAllCounter++
+	if allow_keyboard_focus {
+		window.FocusIdxTabCounter++
+	}
+
+	// Process keyboard input at this point: TAB/Shift-TAB to tab out of the currently focused item.
+	// Note that we can always TAB out of a widget that doesn't allow tabbing in.
+	if tab_stop && (c.ActiveId == id) && window.FocusIdxAllRequestNext == math.MaxInt32 && window.FocusIdxTabRequestNext == math.MaxInt32 && !c.IO.KeyCtrl && c.IsKeyPressedMap(KeyTab) {
+		// Modulo on index will be applied at the end of frame once we've got the total counter of items.
+		shift := 1
+		if allow_keyboard_focus {
+			shift = -1
+		} else {
+			shift = 0
+		}
+		window.FocusIdxTabRequestNext = window.FocusIdxTabCounter + shift
+	}
+
+	if window.FocusIdxAllCounter == window.FocusIdxAllRequestCurrent {
+		return true
+	}
+
+	if allow_keyboard_focus && window.FocusIdxTabCounter == window.FocusIdxTabRequestCurrent {
+		c.NavJustTabbedId = id
+		return true
+	}
+
+	return false
+}

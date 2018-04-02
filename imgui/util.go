@@ -3,6 +3,8 @@ package imgui
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -219,4 +221,43 @@ func (c *stbCompress) Decompress(output, input []byte) error {
 	}
 
 	return nil
+}
+
+// Parse display precision back from the display format string
+func ParseFormatPrecision(format string, default_precision int) int {
+	precision := default_precision
+	for {
+		n := strings.IndexRune(format, '%')
+		if n < 0 {
+			break
+		}
+		format = format[n:]
+
+		// Ignore "%%"
+		if strings.HasPrefix(format, "%") {
+			format = format[1:]
+			continue
+		}
+
+		for ; len(format) > 0; format = format[1:] {
+			if !('0' <= format[0] && format[0] <= '9') {
+				break
+			}
+		}
+
+		if strings.HasPrefix(format, ".") {
+			format = format[1:]
+			precision, _ = strconv.Atoi(format)
+			if precision < 0 || precision > 10 {
+				precision = default_precision
+			}
+		}
+
+		// Maximum precision with scientific notation
+		if strings.HasPrefix(format, "e") || strings.HasPrefix(format, "E") {
+			precision = -1
+		}
+		break
+	}
+	return precision
 }

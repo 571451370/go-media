@@ -384,7 +384,7 @@ func (c *Context) NewFrame() {
 
 	// Pressing TAB activate widget focus
 	if c.ActiveId == 0 && c.NavWindow != nil && c.NavWindow.Active && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0 &&
-		!c.IO.KeyCtrl && c.IsKeyPressedMap(KeyTab, false) {
+		!c.IO.KeyCtrl && c.IsKeyPressedMapEx(KeyTab, false) {
 		if c.NavId != 0 && c.NavIdTabCounter != math.MaxInt32 {
 			c.NavWindow.FocusIdxTabRequestNext = c.NavIdTabCounter + 1
 			if c.IO.KeyShift {
@@ -1628,7 +1628,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 	if d.Flags&DrawListFlagsAntiAliasedLines != 0 {
 		// Anti-aliased stroke
 		const AA_SIZE = 1.0
-		col_trans := col.A
+		col_trans := color.RGBA{col.R, col.G, col.B, 0}
 
 		idx_count := count * 12
 		vtx_count := points_count * 3
@@ -1720,10 +1720,10 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				_VtxWritePtr[0].Col = chroma.RGBA32(col)
 				_VtxWritePtr[1].Pos = p1
 				_VtxWritePtr[1].UV = t0
-				_VtxWritePtr[1].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+				_VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
 				_VtxWritePtr[2].Pos = p2
 				_VtxWritePtr[2].UV = t0
-				_VtxWritePtr[2].Col = chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+				_VtxWritePtr[2].Col = chroma.RGBA32(col_trans)
 				d._VtxWritePtr += 3
 			}
 		} else {
@@ -1793,7 +1793,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 
 			// Add vertexes
 
-			col_trans_32 := chroma.RGBA32(color.RGBA{0, 0, 0, col_trans})
+			col_trans_32 := chroma.RGBA32(col_trans)
 			col_32 := chroma.RGBA32(col)
 			for i := 0; i < points_count; i++ {
 				p0 := f32.Vec2{float32(temp_points[i*4+0].X), float32(temp_points[i*4+0].Y)}
@@ -2380,7 +2380,7 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 	if d.Flags&DrawListFlagsAntiAliasedFill != 0 {
 		// Anti-aliased Fill
 		const AA_SIZE = 1.0
-		col_trans := color.RGBA{0, 0, 0, col.A}
+		col_trans := color.RGBA{col.R, col.G, col.B, 0}
 		idx_count := (points_count-2)*3 + points_count*6
 		vtx_count := (points_count * 2)
 		d.PrimReserve(idx_count, vtx_count)
@@ -3065,4 +3065,11 @@ func (d *DrawListSharedData) Init() {
 		a := float64(i) * 2 * math.Pi / float64(len(d.CircleVtx12))
 		d.CircleVtx12[i] = f64.Vec2{math.Cos(a), math.Sin(a)}
 	}
+}
+
+func (c *Context) RenderText(pos f64.Vec2, text string) {
+	c.RenderTextEx(pos, text, true)
+}
+
+func (c *Context) RenderTextEx(pos f64.Vec2, label string, hide_text_after_hash bool) {
 }

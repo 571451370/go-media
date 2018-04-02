@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -11,6 +12,15 @@ type SliderFlags int
 
 const (
 	SliderFlagsVertical SliderFlags = 1 << 0
+)
+
+type DataType int
+
+const (
+	DataTypeInt = iota
+	DataTypeFloat
+	DataTypeDouble
+	DataTypeCOUNT
 )
 
 func (c *Context) SliderBehaviorCalcRatioFromValue(v, v_min, v_max, power, linear_zero_pos float64) float64 {
@@ -226,4 +236,91 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 	window.DrawList.AddRectFilledEx(grab_bb.Min, grab_bb.Max, col, style.GrabRounding, DrawCornerFlagsAll)
 
 	return value_changed
+}
+
+func (c *Context) SliderFloat(label string, v *float64, v_min, v_max float64) bool {
+	return c.SliderFloatEx(label, v, v_min, v_max, "%.3f", 1.0)
+}
+
+// Use power!=1.0 for logarithmic sliders.
+// Adjust display_format to decorate the value with a prefix or a suffix.
+//   "%.3f"         1.234
+//   "%5.2f secs"   01.23 secs
+//   "Gold: %.0f"   Gold: 1
+func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, display_format string, power float64) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := c.Style
+	id := window.GetID(label)
+	w := c.CalcItemWidth()
+
+	label_size := c.CalcTextSizeEx(label, true, -1.0)
+	frame_bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(f64.Vec2{w, label_size.Y + style.FramePadding.Y*2.0}),
+	}
+	x := 0.0
+	if label_size.X > 0 {
+		x = style.ItemInnerSpacing.X + label_size.X
+	}
+	total_bb := f64.Rectangle{
+		frame_bb.Min,
+		frame_bb.Max.Add(f64.Vec2{x, 0}),
+	}
+
+	// NB- we don't call ItemSize() yet because we may turn into a text edit box below
+	if !c.ItemAddEx(total_bb, id, &frame_bb) {
+		c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
+		return false
+	}
+
+	hovered := c.ItemHoverable(frame_bb, id)
+	if display_format == "" {
+		display_format = "%.3f"
+	}
+	decimal_precision := ParseFormatPrecision(display_format, 3)
+
+	// Tabbing or CTRL-clicking on Slider turns it into an input box
+	start_text_input := false
+	tab_focus_requested := c.FocusableItemRegister(window, id)
+	if tab_focus_requested || (hovered && c.IO.MouseClicked[0]) || c.NavActivateId == id || (c.NavInputId == id && c.ScalarAsInputTextId != id) {
+		c.SetActiveID(id, window)
+		c.SetFocusID(id, window)
+		c.FocusWindow(window)
+		c.ActiveIdAllowNavDirFlags = 1<<uint(DirUp) | 1<<uint(DirDown)
+		if tab_focus_requested || c.IO.KeyCtrl || c.NavInputId == id {
+			start_text_input = true
+			c.ScalarAsInputTextId = 0
+		}
+	}
+
+	if start_text_input || (c.ActiveId == id && c.ScalarAsInputTextId == id) {
+		return c.InputScalarAsWidgetReplacement(frame_bb, label, DataTypeFloat, v, id, decimal_precision)
+	}
+
+	// Actual slider behavior + render grab
+	c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
+	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, 0)
+
+	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+	value_buf := fmt.Sprintf(display_format, *v)
+	c.RenderTextClippedEx(frame_bb.Min, frame_bb.Max, value_buf, nil, f64.Vec2{0.5, 0.5}, nil)
+	if label_size.X > 0.0 {
+		c.RenderText(f64.Vec2{
+			frame_bb.Max.X + style.ItemInnerSpacing.X,
+			frame_bb.Min.Y + style.FramePadding.Y},
+			label,
+		)
+	}
+
+	return value_changed
+}
+
+// Create text input in place of a slider (when CTRL+Clicking on slider)
+// FIXME: Logic is messy and confusing.
+func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label string, data_type DataType, data_ptr interface{}, id ID, decimal_precision int) bool {
+	return false
 }

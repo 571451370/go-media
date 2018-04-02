@@ -128,7 +128,11 @@ func (c *Context) PopAllowKeyboardFocus() {
 	c.PopItemFlag()
 }
 
-func (c *Context) IsKeyPressedMap(key Key, repeat bool) bool {
+func (c *Context) IsKeyPressedMap(key Key) bool {
+	return c.IsKeyPressedMapEx(key, true)
+}
+
+func (c *Context) IsKeyPressedMapEx(key Key, repeat bool) bool {
 	key_index := c.IO.KeyMap[key]
 	if key_index >= 0 {
 		return c.IsKeyPressed(key_index, repeat)
