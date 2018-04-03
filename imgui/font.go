@@ -1,9 +1,12 @@
 package imgui
 
 import (
+	"image/color"
 	"math"
+	"unicode"
 	"unicode/utf8"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/math/mathutil"
 )
@@ -467,4 +470,193 @@ func (f *Font) AddRemapChar(dst, src rune, overwrite_dst bool) {
 		f.IndexLookup[dst] = f.IndexLookup[src]
 		f.IndexAdvanceX[dst] = f.IndexAdvanceX[src]
 	}
+}
+
+func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col color.RGBA, clip_rect f64.Vec4, text string, wrap_width float64, cpu_fine_clip bool) {
+	// Align to be pixel perfect
+	pos.X = float64(int(pos.X)) + f.DisplayOffset.X
+	pos.Y = float64(int(pos.Y)) + f.DisplayOffset.Y
+	x := pos.X
+	y := pos.Y
+	if y > clip_rect.W {
+		return
+	}
+
+	scale := size / f.FontSize
+	line_height := f.FontSize * scale
+	word_wrap_enabled := (wrap_width > 0.0)
+	word_wrap_eol := -1
+	word_wrap_pos := -1
+
+	// Skip non-visible lines
+	s := 0
+	if !word_wrap_enabled && y+line_height < clip_rect.Y {
+		// Fast-forward to next line
+		if s < len(text) && text[s] != '\n' {
+			s++
+		}
+	}
+
+	// Reserve vertices for remaining worse case (over-reserving is useful and easily amortized)
+	vtx_count_max := (len(text) - s) * 4
+	idx_count_max := (len(text) - s) * 6
+	idx_expected_size := len(draw_list.IdxBuffer) + idx_count_max
+	draw_list.PrimReserve(idx_count_max, vtx_count_max)
+
+	vtx_write_idx := draw_list._VtxWritePtr
+	idx_write_idx := draw_list._IdxWritePtr
+	vtx_current_idx := draw_list._VtxCurrentIdx
+
+	for s < len(text) {
+		if word_wrap_enabled {
+			// Calculate how far we can render. Requires two passes on the string data but keeps the code simple and not intrusive for what's essentially an uncommon feature.
+			if word_wrap_eol == -1 {
+				word_wrap_eol = f.CalcWordWrapPositionA(scale, text[s:], wrap_width-(x-pos.X))
+				word_wrap_pos = s
+				// Wrap_width is too small to fit anything. Force displaying 1 character to minimize the height discontinuity.
+				if word_wrap_eol == 0 {
+					// +1 may not be a character start point in UTF-8 but it's ok because we use s >= word_wrap_eol below
+					word_wrap_eol++
+				}
+			}
+
+			if s >= word_wrap_pos+word_wrap_eol {
+				x = pos.X
+				y += line_height
+				word_wrap_eol = -1
+
+				// Wrapping skips upcoming blanks
+				for s < len(text) {
+					c := rune(text[s])
+					if c == '\n' {
+						s++
+						break
+					} else if unicode.IsSpace(c) {
+						s++
+					} else {
+						break
+					}
+				}
+				continue
+			}
+		}
+
+		// Decode and advance source
+		c, size := utf8.DecodeRuneInString(text[s:])
+		s += size
+
+		if c == '\n' {
+			x = pos.X
+			y += line_height
+
+			if y > clip_rect.W {
+				break
+			}
+			if !word_wrap_enabled && y+line_height < clip_rect.Y {
+				// Fast-forward to next line
+				for s < len(text) && text[s] != '\n' {
+					s++
+				}
+			}
+			continue
+		}
+		if c == '\r' {
+			continue
+		}
+
+		char_width := 0.0
+		glyph := f.FindGlyph(c)
+		if glyph != nil {
+			char_width = glyph.AdvanceX * scale
+
+			// Arbitrarily assume that both space and tabs are empty glyphs as an optimization
+			if c != ' ' && c != '\t' {
+				// We don't do a second finer clipping test on the Y axis as we've already skipped anything before clip_rect.y and exit once we pass clip_rect.w
+				x1 := x + glyph.X0*scale
+				x2 := x + glyph.X1*scale
+				y1 := y + glyph.Y0*scale
+				y2 := y + glyph.Y1*scale
+				if x1 <= clip_rect.Z && x2 >= clip_rect.X {
+					// Render a character
+					u1 := glyph.U0
+					v1 := glyph.V0
+					u2 := glyph.U1
+					v2 := glyph.V1
+
+					// CPU side clipping used to fit text in their frame when the frame is too small. Only does clipping for axis aligned quads.
+					if cpu_fine_clip {
+						if x1 < clip_rect.X {
+							u1 = u1 + (1.0-(x2-clip_rect.X)/(x2-x1))*(u2-u1)
+							x1 = clip_rect.X
+						}
+
+						if y1 < clip_rect.Y {
+							v1 = v1 + (1.0-(y2-clip_rect.Y)/(y2-y1))*(v2-v1)
+							y1 = clip_rect.Y
+						}
+
+						if x2 > clip_rect.Z {
+							u2 = u1 + ((clip_rect.Z-x1)/(x2-x1))*(u2-u1)
+							x2 = clip_rect.Z
+						}
+
+						if y2 > clip_rect.W {
+							v2 = v1 + ((clip_rect.W-y1)/(y2-y1))*(v2-v1)
+							y2 = clip_rect.W
+						}
+
+						if y1 >= y2 {
+							x += char_width
+							continue
+						}
+					}
+
+					// We are NOT calling PrimRectUV() here because non-inlined causes too much overhead in a debug builds. Inlined here:
+					idx_write := draw_list.IdxBuffer[idx_write_idx:]
+					idx_write[0] = DrawIdx(vtx_current_idx)
+					idx_write[1] = DrawIdx(vtx_current_idx + 1)
+					idx_write[2] = DrawIdx(vtx_current_idx + 2)
+					idx_write[3] = DrawIdx(vtx_current_idx)
+					idx_write[4] = DrawIdx(vtx_current_idx + 2)
+					idx_write[5] = DrawIdx(vtx_current_idx + 3)
+
+					col32 := chroma.RGBA32(col)
+					vtx_write := draw_list.VtxBuffer[vtx_write_idx:]
+					vtx_write[0].Pos.X = float32(x1)
+					vtx_write[0].Pos.Y = float32(y1)
+					vtx_write[0].Col = col32
+					vtx_write[0].UV.X = float32(u1)
+					vtx_write[0].UV.Y = float32(v1)
+					vtx_write[1].Pos.X = float32(x2)
+					vtx_write[1].Pos.Y = float32(y1)
+					vtx_write[1].Col = col32
+					vtx_write[1].UV.X = float32(u2)
+					vtx_write[1].UV.Y = float32(v1)
+					vtx_write[2].Pos.X = float32(x2)
+					vtx_write[2].Pos.Y = float32(y2)
+					vtx_write[2].Col = col32
+					vtx_write[2].UV.X = float32(u2)
+					vtx_write[2].UV.Y = float32(v2)
+					vtx_write[3].Pos.X = float32(x1)
+					vtx_write[3].Pos.Y = float32(y2)
+					vtx_write[3].Col = col32
+					vtx_write[3].UV.X = float32(u1)
+					vtx_write[3].UV.Y = float32(v2)
+
+					vtx_write_idx += 4
+					vtx_current_idx += 4
+					idx_write_idx += 6
+				}
+			}
+		}
+		x += char_width
+	}
+
+	// Give back unused vertices
+	draw_list.VtxBuffer = draw_list.VtxBuffer[:vtx_write_idx]
+	draw_list.IdxBuffer = draw_list.IdxBuffer[:idx_write_idx]
+	draw_list.CmdBuffer[len(draw_list.CmdBuffer)-1].ElemCount -= (idx_expected_size - len(draw_list.IdxBuffer))
+	draw_list._VtxWritePtr = vtx_write_idx
+	draw_list._IdxWritePtr = idx_write_idx
+	draw_list._VtxCurrentIdx = len(draw_list.VtxBuffer)
 }

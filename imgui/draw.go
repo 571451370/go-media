@@ -1545,6 +1545,7 @@ func (c *Context) RenderCheckMark(pos f64.Vec2, col color.RGBA, sz float64) {
 	third := sz / 3.0
 	bx := pos.X + third
 	by := pos.Y + sz - third*0.5
+
 	window.DrawList.PathLineTo(f64.Vec2{bx - third, by - third})
 	window.DrawList.PathLineTo(f64.Vec2{bx, by})
 	window.DrawList.PathLineTo(f64.Vec2{bx + third*2, by - third*2})
@@ -1694,7 +1695,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 		for i1 := 0; i1 < count; i1++ {
 			i2 := (i1 + 1) % points_count
 			diff := points[i2].Sub(points[i1])
-			diff.Scale(InvLength(diff, 1))
+			diff = diff.Scale(InvLength(diff, 1))
 			temp_normals[i1].X = diff.Y
 			temp_normals[i1].Y = -diff.X
 		}
@@ -3129,4 +3130,39 @@ func (d *DrawList) AddCircleEx(centre f64.Vec2, radius float64, col color.RGBA, 
 	a_max := math.Pi * 2.0 * float64(num_segments-1) / float64(num_segments)
 	d.PathArcTo(centre, radius-0.5, 0.0, a_max, num_segments)
 	d.PathStrokeEx(col, true, thickness)
+}
+
+func (d *DrawList) AddText(pos f64.Vec2, col color.RGBA, text string) {
+	d.AddTextEx(nil, 0, pos, col, text, 0, nil)
+}
+
+func (d *DrawList) AddTextEx(font *Font, font_size float64, pos f64.Vec2, col color.RGBA, text string, wrap_width float64, cpu_fine_clip_rect *f64.Vec4) {
+	if col.A == 0 {
+		return
+	}
+
+	if len(text) == 0 {
+		return
+	}
+
+	// Pull default font/size from the shared ImDrawListSharedData instance
+	if font == nil {
+		font = d._Data.Font
+	}
+	if font_size == 0 {
+		font_size = d._Data.FontSize
+	}
+
+	// Use high-level ImGui::PushFont() or low-level ImDrawList::PushTextureId() to change font.
+	assert(font.ContainerAtlas.TexID == d._TextureIdStack[len(d._TextureIdStack)-1])
+
+	clip_rect := d._ClipRectStack[len(d._ClipRectStack)-1]
+	if cpu_fine_clip_rect != nil {
+		clip_rect.X = math.Max(clip_rect.X, cpu_fine_clip_rect.X)
+		clip_rect.Y = math.Max(clip_rect.Y, cpu_fine_clip_rect.Y)
+		clip_rect.Z = math.Min(clip_rect.Z, cpu_fine_clip_rect.Z)
+		clip_rect.W = math.Min(clip_rect.W, cpu_fine_clip_rect.W)
+	}
+
+	font.RenderText(d, font_size, pos, col, clip_rect, text, wrap_width, cpu_fine_clip_rect != nil)
 }

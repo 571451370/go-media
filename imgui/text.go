@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -100,9 +101,62 @@ func (c *Context) FindRenderedTextEnd(text string) int {
 }
 
 func (c *Context) Text(format string, args ...interface{}) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	text := fmt.Sprintf(format, args...)
+	c.TextUnformatted(text)
 }
 
 func (c *Context) TextUnformatted(text string) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	text_pos := f64.Vec2{
+		window.DC.CursorPos.X,
+		window.DC.CursorPos.Y + window.DC.CurrentLineTextBaseOffset,
+	}
+	wrap_pos_x := window.DC.TextWrapPos
+	wrap_enabled := wrap_pos_x >= 0.0
+
+	if len(text) > 2000 && !wrap_enabled {
+		// Long text!
+		// Perform manual coarse clipping to optimize for long multi-line text
+		// From this point we will only compute the width of lines that are visible. Optimization only available when word-wrapping is disabled.
+		// We also don't vertically center the text within the line full height, which is unlikely to matter because we are likely the biggest and only item on the line.
+		// TODO
+	} else {
+		wrap_width := 0.0
+		if wrap_enabled {
+			wrap_width = c.CalcWrapWidthForPos(window.DC.CursorPos, wrap_pos_x)
+		}
+		text_size := c.CalcTextSizeEx(text, false, wrap_width)
+
+		// Account of baseline offset
+		bb := f64.Rectangle{text_pos, text_pos.Add(text_size)}
+		c.ItemSize(text_size)
+		if !c.ItemAdd(bb, 0) {
+			return
+		}
+
+		// Render (we don't hide text after ## in this end-user function)
+		c.RenderTextWrapped(bb.Min, text, wrap_width)
+	}
+}
+
+func (c *Context) RenderTextWrapped(pos f64.Vec2, text string, wrap_width float64) {
+	window := c.CurrentWindow
+
+	if len(text) > 0 {
+		window.DrawList.AddTextEx(c.Font, c.FontSize, pos, c.GetColorFromStyle(ColText), text, wrap_width, nil)
+		if c.LogEnabled {
+			c.LogRenderedText(&pos, text)
+		}
+	}
 }
 
 // Horizontal separating line.
