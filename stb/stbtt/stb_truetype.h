@@ -3737,11 +3737,13 @@ static void stbrp_init_target(stbrp_context *con, int pw, int ph, stbrp_node *no
    STBTT__NOTUSED(nodes);
    STBTT__NOTUSED(num_nodes);   
 }
-
+#include <stdio.h>
 static void stbrp_pack_rects(stbrp_context *con, stbrp_rect *rects, int num_rects)
 {
    int i;
    for (i=0; i < num_rects; ++i) {
+   	printf("packing %d %d\n", con->x, con->y);
+
       if (con->x + rects[i].w > con->width) {
          con->x = 0;
          con->y = con->bottom_y;

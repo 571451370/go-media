@@ -1,6 +1,9 @@
 package stbtt
 
 /*
+#define STBRP_LARGE_RECTS 1
+#define STB_RECT_PACK_IMPLEMENTATION
+#include "stb_rect_pack.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
@@ -209,6 +212,10 @@ func GetFontOffsetForIndex(data []byte, index int) int {
 
 func GetNumberOfFonts(data []byte) int {
 	return int(C.stbtt_GetNumberOfFonts((*C.uchar)(&data[0])))
+}
+
+func (r *Rect) ID() int {
+	return int(r.id)
 }
 
 func (r *Rect) X() int {

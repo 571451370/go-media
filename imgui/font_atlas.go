@@ -126,11 +126,11 @@ func (f *FontAtlas) GetTexDataAsRGBA32() (out_pixels []byte, out_width, out_heig
 	if f.TexPixelsRGBA32 == nil {
 		pixels, _, _, _ := f.GetTexDataAsAlpha8()
 		f.TexPixelsRGBA32 = make([]byte, f.TexWidth*f.TexHeight*4)
-		for i := 0; i < f.TexWidth*f.TexHeight; i += 4 {
-			f.TexPixelsRGBA32[i+0] = 255
-			f.TexPixelsRGBA32[i+1] = 255
-			f.TexPixelsRGBA32[i+2] = 255
-			f.TexPixelsRGBA32[i+3] = pixels[i/4]
+		for i := 0; i < f.TexWidth*f.TexHeight; i++ {
+			f.TexPixelsRGBA32[i*4+0] = 255
+			f.TexPixelsRGBA32[i*4+1] = 255
+			f.TexPixelsRGBA32[i*4+2] = 255
+			f.TexPixelsRGBA32[i*4+3] = pixels[i]
 		}
 	}
 
@@ -403,6 +403,7 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		tmp := &tmp_array[input_i]
 		spc.SetOversampling(uint(cfg.OversampleH), uint(cfg.OversampleV))
 		spc.FontRangesRenderIntoRects(tmp.FontInfo, tmp.Ranges, tmp.Rects)
+
 		if cfg.RasterizerMultiply != 1.0 {
 			var multiply_table [256]byte
 			f.BuildMultiplyCalcLookupTable(multiply_table[:], cfg.RasterizerMultiply)
@@ -446,7 +447,6 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		f.BuildSetupFont(dst_font, cfg, ascent, descent)
 		off_x := cfg.GlyphOffset.X
 		off_y := cfg.GlyphOffset.Y + float64(int(dst_font.Ascent+0.5))
-
 		for i := range tmp.Ranges {
 			range_ := tmp.Ranges[i]
 			for char_idx := 0; char_idx < range_.NumChars(); char_idx += 1 {
@@ -471,7 +471,6 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	}
 
 	f.BuildFinish()
-
 	return nil
 }
 
