@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"image/color"
 	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -95,7 +96,11 @@ func (c *Context) EndMenuBar() {
 	window.DC.MenuBarAppending = false
 }
 
-func (c *Context) BeginMenu(label string, enabled bool) bool {
+func (c *Context) BeginMenu(label string) bool {
+	return c.BeginMenuEx(label, true)
+}
+
+func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -257,14 +262,223 @@ func (c *Context) BeginMenu(label string, enabled bool) bool {
 	return menu_is_open
 }
 
-// Tip: pass an empty label (e.g. "##dummy") then you can use the space to draw other text or image.
-// But you need to make sure the ID is unique, e.g. enclose calls in PushID/PopID.
 func (c *Context) Selectable(label string, selected bool, flags SelectableFlags, size_arg f64.Vec2) bool {
 	return c.SelectableEx(label, selected, 0, f64.Vec2{0, 0})
 }
 
+// Tip: pass an empty label (e.g. "##dummy") then you can use the space to draw other text or image.
+// But you need to make sure the ID is unique, e.g. enclose calls in PushID/PopID.
 func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlags, size_arg f64.Vec2) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+
+	// FIXME-OPT: Avoid if vertically clipped.
+	if flags&SelectableFlagsSpanAllColumns != 0 && window.DC.ColumnsSet != nil {
+		c.PopClipRect()
+	}
+
+	id := window.GetID(label)
+	label_size := c.CalcTextSizeEx(label, true, -1)
+	size := label_size
+	if size_arg.X != 0 {
+		size.X = size_arg.X
+	}
+	if size_arg.Y != 0 {
+		size.Y = size_arg.Y
+	}
+	pos := window.DC.CursorPos
+	pos.Y += window.DC.CurrentLineTextBaseOffset
+	bb := f64.Rectangle{pos, pos.Add(size)}
+	c.ItemSizeBB(bb)
+
+	// Fill horizontal space.
+	window_padding := window.WindowPadding
+	var max_x float64
+	if flags&SelectableFlagsSpanAllColumns != 0 {
+		max_x = c.GetWindowContentRegionMax().X
+	} else {
+		max_x = c.GetContentRegionMax().X
+	}
+	w_draw := math.Max(label_size.X, window.Pos.X+max_x-window_padding.X-window.DC.CursorPos.X)
+	size_draw := f64.Vec2{w_draw, 0}
+	if size_arg.X != 0 && flags&SelectableFlagsDrawFillAvailWidth == 0 {
+		size_draw.X = size_arg.X
+	}
+	if size_arg.Y != 0 {
+		size_draw.Y = size_arg.Y
+	}
+	bb_with_spacing := f64.Rectangle{pos, pos.Add(size_draw)}
+	if size_arg.X == 0.0 || flags&SelectableFlagsDrawFillAvailWidth != 0 {
+		bb_with_spacing.Max.X += window_padding.X
+	}
+
+	// Selectables are tightly packed together, we extend the box to cover spacing between selectable.
+	spacing_L := float64((int)(style.ItemSpacing.X * 0.5))
+	spacing_U := float64((int)(style.ItemSpacing.Y * 0.5))
+	spacing_R := style.ItemSpacing.X - spacing_L
+	spacing_D := style.ItemSpacing.Y - spacing_U
+	bb_with_spacing.Min.X -= spacing_L
+	bb_with_spacing.Min.Y -= spacing_U
+	bb_with_spacing.Max.X += spacing_R
+	bb_with_spacing.Max.Y += spacing_D
+
+	select_id := id
+	if flags&SelectableFlagsDisabled != 0 {
+		select_id = 0
+	}
+	if !c.ItemAdd(bb_with_spacing, select_id) {
+		if flags&SelectableFlagsSpanAllColumns != 0 && window.DC.ColumnsSet != nil {
+			c.PushColumnClipRect()
+		}
+		return false
+	}
+
+	var button_flags ButtonFlags
+	if flags&SelectableFlagsMenu != 0 {
+		button_flags |= ButtonFlagsPressedOnClick | ButtonFlagsNoHoldingActiveID
+	}
+	if flags&SelectableFlagsMenuItem != 0 {
+		button_flags |= ButtonFlagsPressedOnRelease
+	}
+	if flags&SelectableFlagsDisabled != 0 {
+		button_flags |= ButtonFlagsDisabled
+	}
+	if flags&SelectableFlagsAllowDoubleClick != 0 {
+		button_flags |= ButtonFlagsPressedOnClickRelease | ButtonFlagsPressedOnDoubleClick
+	}
+	hovered, held, pressed := c.ButtonBehavior(bb_with_spacing, id, button_flags)
+	if flags&SelectableFlagsDisabled != 0 {
+		selected = false
+	}
+
+	// Hovering selectable with mouse updates NavId accordingly so navigation can be resumed with gamepad/keyboard (this doesn't happen on most widgets)
+	if pressed || hovered {
+		if !c.NavDisableMouseHover && c.NavWindow == window && c.NavLayer == window.DC.NavLayerActiveMask {
+			c.NavDisableHighlight = true
+			c.SetNavID(id, window.DC.NavLayerCurrent)
+		}
+	}
+
+	// Render
+	if hovered || selected {
+		var col color.RGBA
+		switch {
+		case held && hovered:
+			col = c.GetColorFromStyle(ColHeaderActive)
+		case hovered:
+			col = c.GetColorFromStyle(ColHeaderHovered)
+		default:
+			col = c.GetColorFromStyle(ColHeader)
+		}
+		c.RenderFrameEx(bb_with_spacing.Min, bb_with_spacing.Max, col, false, 0.0)
+		c.RenderNavHighlightEx(bb_with_spacing, id, NavHighlightFlagsTypeThin|NavHighlightFlagsNoRounding)
+	}
+
+	if flags&SelectableFlagsSpanAllColumns != 0 && window.DC.ColumnsSet != nil {
+		c.PushColumnClipRect()
+		bb_with_spacing.Max.X -= (c.GetContentRegionMax().X - max_x)
+	}
+
+	if flags&SelectableFlagsDisabled != 0 {
+		c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+	}
+	c.RenderTextClippedEx(bb.Min, bb_with_spacing.Max, label, &label_size, f64.Vec2{0.0, 0.0}, nil)
+	if flags&SelectableFlagsDisabled != 0 {
+		c.PopStyleColor()
+	}
+
+	// Automatically close popups
+	if pressed && (window.Flags&WindowFlagsPopup) != 0 && flags&SelectableFlagsDontClosePopups == 0 && window.DC.ItemFlags&ItemFlagsSelectableDontClosePopup == 0 {
+		c.CloseCurrentPopup()
+	}
+
+	return pressed
+}
+
+func (c *Context) MenuItem(label, shortcut string, p_selected *bool) bool {
+	return c.MenuItemEx(label, shortcut, p_selected, true)
+}
+
+func (c *Context) MenuItemEx(label, shortcut string, p_selected *bool, enable bool) bool {
+	selected := false
+	if p_selected != nil {
+		selected = *p_selected
+	}
+	if c.MenuItemSelectEx(label, shortcut, selected, enable) {
+		if p_selected != nil {
+			*p_selected = !*p_selected
+		}
+		return true
+	}
 	return false
+}
+
+func (c *Context) MenuItemSelect(label, shortcut string, selected bool) bool {
+	return c.MenuItemSelectEx(label, shortcut, selected, true)
+}
+
+func (c *Context) MenuItemSelectEx(label, shortcut string, selected, enabled bool) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	pos := window.DC.CursorPos
+	label_size := c.CalcTextSizeEx(label, true, -1)
+
+	flags := SelectableFlagsMenuItem
+	if !enabled {
+		flags |= SelectableFlagsDisabled
+	}
+	var pressed bool
+	if window.DC.LayoutType == LayoutTypeHorizontal {
+		// Mimic the exact layout spacing of BeginMenu() to allow MenuItem() inside a menu bar, which is a little misleading but may be useful
+		// Note that in this situation we render neither the shortcut neither the selected tick mark
+		w := label_size.X
+		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * 0.5))
+		c.PushStyleVar(StyleVarItemSpacing, style.ItemSpacing.Scale(2.0))
+		pressed = c.Selectable(label, false, flags, f64.Vec2{w, 0.0})
+		c.PopStyleVar()
+		// -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
+		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * (-1.0 + 0.5)))
+	} else {
+		shortcut_size := f64.Vec2{0, 0}
+		if shortcut != "" {
+			shortcut_size = c.CalcTextSize(shortcut)
+		}
+		// Feedback for next frame
+		w := window.MenuColumns.DeclColumns(label_size.X, shortcut_size.X, float64(int(c.FontSize*1.20)))
+		extra_w := math.Max(0.0, c.GetContentRegionAvail().X-w)
+		pressed = c.Selectable(label, false, flags|SelectableFlagsDrawFillAvailWidth, f64.Vec2{w, 0.0})
+		if shortcut_size.X > 0.0 {
+			c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+			c.RenderTextEx(pos.Add(f64.Vec2{window.MenuColumns.Pos[1] + extra_w, 0.0}), shortcut, false)
+			c.PopStyleColor()
+		}
+		var col color.RGBA
+		if enabled {
+			col = c.GetColorFromStyle(ColText)
+		} else {
+			col = c.GetColorFromStyle(ColTextDisabled)
+		}
+		if selected {
+			c.RenderCheckMark(
+				pos.Add(f64.Vec2{
+					window.MenuColumns.Pos[2] + extra_w + c.FontSize*0.40,
+					c.FontSize * 0.134 * 0.5,
+				}),
+				col,
+				c.FontSize*0.866,
+			)
+		}
+	}
+
+	return pressed
 }
 
 func (c *Context) EndMenu() {

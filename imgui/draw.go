@@ -441,7 +441,8 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	// Find or create
 	style := &c.Style
 	window := c.FindWindowByName(name)
-	if window == nil {
+	window_just_created := window == nil
+	if window_just_created {
 		// Any condition flag will do since we are creating a new window here.
 		var size_on_first_use f64.Vec2
 		if c.NextWindowData.SizeCond != 0 {
@@ -641,7 +642,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			window.HiddenFrames--
 		}
 
-		if flags&(WindowFlagsPopup|WindowFlagsTooltip) != 0 && window_just_activated_by_user {
+		if window_just_activated_by_user && flags&(WindowFlagsPopup|WindowFlagsTooltip) != 0 {
 			window.HiddenFrames = 1
 			if flags&WindowFlagsAlwaysAutoResize != 0 {
 				if !window_size_x_set_by_api {
@@ -654,6 +655,11 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 				}
 				window.SizeContents = f64.Vec2{0, 0}
 			}
+		}
+
+		// Hide new windows for one frame until they calculate their size
+		if window_just_created && (!window_size_x_set_by_api || !window_size_y_set_by_api) {
+			window.HiddenFrames = 1
 		}
 
 		// Calculate auto-fit size, handle automatic resize
