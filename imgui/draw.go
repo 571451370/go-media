@@ -446,8 +446,8 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		var size_on_first_use f64.Vec2
 		if c.NextWindowData.SizeCond != 0 {
 			size_on_first_use = c.NextWindowData.SizeVal
-			window = c.CreateNewWindow(name, size_on_first_use, flags)
 		}
+		window = c.CreateNewWindow(name, size_on_first_use, flags)
 	}
 
 	// Automatically disable manual moving/resizing when NoInputs is set
