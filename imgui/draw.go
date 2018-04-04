@@ -1625,6 +1625,58 @@ func (c *Context) RenderTextClipped(pos_min, pos_max f64.Vec2, text string, text
 }
 
 func (c *Context) RenderTextClippedEx(pos_min, pos_max f64.Vec2, text string, text_size_if_known *f64.Vec2, align f64.Vec2, clip_rect *f64.Rectangle) {
+	// Hide anything after a '##' string
+	n := c.FindRenderedTextEnd(text)
+	text = text[:n]
+	if len(text) == 0 {
+		return
+	}
+
+	window := c.CurrentWindow
+
+	// Perform CPU side clipping for single clipped element to avoid using scissor state
+	pos := pos_min
+
+	var text_size f64.Vec2
+	if text_size_if_known != nil {
+		text_size = *text_size_if_known
+	} else {
+		text_size = c.CalcTextSizeEx(text, false, 0.0)
+	}
+
+	clip_min := pos_min
+	clip_max := pos_max
+	if clip_rect != nil {
+		clip_min = clip_rect.Min
+		clip_max = clip_rect.Max
+	}
+	need_clipping := (pos.X+text_size.X >= clip_max.X) || (pos.Y+text_size.Y >= clip_max.Y)
+	// If we had no explicit clipping rectangle then pos==clip_min
+	if clip_rect != nil {
+		if pos.X < clip_min.X || pos.Y < clip_min.Y {
+			need_clipping = true
+		}
+	}
+
+	// Align whole block. We should defer that to the better rendering function when we'll have support for individual line alignment.
+	if align.X > 0.0 {
+		pos.X = math.Max(pos.X, pos.X+(pos_max.X-pos.X-text_size.X)*align.X)
+	}
+	if align.Y > 0.0 {
+		pos.Y = math.Max(pos.Y, pos.Y+(pos_max.Y-pos.Y-text_size.Y)*align.Y)
+	}
+
+	// Render
+	if need_clipping {
+		fine_clip_rect := f64.Vec4{clip_min.X, clip_min.Y, clip_max.X, clip_max.Y}
+		window.DrawList.AddTextEx(c.Font, c.FontSize, pos, c.GetColorFromStyle(ColText), text, 0.0, &fine_clip_rect)
+	} else {
+		window.DrawList.AddTextEx(c.Font, c.FontSize, pos, c.GetColorFromStyle(ColText), text, 0.0, nil)
+	}
+
+	if c.LogEnabled {
+		c.LogRenderedText(&pos, text)
+	}
 }
 
 func (d *DrawList) PathClear() {
@@ -3115,7 +3167,21 @@ func (c *Context) RenderText(pos f64.Vec2, text string) {
 	c.RenderTextEx(pos, text, true)
 }
 
-func (c *Context) RenderTextEx(pos f64.Vec2, label string, hide_text_after_hash bool) {
+func (c *Context) RenderTextEx(pos f64.Vec2, text string, hide_text_after_hash bool) {
+	window := c.CurrentWindow
+
+	// Hide anything after a '##' string
+	if hide_text_after_hash {
+		n := c.FindRenderedTextEnd(text)
+		text = text[:n]
+	}
+
+	if len(text) > 0 {
+		window.DrawList.AddTextEx(c.Font, c.FontSize, pos, c.GetColorFromStyle(ColText), text, 0, nil)
+		if c.LogEnabled {
+			c.LogRenderedText(&pos, text)
+		}
+	}
 }
 
 func (d *DrawList) AddCircle(centre f64.Vec2, radius float64, col color.RGBA) {

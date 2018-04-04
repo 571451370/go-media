@@ -128,7 +128,71 @@ func (c *Context) TextUnformatted(text string) {
 		// Perform manual coarse clipping to optimize for long multi-line text
 		// From this point we will only compute the width of lines that are visible. Optimization only available when word-wrapping is disabled.
 		// We also don't vertically center the text within the line full height, which is unlikely to matter because we are likely the biggest and only item on the line.
-		// TODO
+		line := 0
+		line_height := c.GetTextLineHeight()
+		clip_rect := window.ClipRect
+		text_size := f64.Vec2{0, 0}
+
+		if text_pos.Y <= clip_rect.Max.Y {
+			pos := text_pos
+
+			// Lines to skip (can't skip when logging text)
+			if !c.LogEnabled {
+				lines_skippable := int((clip_rect.Min.Y - text_pos.Y) / line_height)
+				if lines_skippable > 0 {
+					lines_skipped := 0
+					for line < len(text) && lines_skipped < lines_skippable {
+						line_end := strings.IndexRune(text[line:], '\n')
+						if line_end < 0 {
+							line_end = len(text) - line - 1
+						}
+						line += line_end + 1
+						lines_skipped++
+					}
+					pos.Y += float64(lines_skipped) * line_height
+				}
+			}
+
+			// Lines to render
+			if line < len(text) {
+				line_rect := f64.Rectangle{pos, pos.Add(f64.Vec2{math.MaxFloat32, line_height})}
+				for line < len(text) {
+					line_end := strings.IndexRune(text[line:], '\n')
+					if c.IsClippedEx(line_rect, 0, false) {
+						break
+					}
+
+					line_size := c.CalcTextSizeEx(text[line:], false, -1)
+					text_size.X = math.Max(text_size.X, line_size.X)
+					c.RenderTextEx(pos, text[line:], false)
+					if line_end < 0 {
+						line_end = len(text) - line - 1
+					}
+					line += line_end + 1
+					line_rect.Min.Y += line_height
+					line_rect.Max.Y += line_height
+					pos.Y += line_height
+				}
+
+				// Count remaining lines
+				lines_skipped := 0
+				for line < len(text) {
+					line_end := strings.IndexRune(text[line:], '\n')
+					if line_end < 0 {
+						line_end = len(text) - line - 1
+					}
+					line = line_end + 1
+					lines_skipped++
+				}
+				pos.Y += float64(lines_skipped) * line_height
+			}
+
+			text_size.Y += (pos.Sub(text_pos)).Y
+		}
+
+		bb := f64.Rectangle{text_pos, text_pos.Add(text_size)}
+		c.ItemSizeBB(bb)
+		c.ItemAdd(bb, 0)
 	} else {
 		wrap_width := 0.0
 		if wrap_enabled {
