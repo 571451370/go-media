@@ -1,5 +1,7 @@
 package imgui
 
+import "fmt"
+
 type PopupPositionPolicy int
 
 const (
@@ -55,6 +57,10 @@ func (c *Context) OpenPopupEx(id ID) {
 
 func (c *Context) IsPopupOpen(str_id string) bool {
 	return len(c.OpenPopupStack) > len(c.CurrentPopupStack) && c.OpenPopupStack[len(c.CurrentPopupStack)].PopupId == c.CurrentWindow.GetID(str_id)
+}
+
+func (c *Context) IsPopupOpenID(id ID) bool {
+	return len(c.OpenPopupStack) > len(c.CurrentPopupStack) && c.OpenPopupStack[len(c.CurrentPopupStack)].PopupId == id
 }
 
 func (c *Context) EndPopup() {
@@ -126,4 +132,27 @@ func (c *Context) CloseCurrentPopup() {
 		popup_idx--
 	}
 	c.ClosePopupToLevel(popup_idx)
+}
+
+func (c *Context) BeginPopupEx(id ID, extra_flags WindowFlags) bool {
+	if !c.IsPopupOpenID(id) {
+		// We behave like Begin() and need to consume those values
+		c.NextWindowData.Clear()
+		return false
+	}
+
+	var name string
+	if extra_flags&WindowFlagsChildMenu != 0 {
+		// Recycle windows based on depth
+		name = fmt.Sprintf("##Menu_%02d", len(c.CurrentPopupStack))
+	} else {
+		// Not recycling, so we can close/open during the same frame
+		name = fmt.Sprintf("##Popup_%08x", id)
+	}
+	is_open := c.BeginEx(name, nil, extra_flags|WindowFlagsPopup)
+	// NB: Begin can return false when the popup is completely clipped (e.g. zero size display)
+	if !is_open {
+		c.EndPopup()
+	}
+	return is_open
 }

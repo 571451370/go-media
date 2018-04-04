@@ -603,7 +603,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 		if flags&WindowFlagsChildWindow != 0 {
 			window.WindowBorderSize = style.ChildBorderSize
-		} else if flags&WindowFlagsPopup != 0 && flags&WindowFlagsModal == 0 {
+		} else if flags&(WindowFlagsPopup|WindowFlagsTooltip) != 0 && flags&WindowFlagsModal == 0 {
 			window.WindowBorderSize = style.PopupBorderSize
 		} else {
 			window.WindowBorderSize = style.WindowBorderSize

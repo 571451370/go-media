@@ -293,3 +293,10 @@ func DataTypeFormatString(data interface{}, decimal_precision int) string {
 func DataTypeApplyOpFromText(buf, initial_value_buf string, data interface{}, scalar_format string) bool {
 	return false
 }
+
+func TriangleContainsPoint(a, b, c, p f64.Vec2) bool {
+	b1 := ((p.X-b.X)*(a.Y-b.Y) - (p.Y-b.Y)*(a.X-b.X)) < 0.0
+	b2 := ((p.X-c.X)*(b.Y-c.Y) - (p.Y-c.Y)*(b.X-c.X)) < 0.0
+	b3 := ((p.X-a.X)*(c.Y-a.Y) - (p.Y-a.Y)*(c.X-a.X)) < 0.0
+	return ((b1 == b2) && (b2 == b3))
+}

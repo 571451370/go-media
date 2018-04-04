@@ -1979,3 +1979,22 @@ func (c *Context) FocusableItemUnregister(window *Window) {
 	window.FocusIdxAllCounter--
 	window.FocusIdxTabCounter--
 }
+
+func (c *Context) SetNextWindowPos(pos f64.Vec2, cond Cond, pivot f64.Vec2) {
+	c.NextWindowData.PosVal = pos
+	c.NextWindowData.PosPivotVal = pivot
+	c.NextWindowData.PosCond = CondAlways
+	if cond != 0 {
+		c.NextWindowData.PosCond = cond
+	}
+}
+
+func (n *NextWindowData) Clear() {
+	n.PosCond = 0
+	n.SizeCond = 0
+	n.ContentSizeCond = 0
+	n.CollapsedCond = 0
+	n.SizeConstraintCond = 0
+	n.FocusCond = 0
+	n.BgAlphaCond = 0
+}

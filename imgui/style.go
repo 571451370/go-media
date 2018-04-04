@@ -231,10 +231,19 @@ func (s *Style) Init() {
 func (c *Context) PushStyleVar(idx StyleVar, val interface{}) {
 }
 
-func (c *Context) PopStyleVar(count int) {
+func (c *Context) PopStyleVar() {
+	c.PopStyleVarN(1)
 }
 
-func (c *Context) PushStyleColor(idx Col, col color.RGBA) {
+func (c *Context) PopStyleVarN(count int) {
+}
+
+func (c *Context) PushStyleColor(idx Col, col f64.Vec4) {
+	c.ColorModifiers = append(c.ColorModifiers, ColMod{idx, c.Style.Colors[idx]})
+	c.Style.Colors[idx] = col
+}
+
+func (c *Context) PushStyleColorRGBA(idx Col, col color.RGBA) {
 	c.ColorModifiers = append(c.ColorModifiers, ColMod{idx, c.Style.Colors[idx]})
 	c.Style.Colors[idx] = chroma.RGBA2VEC4(col)
 }
