@@ -130,7 +130,7 @@ func (c *Context) BeginMenu(label string, enabled bool) bool {
 		pressed := c.SelectableEx(label, menu_is_open, select_flags, f64.Vec2{0, 0})
 		if !enabled {
 		}
-		c.PopStyleVar()
+		c.PopStyleVar(1)
 		// -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
 		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * (-1.0 + 0.5)))
 		_, _, _, _, _ = id, backed_nav_window, popup_pos, w, pressed

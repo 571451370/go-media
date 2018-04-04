@@ -58,6 +58,9 @@ func (c *Context) IsPopupOpen(str_id string) bool {
 }
 
 func (c *Context) EndPopup() {
+	assert(c.CurrentWindow.Flags&WindowFlagsPopup != 0)
+	assert(len(c.CurrentPopupStack) > 0)
+
 	// Make all menus and popups wrap around for now, may need to expose that policy.
 	c.NavProcessMoveRequestWrapAround(c.CurrentWindow)
 	c.End()
@@ -112,4 +115,15 @@ func (c *Context) ClosePopupToLevel(remaining int) {
 	c.FocusWindow(focus_window)
 	focus_window.DC.NavHideHighlightOneFrame = true
 	c.OpenPopupStack = c.OpenPopupStack[:remaining]
+}
+
+func (c *Context) CloseCurrentPopup() {
+	popup_idx := len(c.CurrentPopupStack) - 1
+	if popup_idx < 0 || popup_idx >= len(c.OpenPopupStack) || c.CurrentPopupStack[popup_idx].PopupId != c.OpenPopupStack[popup_idx].PopupId {
+		return
+	}
+	for popup_idx > 0 && c.OpenPopupStack[popup_idx].Window != nil && c.OpenPopupStack[popup_idx].Window.Flags&WindowFlagsChildMenu != 0 {
+		popup_idx--
+	}
+	c.ClosePopupToLevel(popup_idx)
 }

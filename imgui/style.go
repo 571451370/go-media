@@ -3,6 +3,7 @@ package imgui
 import (
 	"image/color"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -230,5 +231,22 @@ func (s *Style) Init() {
 func (c *Context) PushStyleVar(idx StyleVar, val interface{}) {
 }
 
-func (c *Context) PopStyleVar() {
+func (c *Context) PopStyleVar(count int) {
+}
+
+func (c *Context) PushStyleColor(idx Col, col color.RGBA) {
+	c.ColorModifiers = append(c.ColorModifiers, ColMod{idx, c.Style.Colors[idx]})
+	c.Style.Colors[idx] = chroma.RGBA2VEC4(col)
+}
+
+func (c *Context) PopStyleColor() {
+	c.PopStyleColorEx(1)
+}
+
+func (c *Context) PopStyleColorEx(count int) {
+	for ; count > 0; count-- {
+		backup := c.ColorModifiers[len(c.ColorModifiers)-1]
+		c.Style.Colors[backup.Col] = backup.BackupValue
+		c.ColorModifiers = c.ColorModifiers[:len(c.ColorModifiers)-1]
+	}
 }
