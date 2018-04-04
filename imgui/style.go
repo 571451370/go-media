@@ -67,8 +67,6 @@ type StyleMod struct {
 	Backup [2]interface{}
 }
 
-type StyleVar int
-
 type Style struct {
 	Alpha                  float64  // Global alpha applies to everything in ImGui.
 	WindowPadding          f64.Vec2 // Padding within a window.
@@ -101,6 +99,37 @@ type Style struct {
 	CurveTessellationTol   float64  // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
 	Colors                 [ColCOUNT]f64.Vec4
 }
+
+// Enumeration for PushStyleVar() / PopStyleVar() to temporarily modify the ImGuiStyle structure.
+// NB: the enum only refers to fields of ImGuiStyle which makes sense to be pushed/popped inside UI code. During initialization, feel free to just poke into ImGuiStyle directly.
+// NB: if changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
+type StyleVar int
+
+const (
+	// Enum name ......................// Member in ImGuiStyle structure (see ImGuiStyle for descriptions)
+	StyleVarAlpha             StyleVar = iota // float     Alpha
+	StyleVarWindowPadding                     // ImVec2    WindowPadding
+	StyleVarWindowRounding                    // float     WindowRounding
+	StyleVarWindowBorderSize                  // float     WindowBorderSize
+	StyleVarWindowMinSize                     // ImVec2    WindowMinSize
+	StyleVarWindowTitleAlign                  // ImVec2    WindowTitleAlign
+	StyleVarChildRounding                     // float     ChildRounding
+	StyleVarChildBorderSize                   // float     ChildBorderSize
+	StyleVarPopupRounding                     // float     PopupRounding
+	StyleVarPopupBorderSize                   // float     PopupBorderSize
+	StyleVarFramePadding                      // ImVec2    FramePadding
+	StyleVarFrameRounding                     // float     FrameRounding
+	StyleVarFrameBorderSize                   // float     FrameBorderSize
+	StyleVarItemSpacing                       // ImVec2    ItemSpacing
+	StyleVarItemInnerSpacing                  // ImVec2    ItemInnerSpacing
+	StyleVarIndentSpacing                     // float     IndentSpacing
+	StyleVarScrollbarSize                     // float     ScrollbarSize
+	StyleVarScrollbarRounding                 // float     ScrollbarRounding
+	StyleVarGrabMinSize                       // float     GrabMinSize
+	StyleVarGrabRounding                      // float     GrabRounding
+	StyleVarButtonTextAlign                   // ImVec2    ButtonTextAlign
+	StyleVarCOUNT
+)
 
 func (c *Context) StyleColorsDark(style *Style) {
 	if style == nil {
@@ -196,4 +225,10 @@ func (s *Style) Init() {
 	s.AntiAliasedLines = true                 // Enable anti-aliasing on lines/borders. Disable if you are really short on CPU/GPU.
 	s.AntiAliasedFill = true                  // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
 	s.CurveTessellationTol = 1.25             // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+}
+
+func (c *Context) PushStyleVar(idx StyleVar, val interface{}) {
+}
+
+func (c *Context) PopStyleVar() {
 }

@@ -431,6 +431,11 @@ func (c *Context) PushID(str_id string) {
 	window.IDStack = append(window.IDStack, window.GetID(str_id))
 }
 
+func (c *Context) PopID() {
+	window := c.GetCurrentWindowRead()
+	window.IDStack = window.IDStack[:len(window.IDStack)-1]
+}
+
 type BackendFlags int
 
 const (

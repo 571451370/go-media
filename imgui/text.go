@@ -317,3 +317,13 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 func (c *Context) InputTextExCallback(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback func()) bool {
 	return false
 }
+
+func (c *Context) AlignTextToFramePadding() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	window.DC.CurrentLineHeight = math.Max(window.DC.CurrentLineHeight, c.FontSize+c.Style.FramePadding.Y*2)
+	window.DC.CurrentLineTextBaseOffset = math.Max(window.DC.CurrentLineTextBaseOffset, c.Style.FramePadding.Y)
+}

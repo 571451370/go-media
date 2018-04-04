@@ -569,3 +569,11 @@ func (c *Context) NavCalcPreferredMousePos() f64.Vec2 {
 	pos.Y = math.Floor(pos.Y)
 	return pos
 }
+
+func (c *Context) SetNavIDWithRectRel(id ID, nav_layer int, rect_rel f64.Rectangle) {
+	c.SetNavID(id, nav_layer)
+	c.NavWindow.NavRectRel[nav_layer] = rect_rel
+	c.NavMousePosDirty = true
+	c.NavDisableHighlight = false
+	c.NavDisableMouseHover = true
+}
