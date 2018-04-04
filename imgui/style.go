@@ -249,10 +249,10 @@ func (c *Context) PushStyleColorRGBA(idx Col, col color.RGBA) {
 }
 
 func (c *Context) PopStyleColor() {
-	c.PopStyleColorEx(1)
+	c.PopStyleColorN(1)
 }
 
-func (c *Context) PopStyleColorEx(count int) {
+func (c *Context) PopStyleColorN(count int) {
 	for ; count > 0; count-- {
 		backup := c.ColorModifiers[len(c.ColorModifiers)-1]
 		c.Style.Colors[backup.Col] = backup.BackupValue

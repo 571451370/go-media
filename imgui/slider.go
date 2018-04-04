@@ -242,6 +242,21 @@ func (c *Context) SliderFloat(label string, v *float64, v_min, v_max float64) bo
 	return c.SliderFloatEx(label, v, v_min, v_max, "%.3f", 1.0)
 }
 
+func (c *Context) SliderInt(label string, v *int, v_min, v_max int) bool {
+	return c.SliderIntEx(label, v, v_min, v_max, "%.0f")
+}
+
+func (c *Context) SliderIntEx(label string, v *int, v_min, v_max int, display_format string) bool {
+	if display_format == "" {
+		display_format = "%.0f"
+	}
+
+	v_f := float64(*v)
+	value_changed := c.SliderFloatEx(label, &v_f, float64(v_min), float64(v_max), display_format, 1)
+	*v = int(v_f)
+	return value_changed
+}
+
 // Use power!=1.0 for logarithmic sliders.
 // Adjust display_format to decorate the value with a prefix or a suffix.
 //   "%.3f"         1.234
@@ -317,6 +332,28 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	}
 
 	return value_changed
+}
+
+func (c *Context) VSliderInt(label string, size f64.Vec2, v *int, v_min, v_max int) bool {
+	return c.VSliderIntEx(label, size, v, v_min, v_max, "%.0f")
+}
+
+func (c *Context) VSliderIntEx(label string, size f64.Vec2, v *int, v_min, v_max int, display_format string) bool {
+	if display_format == "" {
+		display_format = "%.0f"
+	}
+	v_f := float64(*v)
+	value_changed := c.VSliderFloatEx(label, size, &v_f, float64(v_min), float64(v_max), display_format, 1.0)
+	*v = int(v_f)
+	return value_changed
+}
+
+func (c *Context) VSliderFloat(label string, size f64.Vec2, v *float64, v_min, v_max float64) bool {
+	return c.VSliderFloatEx(label, size, v, v_min, v_max, "%.3f", 1)
+}
+
+func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min, v_max float64, display_format string, power float64) bool {
+	return false
 }
 
 // Create text input in place of a slider (when CTRL+Clicking on slider)
