@@ -807,7 +807,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 				ref_pos = c.NavCalcPreferredMousePos()
 			}
 			var rect_to_avoid f64.Rectangle
-			if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavMoveMouse == 0 {
+			if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos == 0 {
 				rect_to_avoid = f64.Rectangle{f64.Vec2{ref_pos.X - 16, ref_pos.Y - 8}, f64.Vec2{ref_pos.X + 16, ref_pos.Y + 8}}
 			} else {
 				// FIXME: Hard-coded based on mouse cursor shape expectation. Exact dimension not very important.

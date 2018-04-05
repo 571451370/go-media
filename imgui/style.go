@@ -65,7 +65,7 @@ type ColMod struct {
 
 type StyleMod struct {
 	VarIdx StyleVar
-	Backup [2]interface{}
+	Value  interface{}
 }
 
 type Style struct {
@@ -229,6 +229,7 @@ func (s *Style) Init() {
 }
 
 func (c *Context) PushStyleVar(idx StyleVar, val interface{}) {
+	c.StyleModifiers = append(c.StyleModifiers, StyleMod{idx, val})
 }
 
 func (c *Context) PopStyleVar() {
@@ -236,6 +237,56 @@ func (c *Context) PopStyleVar() {
 }
 
 func (c *Context) PopStyleVarN(count int) {
+	style := &c.Style
+	for ; count > 0; count-- {
+		n := len(c.StyleModifiers) - 1
+		m := c.StyleModifiers[n]
+		c.StyleModifiers = c.StyleModifiers[:n]
+		switch m.VarIdx {
+		case StyleVarAlpha:
+			style.Alpha = m.Value.(float64)
+		case StyleVarWindowPadding:
+			style.WindowPadding = m.Value.(f64.Vec2)
+		case StyleVarWindowRounding:
+			style.WindowRounding = m.Value.(float64)
+		case StyleVarWindowBorderSize:
+			style.WindowBorderSize = m.Value.(float64)
+		case StyleVarWindowMinSize:
+			style.WindowMinSize = m.Value.(f64.Vec2)
+		case StyleVarWindowTitleAlign:
+			style.WindowTitleAlign = m.Value.(f64.Vec2)
+		case StyleVarChildRounding:
+			style.ChildRounding = m.Value.(float64)
+		case StyleVarChildBorderSize:
+			style.ChildBorderSize = m.Value.(float64)
+		case StyleVarPopupRounding:
+			style.PopupRounding = m.Value.(float64)
+		case StyleVarPopupBorderSize:
+			style.PopupBorderSize = m.Value.(float64)
+		case StyleVarFramePadding:
+			style.FramePadding = m.Value.(f64.Vec2)
+		case StyleVarFrameRounding:
+			style.FrameRounding = m.Value.(float64)
+		case StyleVarFrameBorderSize:
+			style.FrameBorderSize = m.Value.(float64)
+		case StyleVarItemSpacing:
+			style.ItemSpacing = m.Value.(f64.Vec2)
+		case StyleVarItemInnerSpacing:
+			style.ItemInnerSpacing = m.Value.(f64.Vec2)
+		case StyleVarIndentSpacing:
+			style.IndentSpacing = m.Value.(float64)
+		case StyleVarScrollbarSize:
+			style.ScrollbarSize = m.Value.(float64)
+		case StyleVarScrollbarRounding:
+			style.ScrollbarRounding = m.Value.(float64)
+		case StyleVarGrabMinSize:
+			style.GrabMinSize = m.Value.(float64)
+		case StyleVarGrabRounding:
+			style.GrabRounding = m.Value.(float64)
+		case StyleVarButtonTextAlign:
+			style.ButtonTextAlign = m.Value.(f64.Vec2)
+		}
+	}
 }
 
 func (c *Context) PushStyleColor(idx Col, col f64.Vec4) {

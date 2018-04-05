@@ -78,7 +78,7 @@ type IO struct {
 	WantCaptureMouse      bool     // When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application. This is set by ImGui when it wants to use your mouse (e.g. unclicked mouse is hovering a window, or a widget is active).
 	WantCaptureKeyboard   bool     // When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application. This is set by ImGui when it wants to use your keyboard inputs.
 	WantTextInput         bool     // Mobile/console: when io.WantTextInput is true, you may display an on-screen keyboard. This is set by ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
-	WantMoveMouse         bool     // MousePos has been altered, back-end should reposition mouse on next frame. Set only when ImGuiConfigFlags_NavMoveMouse flag is enabled.
+	WantSetMousePos       bool     // MousePos has been altered, back-end should reposition mouse on next frame. Set only when ImGuiConfigFlags_NavMoveMouse flag is enabled.
 	NavActive             bool     // Directional navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
 	NavVisible            bool     // Directional navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
 	Framerate             float64  // Application framerate estimation, in frame per second. Solely for convenience. Rolling average estimation based on IO.DeltaTime over 120 frames
@@ -119,8 +119,8 @@ func (c *IO) Init(ctx *Context) {
 	c.DisplaySize = f64.Vec2{-1.0, -1.0}
 	c.DeltaTime = 1.0 / 60.0
 	c.IniSavingRate = 5.0
-	c.IniFilename = "imgui.ini"
-	c.LogFilename = "imgui_log.txt"
+	c.IniFilename = ""
+	c.LogFilename = ""
 	c.MouseDoubleClickTime = 0.30
 	c.MouseDoubleClickMaxDist = 6.0
 	for i := range c.KeyMap {

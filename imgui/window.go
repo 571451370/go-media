@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 type WindowFlags int
@@ -413,6 +414,7 @@ func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, nav_bb_arg *f64.Rectangle) 
 		//      it may not scale very well for windows with ten of thousands of item, but at least NavMoveRequest is only set on user interaction, aka maximum once a frame.
 		//      We could early out with "if (is_clipped && !g.NavInitRequest) return false;" but when we wouldn't be able to reach unclipped widgets. This would work if user had explicit scrolling control (e.g. mapped on a stick)
 		window.DC.NavLayerActiveMaskNext |= window.DC.NavLayerCurrentMask
+		//fmt.Printf("%#x %#x %v\n", c.NavId, id, c.NavAnyRequest)
 		if c.NavId == id || c.NavAnyRequest {
 			if c.NavWindow.RootWindowForNav == window.RootWindowForNav {
 				if window == c.NavWindow || (window.Flags|c.NavWindow.Flags)&WindowFlagsNavFlattened != 0 {
@@ -1632,6 +1634,8 @@ func (c *Context) FocusFrontMostActiveWindow(ignore_window *Window) {
 }
 
 func (c *Context) SetNextWindowSize(size f64.Vec2, cond Cond) {
+	// Make sure the user doesn't attempt to combine multiple condition flags.
+	assert(cond == 0 || mathutil.IsPow2(int(cond)))
 	c.NextWindowData.SizeVal = size
 	c.NextWindowData.SizeCond = CondAlways
 	if cond != 0 {
@@ -1654,7 +1658,38 @@ func (c *Context) SetWindowConditionAllowFlags(window *Window, flags Cond, enabl
 		window.SetWindowCollapsedAllowFlags &^= flags
 	}
 }
+
+func (c *Context) SetCurrentWindowPos(pos f64.Vec2, cond Cond) {
+	window := c.GetCurrentWindowRead()
+	c.SetWindowPos(window, pos, cond)
+}
+
+func (c *Context) SetWindowPosByName(name string, pos f64.Vec2, cond Cond) {
+	window := c.FindWindowByName(name)
+	if window != nil {
+		c.SetWindowPos(window, pos, cond)
+	}
+}
+
 func (c *Context) SetWindowPos(window *Window, pos f64.Vec2, cond Cond) {
+	// Test condition (NB: bit 0 is always true) and clear flags for next time
+	if cond != 0 && window.SetWindowPosAllowFlags&cond == 0 {
+		return
+	}
+
+	// Make sure the user doesn't attempt to combine multiple condition flags.
+	assert(cond == 0 || mathutil.IsPow2(int(cond)))
+	window.SetWindowPosAllowFlags &^= (CondOnce | CondFirstUseEver | CondAppearing)
+	window.SetWindowPosVal = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+
+	// Set
+	old_pos := window.Pos
+	window.PosFloat = pos
+	window.Pos = pos.Floor()
+	// As we happen to move the window while it is being appended to (which is a bad idea - will smear) let's at least offset the cursor
+	window.DC.CursorPos = window.DC.CursorPos.Add(window.Pos.Sub(old_pos))
+	// And more importantly we need to adjust this so size calculation doesn't get affected.
+	window.DC.CursorMaxPos = window.DC.CursorMaxPos.Add(window.Pos.Sub(old_pos))
 }
 
 func (c *Context) SetWindowSize(window *Window, size f64.Vec2, cond Cond) {

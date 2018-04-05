@@ -247,7 +247,13 @@ func (n *NavMoveResult) Clear() {
 }
 
 func (c *Context) NavUpdate() {
-	c.IO.WantMoveMouse = false
+	c.IO.WantSetMousePos = false
+
+	if c.IO.ConfigFlags&ConfigFlagsNavEnableGamepad != 0 && c.IO.BackendFlags&BackendFlagsHasGamepad != 0 {
+		if c.IO.NavInputs[NavInputActivate] > 0.0 || c.IO.NavInputs[NavInputInput] > 0.0 || c.IO.NavInputs[NavInputCancel] > 0.0 || c.IO.NavInputs[NavInputMenu] > 0.0 {
+			c.NavInputSource = InputSourceNavGamepad
+		}
+	}
 
 	// Update Keyboard->Nav inputs mapping
 	for i := int(NavInputInternalStart_); i < len(c.IO.NavInputs); i++ {
@@ -271,6 +277,234 @@ func (c *Context) NavUpdate() {
 			c.IO.NavInputs[NavInputKeyMenu_] = 1
 		}
 	}
+
+	copy(c.IO.NavInputsDownDurationPrev[:], c.IO.NavInputsDownDuration[:])
+	for i := range c.IO.NavInputs {
+		if c.IO.NavInputs[i] > 0.0 {
+			if c.IO.NavInputsDownDuration[i] < 0.0 {
+				c.IO.NavInputsDownDuration[i] = 0
+			} else {
+				c.IO.NavInputsDownDuration[i] = c.IO.NavInputsDownDuration[i] + c.IO.DeltaTime
+			}
+		} else {
+			c.IO.NavInputsDownDuration[i] = -1
+		}
+	}
+
+	// Process navigation init request (select first/default focus)
+	if c.NavInitResultId != 0 && (!c.NavDisableHighlight || c.NavInitRequestFromMove) {
+		// Apply result from previous navigation init request (will typically select the first item, unless SetItemDefaultFocus() has been called)
+		assert(c.NavWindow != nil)
+		if c.NavInitRequestFromMove {
+			c.SetNavIDWithRectRel(c.NavInitResultId, c.NavLayer, c.NavInitResultRectRel)
+		} else {
+			c.SetNavID(c.NavInitResultId, c.NavLayer)
+		}
+		c.NavWindow.NavRectRel[c.NavLayer] = c.NavInitResultRectRel
+	}
+	c.NavInitRequest = false
+	c.NavInitRequestFromMove = false
+	c.NavInitResultId = 0
+	c.NavJustMovedToId = 0
+
+	// Process navigation move request
+	if c.NavMoveRequest && (c.NavMoveResultLocal.ID != 0 || c.NavMoveResultOther.ID != 0) {
+		// Select which result to use
+		result := &c.NavMoveResultOther
+		if c.NavMoveResultLocal.ID != 0 {
+			result = &c.NavMoveResultLocal
+		}
+		// Maybe entering a flattened child? In this case solve the tie using the regular scoring rules
+		if c.NavMoveResultOther.ID != 0 && c.NavMoveResultOther.Window.ParentWindow == c.NavWindow {
+			if (c.NavMoveResultOther.DistBox < c.NavMoveResultLocal.DistBox) || (c.NavMoveResultOther.DistBox == c.NavMoveResultLocal.DistBox && c.NavMoveResultOther.DistCenter < c.NavMoveResultLocal.DistCenter) {
+				result = &c.NavMoveResultOther
+			}
+		}
+
+		assert(c.NavWindow != nil && result.Window != nil)
+
+		// Scroll to keep newly navigated item fully into view
+		if c.NavLayer == 0 {
+			c.NavScrollToBringItemIntoView(result.Window, result.RectRel)
+		}
+
+		// Apply result from previous frame navigation directional move request
+		c.ClearActiveID()
+		c.NavWindow = result.Window
+		c.SetNavIDWithRectRel(result.ID, c.NavLayer, result.RectRel)
+		c.NavJustMovedToId = result.ID
+		c.NavMoveFromClampedRefRect = false
+	}
+
+	// When a forwarded move request failed, we restore the highlight that we disabled during the forward frame
+	if c.NavMoveRequestForward == NavForwardForwardActive {
+		assert(c.NavMoveRequest)
+		if c.NavMoveResultLocal.ID == 0 && c.NavMoveResultOther.ID == 0 {
+			c.NavDisableHighlight = false
+		}
+		c.NavMoveRequestForward = NavForwardNone
+	}
+
+	// Apply application mouse position movement, after we had a chance to process move request result.
+	if c.NavMousePosDirty && c.NavIdIsAlive {
+		// Set mouse position given our knowledge of the nav widget position from last frame
+		if c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos != 0 && c.IO.BackendFlags&BackendFlagsHasSetMousePos != 0 {
+			c.IO.MousePos = c.NavCalcPreferredMousePos()
+			c.IO.MousePosPrev = c.IO.MousePos
+			c.IO.WantSetMousePos = true
+		}
+		c.NavMousePosDirty = false
+	}
+
+	c.NavIdIsAlive = false
+	c.NavJustTabbedId = 0
+	assert(c.NavLayer == 0 || c.NavLayer == 1)
+
+	// Store our return window (for returning from Layer 1 to Layer 0) and clear it as soon as we step back in our own Layer 0
+	if c.NavWindow != nil {
+		c.NavSaveLastChildNavWindow(c.NavWindow)
+	}
+	if c.NavWindow != nil && c.NavWindow.NavLastChildNavWindow != nil && c.NavLayer == 0 {
+		c.NavWindow.NavLastChildNavWindow = nil
+	}
+
+	c.NavUpdateWindowing()
+
+	// Set output flags for user application
+	nav_keyboard_active := (c.IO.ConfigFlags & ConfigFlagsNavEnableKeyboard) != 0
+	nav_gamepad_active := (c.IO.ConfigFlags&ConfigFlagsNavEnableGamepad) != 0 && (c.IO.BackendFlags&BackendFlagsHasGamepad) != 0
+	c.IO.NavActive = (nav_keyboard_active || nav_gamepad_active) && c.NavWindow != nil && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0
+	c.IO.NavVisible = (c.IO.NavActive && c.NavId != 0 && !c.NavDisableHighlight) || (c.NavWindowingTarget != nil) || c.NavInitRequest
+
+	// Process NavCancel input (to close a popup, get back to parent, clear focus)
+	if c.IsNavInputPressed(NavInputCancel, InputReadModePressed) {
+		if c.ActiveId != 0 {
+			c.ClearActiveID()
+		} else if c.NavWindow != nil && c.NavWindow.Flags&WindowFlagsChildWindow != 0 && c.NavWindow.Flags&WindowFlagsPopup == 0 && c.NavWindow.ParentWindow != nil {
+			// Exit child window
+			child_window := c.NavWindow
+			parent_window := c.NavWindow.ParentWindow
+			assert(child_window.ChildId != 0)
+			c.FocusWindow(parent_window)
+			c.SetNavID(child_window.ChildId, 0)
+			c.NavIdIsAlive = false
+			if c.NavDisableMouseHover {
+				c.NavMousePosDirty = true
+			}
+		} else if len(c.OpenPopupStack) > 0 {
+			// Close open popup/menu
+			if c.OpenPopupStack[len(c.OpenPopupStack)-1].Window.Flags&WindowFlagsModal == 0 {
+				c.ClosePopupToLevel(len(c.OpenPopupStack) - 1)
+			}
+		} else if c.NavLayer != 0 {
+			// Leave the "menu" layer
+			c.NavRestoreLayer(0)
+		} else {
+			// Clear NavLastId for popups but keep it for regular child window so we can leave one and come back where we were
+			if c.NavWindow != nil && ((c.NavWindow.Flags&WindowFlagsPopup) != 0 || c.NavWindow.Flags&WindowFlagsChildWindow == 0) {
+				c.NavWindow.NavLastIds[0] = 0
+			}
+			c.NavId = 0
+		}
+	}
+
+	// Process manual activation request
+	c.NavActivateId = 0
+	c.NavActivateDownId = 0
+	c.NavActivatePressedId = 0
+	c.NavInputId = 0
+	if c.NavId != 0 && !c.NavDisableHighlight && c.NavWindowingTarget == nil && c.NavWindow != nil && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0 {
+		activate_down := c.IsNavInputDown(NavInputActivate)
+		activate_pressed := activate_down && c.IsNavInputPressed(NavInputActivate, InputReadModePressed)
+		if c.ActiveId == 0 && activate_pressed {
+			c.NavActivateId = c.NavId
+		}
+		if (c.ActiveId == 0 || c.ActiveId == c.NavId) && activate_down {
+			c.NavActivateDownId = c.NavId
+		}
+		if (c.ActiveId == 0 || c.ActiveId == c.NavId) && activate_pressed {
+			c.NavActivatePressedId = c.NavId
+		}
+		if (c.ActiveId == 0 || c.ActiveId == c.NavId) && c.IsNavInputPressed(NavInputInput, InputReadModePressed) {
+			c.NavInputId = c.NavId
+		}
+	}
+
+	if c.NavWindow != nil && c.NavWindow.Flags&WindowFlagsNoNavInputs != 0 {
+		c.NavDisableHighlight = true
+	}
+	if c.NavActivateId != 0 {
+		assert(c.NavActivateDownId == c.NavActivateId)
+	}
+	c.NavMoveRequest = false
+
+	// Process programmatic activation request
+	if c.NavNextActivateId != 0 {
+		c.NavActivateId = c.NavNextActivateId
+		c.NavActivateDownId = c.NavNextActivateId
+		c.NavActivatePressedId = c.NavNextActivateId
+		c.NavInputId = c.NavNextActivateId
+	}
+	c.NavNextActivateId = 0
+
+	// Initiate directional inputs request
+	allowed_dir_flags := c.ActiveIdAllowNavDirFlags
+	if c.ActiveId == 0 {
+		allowed_dir_flags = ^0
+	}
+	if c.NavMoveRequestForward == NavForwardNone {
+		c.NavMoveDir = DirNone
+		if c.NavWindow != nil && c.NavWindowingTarget == nil && allowed_dir_flags != 0 && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0 {
+			if (allowed_dir_flags&(1<<uint(DirLeft))) != 0 && c.IsNavInputPressedAnyOfTwo(NavInputDpadLeft, NavInputKeyLeft_, InputReadModeRepeat) {
+				c.NavMoveDir = DirLeft
+			}
+			if (allowed_dir_flags&(1<<uint(DirRight))) != 0 && c.IsNavInputPressedAnyOfTwo(NavInputDpadRight, NavInputKeyRight_, InputReadModeRepeat) {
+				c.NavMoveDir = DirRight
+			}
+			if (allowed_dir_flags&(1<<uint(DirUp))) != 0 && c.IsNavInputPressedAnyOfTwo(NavInputDpadUp, NavInputKeyUp_, InputReadModeRepeat) {
+				c.NavMoveDir = DirUp
+			}
+			if (allowed_dir_flags&(1<<uint(DirDown))) != 0 && c.IsNavInputPressedAnyOfTwo(NavInputDpadDown, NavInputKeyDown_, InputReadModeRepeat) {
+				c.NavMoveDir = DirDown
+			}
+		}
+	} else {
+		// Forwarding previous request (which has been modified, e.g. wrap around menus rewrite the requests with a starting rectangle at the other side of the window)
+		assert(c.NavMoveDir != DirNone)
+		assert(c.NavMoveRequestForward == NavForwardForwardQueued)
+		c.NavMoveRequestForward = NavForwardForwardActive
+	}
+
+	if c.NavMoveDir != DirNone {
+		c.NavMoveRequest = true
+		c.NavMoveDirLast = c.NavMoveDir
+	}
+
+	// If we initiate a movement request and have no current NavId, we initiate a InitDefautRequest that will be used as a fallback if the direction fails to find a match
+	if c.NavMoveRequest && c.NavId == 0 {
+		c.NavInitRequest = true
+		c.NavInitRequestFromMove = true
+		c.NavInitResultId = 0
+		c.NavDisableHighlight = false
+	}
+
+	c.NavUpdateAnyRequestFlag()
+
+	// Scrolling
+	if c.NavWindow != nil && c.NavWindow.Flags&WindowFlagsNoNavInputs == 0 && c.NavWindowingTarget == nil {
+		// *Fallback* manual-scroll with NavUp/NavDown when window has no navigable item
+		window := c.NavWindow
+		// We need round the scrolling speed because sub-pixel scroll isn't reliably supported.
+		scroll_speed := math.Floor(window.CalcFontSize()*100*c.IO.DeltaTime + 0.5)
+		if window.DC.NavLayerActiveMask == 0x00 && window.DC.NavHasScroll && c.NavMoveRequest {
+		}
+		_ = scroll_speed
+		// TODO
+	}
+}
+
+// NB: We modify rect_rel by the amount we scrolled for, so it is immediately updated.
+func (c *Context) NavScrollToBringItemIntoView(window *Window, item_rect_rel f64.Rectangle) {
 }
 
 func (c *Context) navMapKey(key Key, nav_input NavInput) {
@@ -331,6 +565,9 @@ func (c *Context) NavProcessItem(window *Window, nav_bb f64.Rectangle, id ID) {
 
 func (c *Context) NavUpdateAnyRequestFlag() {
 	c.NavAnyRequest = c.NavMoveRequest || c.NavInitRequest
+	if c.NavAnyRequest {
+		assert(c.NavWindow != nil)
+	}
 }
 
 // Scoring function for directional navigation. Based on https://gist.github.com/rygorous/6981057
@@ -576,4 +813,22 @@ func (c *Context) SetNavIDWithRectRel(id ID, nav_layer int, rect_rel f64.Rectang
 	c.NavMousePosDirty = true
 	c.NavDisableHighlight = false
 	c.NavDisableMouseHover = true
+}
+
+func (c *Context) IsNavInputPressedAnyOfTwo(n1, n2 NavInput, mode InputReadMode) bool {
+	return c.GetNavInputAmount(n1, mode)+c.GetNavInputAmount(n2, mode) > 0
+}
+
+func (c *Context) NavSaveLastChildNavWindow(child_window *Window) {
+	parent_window := child_window
+	if parent_window != nil && (parent_window.Flags&WindowFlagsChildWindow) != 0 && (parent_window.Flags&(WindowFlagsPopup|WindowFlagsChildMenu)) == 0 {
+		parent_window = parent_window.ParentWindow
+	}
+	if parent_window != nil && parent_window != child_window {
+		parent_window.NavLastChildNavWindow = child_window
+	}
+}
+
+// Window management mode (hold to: change focus/move/resize, tap to: toggle menu layer)
+func (c *Context) NavUpdateWindowing() {
 }

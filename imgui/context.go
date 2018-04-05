@@ -159,7 +159,7 @@ type ConfigFlags int
 const (
 	ConfigFlagsNavEnableKeyboard    ConfigFlags = 1 << 0 // Master keyboard navigation enable flag. NewFrame() will automatically fill io.NavInputs[] based on io.KeyDown[].
 	ConfigFlagsNavEnableGamepad     ConfigFlags = 1 << 1 // Master gamepad navigation enable flag. This is mostly to instruct your imgui back-end to fill io.NavInputs[].
-	ConfigFlagsNavMoveMouse         ConfigFlags = 1 << 2 // Request navigation to allow moving the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is awkward. Will update io.MousePos and set io.WantMoveMouseConfigFlags=true. If enabled you MUST honor io.WantMoveMouse requests in your binding otherwise ImGui will react as if the mouse is jumping around back and forth.
+	ConfigFlagsNavEnableSetMousePos ConfigFlags = 1 << 2 // Request navigation to allow moving the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is awkward. Will update io.MousePos and set io.WantMoveMouseConfigFlags=true. If enabled you MUST honor io.WantMoveMouse requests in your binding otherwise ImGui will react as if the mouse is jumping around back and forth.
 	ConfigFlagsNavNoCaptureKeyboard ConfigFlags = 1 << 3 // Do not set the io.WantCaptureKeyboard flag with io.NavActive is set.
 	ConfigFlagsNoSetMouseCursor     ConfigFlags = 1 << 4 // Request back-end to not alter mouse cursor configuration.
 
