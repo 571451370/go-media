@@ -497,14 +497,110 @@ func (c *Context) NavUpdate() {
 		// We need round the scrolling speed because sub-pixel scroll isn't reliably supported.
 		scroll_speed := math.Floor(window.CalcFontSize()*100*c.IO.DeltaTime + 0.5)
 		if window.DC.NavLayerActiveMask == 0x00 && window.DC.NavHasScroll && c.NavMoveRequest {
+			if c.NavMoveDir == DirLeft || c.NavMoveDir == DirRight {
+				dir := 1.0
+				if c.NavMoveDir == DirLeft {
+					dir = -1.0
+				}
+				c.SetWindowScrollX(window, math.Floor(window.Scroll.X+dir*scroll_speed))
+			}
+			if c.NavMoveDir == DirUp || c.NavMoveDir == DirDown {
+				dir := 1.0
+				if c.NavMoveDir == DirUp {
+					dir = -1.0
+				}
+				c.SetWindowScrollY(window, math.Floor(window.Scroll.Y+dir*scroll_speed))
+			}
 		}
-		_ = scroll_speed
-		// TODO
+
+		// *Normal* Manual scroll with NavScrollXXX keys
+		// Next movement request will clamp the NavId reference rectangle to the visible area, so navigation will resume within those bounds.
+		scroll_dir := c.GetNavInputAmount2d(NavDirSourceFlagsPadLStick, InputReadModeDown, 1.0/10.0, 10.0)
+		if scroll_dir.X != 0.0 && window.ScrollbarX {
+			c.SetWindowScrollX(window, math.Floor(window.Scroll.X+scroll_dir.X*scroll_speed))
+			c.NavMoveFromClampedRefRect = true
+		}
+		if scroll_dir.Y != 0.0 {
+			c.SetWindowScrollY(window, math.Floor(window.Scroll.Y+scroll_dir.Y*scroll_speed))
+			c.NavMoveFromClampedRefRect = true
+		}
 	}
+
+	// Reset search results
+	c.NavMoveResultLocal.Clear()
+	c.NavMoveResultOther.Clear()
+
+	// When we have manually scrolled (without using navigation) and NavId becomes out of bounds, we project its bounding box to the visible area to restart navigation within visible items
+	if c.NavMoveRequest && c.NavMoveFromClampedRefRect && c.NavLayer == 0 {
+		window := c.NavWindow
+		window_rect_rel := f64.Rectangle{
+			window.InnerRect.Min.Sub(window.Pos.Sub(f64.Vec2{1, 1})),
+			window.InnerRect.Max.Sub(window.Pos.Add(f64.Vec2{1, 1})),
+		}
+
+		if !window.NavRectRel[c.NavLayer].In(window_rect_rel) {
+			pad := window.CalcFontSize() * 0.5
+			// Terrible approximation for the intent of starting navigation from first fully visible item
+			window_rect_rel = window_rect_rel.Expand2(f64.Vec2{
+				-math.Min(window_rect_rel.Dx(), pad),
+				-math.Min(window_rect_rel.Dy(), pad),
+			})
+			window.NavRectRel[c.NavLayer] = window.NavRectRel[c.NavLayer].Intersect(window_rect_rel)
+			c.NavId = 0
+		}
+		c.NavMoveFromClampedRefRect = false
+	}
+
+	// For scoring we use a single segment on the left side our current item bounding box (not touching the edge to avoid box overlap with zero-spaced items)
+	var nav_rect_rel f64.Rectangle
+	if c.NavWindow != nil && !c.NavWindow.NavRectRel[c.NavLayer].Inverted() {
+		nav_rect_rel = c.NavWindow.NavRectRel[c.NavLayer]
+	}
+	c.NavScoringRectScreen = c.GetViewportRect()
+	if c.NavWindow != nil {
+		c.NavScoringRectScreen = f64.Rectangle{
+			c.NavWindow.Pos.Add(nav_rect_rel.Min),
+			c.NavWindow.Pos.Add(nav_rect_rel.Max),
+		}
+	}
+	c.NavScoringRectScreen.Min.X = math.Min(c.NavScoringRectScreen.Min.X+1.0, c.NavScoringRectScreen.Max.X)
+	c.NavScoringRectScreen.Max.X = c.NavScoringRectScreen.Min.X
+	// Ensure if we have a finite, non-inverted bounding box here will allows us to remove extraneous fabsf() calls in NavScoreItem().
+	assert(!c.NavScoringRectScreen.Inverted())
 }
 
 // NB: We modify rect_rel by the amount we scrolled for, so it is immediately updated.
 func (c *Context) NavScrollToBringItemIntoView(window *Window, item_rect_rel f64.Rectangle) {
+	// Scroll to keep newly navigated item fully into view
+	window_pos := window.InnerRect.Min.Sub(window.Pos)
+	window_rect_rel := f64.Rectangle{
+		window_pos.Sub(f64.Vec2{1, 1}),
+		window_pos.Add(f64.Vec2{1, 1}),
+	}
+
+	if item_rect_rel.In(window_rect_rel) {
+		return
+	}
+
+	if window.ScrollbarX && item_rect_rel.Min.X < window_rect_rel.Min.X {
+		window.ScrollTarget.X = item_rect_rel.Min.X + window.Scroll.X - c.Style.ItemSpacing.X
+		window.ScrollTargetCenterRatio.X = 0.0
+	} else if window.ScrollbarX && item_rect_rel.Max.X >= window_rect_rel.Max.X {
+		window.ScrollTarget.X = item_rect_rel.Max.X + window.Scroll.X + c.Style.ItemSpacing.X
+		window.ScrollTargetCenterRatio.X = 1.0
+	}
+
+	if item_rect_rel.Min.Y < window_rect_rel.Min.Y {
+		window.ScrollTarget.Y = item_rect_rel.Min.Y + window.Scroll.Y - c.Style.ItemSpacing.Y
+		window.ScrollTargetCenterRatio.Y = 0.0
+	} else if item_rect_rel.Max.Y >= window_rect_rel.Max.Y {
+		window.ScrollTarget.Y = item_rect_rel.Max.Y + window.Scroll.Y + c.Style.ItemSpacing.Y
+		window.ScrollTargetCenterRatio.Y = 1.0
+	}
+
+	// Estimate upcoming scroll so we can offset our relative mouse position so mouse position can be applied immediately (under this block)
+	next_scroll := c.CalcNextScrollFromScrollTargetAndClamp(window)
+	item_rect_rel = item_rect_rel.Add(window.Scroll.Sub(next_scroll))
 }
 
 func (c *Context) navMapKey(key Key, nav_input NavInput) {

@@ -1266,6 +1266,10 @@ func (r Rectangle) TR() Vec2 { return Vec2{r.Max.X, r.Min.Y} }
 func (r Rectangle) BL() Vec2 { return Vec2{r.Min.X, r.Max.Y} }
 func (r Rectangle) BR() Vec2 { return r.Max }
 
+func (r Rectangle) Inverted() bool {
+	return r.Min.X > r.Max.X || r.Min.Y > r.Max.Y
+}
+
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
 		return v
