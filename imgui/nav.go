@@ -154,7 +154,11 @@ func (c *Context) GetNavInputAmount(n NavInput, mode InputReadMode) float64 {
 	return 0
 }
 
-func (c *Context) GetNavInputAmount2d(dir_sources NavDirSourceFlags, mode InputReadMode, slow_factor, fast_factor float64) f64.Vec2 {
+func (c *Context) GetNavInputAmount2d(dir_sources NavDirSourceFlags, mode InputReadMode) f64.Vec2 {
+	return c.GetNavInputAmount2dEx(dir_sources, mode, 0, 0)
+}
+
+func (c *Context) GetNavInputAmount2dEx(dir_sources NavDirSourceFlags, mode InputReadMode, slow_factor, fast_factor float64) f64.Vec2 {
 	delta := f64.Vec2{}
 	if dir_sources&NavDirSourceFlagsKeyboard != 0 {
 		right := c.GetNavInputAmount(NavInputKeyRight_, mode)
@@ -515,7 +519,7 @@ func (c *Context) NavUpdate() {
 
 		// *Normal* Manual scroll with NavScrollXXX keys
 		// Next movement request will clamp the NavId reference rectangle to the visible area, so navigation will resume within those bounds.
-		scroll_dir := c.GetNavInputAmount2d(NavDirSourceFlagsPadLStick, InputReadModeDown, 1.0/10.0, 10.0)
+		scroll_dir := c.GetNavInputAmount2dEx(NavDirSourceFlagsPadLStick, InputReadModeDown, 1.0/10.0, 10.0)
 		if scroll_dir.X != 0.0 && window.ScrollbarX {
 			c.SetWindowScrollX(window, math.Floor(window.Scroll.X+scroll_dir.X*scroll_speed))
 			c.NavMoveFromClampedRefRect = true
@@ -927,4 +931,135 @@ func (c *Context) NavSaveLastChildNavWindow(child_window *Window) {
 
 // Window management mode (hold to: change focus/move/resize, tap to: toggle menu layer)
 func (c *Context) NavUpdateWindowing() {
+	var apply_focus_window *Window
+	var apply_toggle_layer bool
+
+	start_windowing_with_gamepad := c.NavWindowingTarget == nil && c.IsNavInputPressed(NavInputMenu, InputReadModePressed)
+	start_windowing_with_keyboard := c.NavWindowingTarget == nil && c.IO.KeyCtrl && c.IsKeyPressedMap(KeyTab) && c.IO.ConfigFlags&ConfigFlagsNavEnableKeyboard != 0
+	if start_windowing_with_gamepad || start_windowing_with_keyboard {
+		window := c.NavWindow
+		if window == nil {
+			window = c.FindWindowNavigable(len(c.Windows)-1, -math.MaxInt32, -1)
+		}
+		if window != nil {
+			c.NavWindowingTarget = window.RootWindowForTabbing
+			c.NavWindowingHighlightTimer = 0.0
+			c.NavWindowingHighlightAlpha = 0.0
+			c.NavWindowingToggleLayer = true
+			c.NavInputSource = InputSourceNavGamepad
+			if start_windowing_with_keyboard {
+				c.NavWindowingToggleLayer = false
+				c.NavInputSource = InputSourceNavKeyboard
+			}
+		}
+	}
+
+	// Gamepad update
+	c.NavWindowingHighlightTimer += c.IO.DeltaTime
+	if c.NavWindowingTarget != nil && c.NavInputSource == InputSourceNavGamepad {
+		// Highlight only appears after a brief time holding the button, so that a fast tap on PadMenu (to toggle NavLayer) doesn't add visual noise
+		c.NavWindowingHighlightAlpha = math.Max(c.NavWindowingHighlightAlpha, f64.Saturate((c.NavWindowingHighlightTimer-0.20)/0.05))
+
+		// Select window to focus
+		focus_change_dir := truth(c.IsNavInputPressed(NavInputFocusPrev, InputReadModeRepeatSlow)) - truth(c.IsNavInputPressed(NavInputFocusNext, InputReadModeRepeatSlow))
+		if focus_change_dir != 0 {
+			c.NavUpdateWindowingHighlightWindow(focus_change_dir)
+			c.NavWindowingHighlightAlpha = 1.0
+		}
+
+		// Single press toggles NavLayer, long press with L/R apply actual focus on release (until then the window was merely rendered front-most)
+		if !c.IsNavInputDown(NavInputMenu) {
+			// Once button was held long enough we don't consider it a tap-to-toggle-layer press anymore.
+			if !(c.NavWindowingToggleLayer && c.NavWindowingHighlightAlpha < 1.0) {
+				c.NavWindowingToggleLayer = true
+			} else if !c.NavWindowingToggleLayer {
+				apply_focus_window = c.NavWindowingTarget
+			}
+			c.NavWindowingTarget = nil
+		}
+	}
+
+	// Keyboard: Focus
+	if c.NavWindowingTarget != nil && c.NavInputSource == InputSourceNavKeyboard {
+		// Visuals only appears after a brief time after pressing TAB the first time, so that a fast CTRL+TAB doesn't add visual noise
+		c.NavWindowingHighlightAlpha = math.Max(c.NavWindowingHighlightAlpha, f64.Saturate((c.NavWindowingHighlightTimer-0.15)/0.04))
+
+		if c.IsKeyPressedMapEx(KeyTab, true) {
+			if c.IO.KeyShift {
+				c.NavUpdateWindowingHighlightWindow(1)
+			} else {
+				c.NavUpdateWindowingHighlightWindow(-1)
+			}
+		}
+
+		if !c.IO.KeyCtrl {
+			apply_focus_window = c.NavWindowingTarget
+		}
+	}
+
+	// Keyboard: Press and Release ALT to toggle menu layer
+	// FIXME: We lack an explicit IO variable for "is the imgui window focused", so compare mouse validity to detect the common case of back-end clearing releases all keys on ALT-TAB
+	if (c.ActiveId == 0 || c.ActiveIdAllowOverlap) && c.IsNavInputPressed(NavInputKeyMenu_, InputReadModeReleased) {
+		if c.IsMousePosValid(&c.IO.MousePos) == c.IsMousePosValid(&c.IO.MousePosPrev) {
+			apply_toggle_layer = true
+		}
+	}
+
+	// Move window
+	if c.NavWindowingTarget != nil && c.NavWindowingTarget.Flags&WindowFlagsNoMove == 0 {
+		var move_delta f64.Vec2
+		if c.NavInputSource == InputSourceNavKeyboard && !c.IO.KeyShift {
+			move_delta = c.GetNavInputAmount2d(NavDirSourceFlagsKeyboard, InputReadModeDown)
+		}
+		if c.NavInputSource == InputSourceNavGamepad {
+			move_delta = c.GetNavInputAmount2d(NavDirSourceFlagsPadLStick, InputReadModeDown)
+		}
+		if move_delta.X != 0.0 || move_delta.Y != 0.0 {
+			const NAV_MOVE_SPEED = 800.0
+			move_speed := math.Floor(NAV_MOVE_SPEED * c.IO.DeltaTime * math.Min(c.IO.DisplayFramebufferScale.X, c.IO.DisplayFramebufferScale.Y))
+			c.NavWindowingTarget.PosFloat = c.NavWindowingTarget.PosFloat.Add(move_delta.Scale(move_speed))
+			c.NavDisableMouseHover = true
+			c.MarkIniSettingsDirtyForWindow(c.NavWindowingTarget)
+		}
+	}
+
+	// Apply final focus
+	if apply_focus_window != nil && (c.NavWindow == nil || apply_focus_window != c.NavWindow.RootWindowForTabbing) {
+		c.NavDisableHighlight = false
+		c.NavDisableMouseHover = true
+		apply_focus_window = c.NavRestoreLastChildNavWindow(apply_focus_window)
+		c.ClosePopupsOverWindow(apply_focus_window)
+		c.FocusWindow(apply_focus_window)
+		if apply_focus_window.NavLastIds[0] == 0 {
+			c.NavInitWindow(apply_focus_window, false)
+		}
+
+		// If the window only has a menu layer, select it directly
+		if apply_focus_window.DC.NavLayerActiveMask == (1 << 1) {
+			c.NavLayer = 1
+		}
+	}
+	if apply_focus_window != nil {
+		c.NavWindowingTarget = nil
+	}
+
+	// Apply menu/layer toggle
+	if apply_toggle_layer && c.NavWindow != nil {
+		new_nav_window := c.NavWindow
+		for (new_nav_window.DC.NavLayerActiveMask&(1<<1)) == 0 && (new_nav_window.Flags&WindowFlagsChildWindow) != 0 && (new_nav_window.Flags&(WindowFlagsPopup|WindowFlagsChildMenu)) == 0 {
+			new_nav_window = new_nav_window.ParentWindow
+		}
+		if new_nav_window != new_nav_window.ParentWindow {
+			old_nav_window := c.NavWindow
+			c.FocusWindow(new_nav_window)
+			new_nav_window.NavLastChildNavWindow = old_nav_window
+		}
+		c.NavDisableHighlight = false
+		c.NavDisableMouseHover = true
+		if c.NavWindow.DC.NavLayerActiveMask&(1<<1) != 0 {
+			c.NavRestoreLayer(c.NavLayer ^ 1)
+		} else {
+			c.NavRestoreLayer(0)
+		}
+	}
 }

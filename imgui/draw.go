@@ -624,7 +624,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			title_bar_rect := window.TitleBarRect()
 			if window.CollapseToggleWanted || (c.HoveredWindow == window && c.IsMouseHoveringRect(title_bar_rect.Min, title_bar_rect.Max) && c.IO.MouseDoubleClicked[0]) {
 				window.Collapsed = !window.Collapsed
-				c.MarkIniSettingsDirtyEx(window)
+				c.MarkIniSettingsDirtyForWindow(window)
 				c.FocusWindow(window)
 			}
 		} else {
@@ -697,7 +697,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			}
 
 			if !window.Collapsed {
-				c.MarkIniSettingsDirtyEx(window)
+				c.MarkIniSettingsDirtyForWindow(window)
 			}
 		}
 

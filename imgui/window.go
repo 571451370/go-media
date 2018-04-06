@@ -1552,7 +1552,7 @@ func (c *Context) UpdateMovingWindow() {
 		if c.IO.MouseDown[0] {
 			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
 			if moving_window.PosFloat.X != pos.X || moving_window.PosFloat.Y != pos.Y {
-				c.MarkIniSettingsDirtyEx(moving_window)
+				c.MarkIniSettingsDirtyForWindow(moving_window)
 				moving_window.PosFloat = pos
 			}
 			c.FocusWindow(c.MovingWindow)

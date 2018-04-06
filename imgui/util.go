@@ -300,3 +300,10 @@ func TriangleContainsPoint(a, b, c, p f64.Vec2) bool {
 	b3 := ((p.X-a.X)*(c.Y-a.Y) - (p.Y-a.Y)*(c.X-a.X)) < 0.0
 	return ((b1 == b2) && (b2 == b3))
 }
+
+func truth(x bool) int {
+	if x {
+		return 1
+	}
+	return 0
+}

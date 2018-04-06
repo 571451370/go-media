@@ -134,7 +134,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 				set_new_value = true
 			}
 		} else if c.ActiveIdSource == InputSourceNav {
-			delta2 := c.GetNavInputAmount2d(NavDirSourceFlagsKeyboard|NavDirSourceFlagsPadDPad, InputReadModeRepeatFast, 0.0, 0.0)
+			delta2 := c.GetNavInputAmount2dEx(NavDirSourceFlagsKeyboard|NavDirSourceFlagsPadDPad, InputReadModeRepeatFast, 0.0, 0.0)
 			delta := -delta2.Y
 			if is_horizontal {
 				delta = delta2.X

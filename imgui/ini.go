@@ -104,7 +104,7 @@ func (c *Context) MarkIniSettingsDirty() {
 	}
 }
 
-func (c *Context) MarkIniSettingsDirtyEx(window *Window) {
+func (c *Context) MarkIniSettingsDirtyForWindow(window *Window) {
 	if window.Flags&WindowFlagsNoSavedSettings == 0 {
 		if c.SettingsDirtyTimer <= 0 {
 			c.SettingsDirtyTimer = c.IO.IniSavingRate
