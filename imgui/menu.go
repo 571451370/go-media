@@ -250,7 +250,7 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 	if menu_is_open {
 		c.SetNextWindowPos(popup_pos, CondAlways, f64.Vec2{0, 0})
 		flags := WindowFlagsAlwaysAutoResize | WindowFlagsNoTitleBar | WindowFlagsNoSavedSettings
-		if window.Flags&(WindowFlagsPopup|WindowFlagsChildMenu) == 0 {
+		if window.Flags&(WindowFlagsPopup|WindowFlagsChildMenu) != 0 {
 			flags |= WindowFlagsChildMenu | WindowFlagsChildWindow
 		} else {
 			flags |= WindowFlagsChildMenu
@@ -304,7 +304,7 @@ func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlag
 		max_x = c.GetContentRegionMax().X
 	}
 	w_draw := math.Max(label_size.X, window.Pos.X+max_x-window_padding.X-window.DC.CursorPos.X)
-	size_draw := f64.Vec2{w_draw, 0}
+	size_draw := f64.Vec2{w_draw, size.Y}
 	if size_arg.X != 0 && flags&SelectableFlagsDrawFillAvailWidth == 0 {
 		size_draw.X = size_arg.X
 	}

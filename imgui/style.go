@@ -228,8 +228,70 @@ func (s *Style) Init() {
 	s.CurveTessellationTol = 1.25             // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
 }
 
+func (c *Context) GetStyleIndex(style *Style, idx StyleVar) interface{} {
+	if style == nil {
+		style = &c.Style
+	}
+	switch idx {
+	case StyleVarAlpha:
+		return &style.Alpha
+	case StyleVarWindowPadding:
+		return &style.WindowPadding
+	case StyleVarWindowRounding:
+		return &style.WindowRounding
+	case StyleVarWindowBorderSize:
+		return &style.WindowBorderSize
+	case StyleVarWindowMinSize:
+		return &style.WindowMinSize
+	case StyleVarWindowTitleAlign:
+		return &style.WindowTitleAlign
+	case StyleVarChildRounding:
+		return &style.ChildRounding
+	case StyleVarChildBorderSize:
+		return &style.ChildBorderSize
+	case StyleVarPopupRounding:
+		return &style.PopupRounding
+	case StyleVarPopupBorderSize:
+		return &style.PopupBorderSize
+	case StyleVarFramePadding:
+		return &style.FramePadding
+	case StyleVarFrameRounding:
+		return &style.FrameRounding
+	case StyleVarFrameBorderSize:
+		return &style.FrameBorderSize
+	case StyleVarItemSpacing:
+		return &style.ItemSpacing
+	case StyleVarItemInnerSpacing:
+		return &style.ItemInnerSpacing
+	case StyleVarIndentSpacing:
+		return &style.IndentSpacing
+	case StyleVarScrollbarSize:
+		return &style.ScrollbarSize
+	case StyleVarScrollbarRounding:
+		return &style.ScrollbarRounding
+	case StyleVarGrabMinSize:
+		return &style.GrabMinSize
+	case StyleVarGrabRounding:
+		return &style.GrabRounding
+	case StyleVarButtonTextAlign:
+		return &style.ButtonTextAlign
+	default:
+		panic("unreachable")
+	}
+}
+
 func (c *Context) PushStyleVar(idx StyleVar, val interface{}) {
-	c.StyleModifiers = append(c.StyleModifiers, StyleMod{idx, val})
+	v := c.GetStyleIndex(nil, idx)
+	switch v := v.(type) {
+	case *float64:
+		c.StyleModifiers = append(c.StyleModifiers, StyleMod{idx, *v})
+		*v = val.(float64)
+	case *f64.Vec2:
+		c.StyleModifiers = append(c.StyleModifiers, StyleMod{idx, *v})
+		*v = val.(f64.Vec2)
+	default:
+		panic("unreachable")
+	}
 }
 
 func (c *Context) PopStyleVar() {
@@ -238,53 +300,19 @@ func (c *Context) PopStyleVar() {
 
 func (c *Context) PopStyleVarN(count int) {
 	style := &c.Style
-	for ; count > 0; count-- {
+	for ; count > 0 && len(c.StyleModifiers) > 0; count-- {
 		n := len(c.StyleModifiers) - 1
 		m := c.StyleModifiers[n]
 		c.StyleModifiers = c.StyleModifiers[:n]
-		switch m.VarIdx {
-		case StyleVarAlpha:
-			style.Alpha = m.Value.(float64)
-		case StyleVarWindowPadding:
-			style.WindowPadding = m.Value.(f64.Vec2)
-		case StyleVarWindowRounding:
-			style.WindowRounding = m.Value.(float64)
-		case StyleVarWindowBorderSize:
-			style.WindowBorderSize = m.Value.(float64)
-		case StyleVarWindowMinSize:
-			style.WindowMinSize = m.Value.(f64.Vec2)
-		case StyleVarWindowTitleAlign:
-			style.WindowTitleAlign = m.Value.(f64.Vec2)
-		case StyleVarChildRounding:
-			style.ChildRounding = m.Value.(float64)
-		case StyleVarChildBorderSize:
-			style.ChildBorderSize = m.Value.(float64)
-		case StyleVarPopupRounding:
-			style.PopupRounding = m.Value.(float64)
-		case StyleVarPopupBorderSize:
-			style.PopupBorderSize = m.Value.(float64)
-		case StyleVarFramePadding:
-			style.FramePadding = m.Value.(f64.Vec2)
-		case StyleVarFrameRounding:
-			style.FrameRounding = m.Value.(float64)
-		case StyleVarFrameBorderSize:
-			style.FrameBorderSize = m.Value.(float64)
-		case StyleVarItemSpacing:
-			style.ItemSpacing = m.Value.(f64.Vec2)
-		case StyleVarItemInnerSpacing:
-			style.ItemInnerSpacing = m.Value.(f64.Vec2)
-		case StyleVarIndentSpacing:
-			style.IndentSpacing = m.Value.(float64)
-		case StyleVarScrollbarSize:
-			style.ScrollbarSize = m.Value.(float64)
-		case StyleVarScrollbarRounding:
-			style.ScrollbarRounding = m.Value.(float64)
-		case StyleVarGrabMinSize:
-			style.GrabMinSize = m.Value.(float64)
-		case StyleVarGrabRounding:
-			style.GrabRounding = m.Value.(float64)
-		case StyleVarButtonTextAlign:
-			style.ButtonTextAlign = m.Value.(f64.Vec2)
+
+		v := c.GetStyleIndex(style, m.VarIdx)
+		switch v := v.(type) {
+		case *float64:
+			*v = m.Value.(float64)
+		case *f64.Vec2:
+			*v = m.Value.(f64.Vec2)
+		default:
+			panic("unreachable")
 		}
 	}
 }
@@ -304,7 +332,7 @@ func (c *Context) PopStyleColor() {
 }
 
 func (c *Context) PopStyleColorN(count int) {
-	for ; count > 0; count-- {
+	for ; count > 0 && len(c.ColorModifiers) > 0; count-- {
 		backup := c.ColorModifiers[len(c.ColorModifiers)-1]
 		c.Style.Colors[backup.Col] = backup.BackupValue
 		c.ColorModifiers = c.ColorModifiers[:len(c.ColorModifiers)-1]
