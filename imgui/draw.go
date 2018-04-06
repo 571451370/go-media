@@ -2722,7 +2722,7 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 	_, _, _ = resize_border_count, pos_target, size_target
 
 	// Manual resize grips
-	c.PushID("#RESIZE")
+	c.PushStringID("#RESIZE")
 	for resize_grip_n := range resize_grip_col {
 		grip := resize_grip_def[resize_grip_n]
 		corner := window.Pos.Lerp2(grip.CornerPos, window.Pos.Add(window.Size))

@@ -1288,7 +1288,7 @@ func (c *Context) TreePush(str_id string) {
 	if str_id == "" {
 		str_id = "#TreePush"
 	}
-	c.PushID(str_id)
+	c.PushStringID(str_id)
 }
 
 func (c *Context) AddWindowToSortedBuffer(out_sorted_windows *[]*Window, window *Window) {

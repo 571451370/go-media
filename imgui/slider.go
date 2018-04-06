@@ -321,8 +321,8 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, 0)
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
-	value_buf := fmt.Sprintf(display_format, *v)
-	c.RenderTextClippedEx(frame_bb.Min, frame_bb.Max, value_buf, nil, f64.Vec2{0.5, 0.5}, nil)
+	value := fmt.Sprintf(display_format, *v)
+	c.RenderTextClippedEx(frame_bb.Min, frame_bb.Max, value, nil, f64.Vec2{0.5, 0.5}, nil)
 	if label_size.X > 0.0 {
 		c.RenderText(f64.Vec2{
 			frame_bb.Max.X + style.ItemInnerSpacing.X,
@@ -353,7 +353,52 @@ func (c *Context) VSliderFloat(label string, size f64.Vec2, v *float64, v_min, v
 }
 
 func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min, v_max float64, display_format string, power float64) bool {
-	return false
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	id := window.GetID(label)
+
+	label_size := c.CalcTextSizeEx(label, true, -1)
+	frame_bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(size)}
+	x := 0.0
+	if label_size.X > 0.0 {
+		x += style.ItemInnerSpacing.X + label_size.X
+	}
+	bb := f64.Rectangle{frame_bb.Min, frame_bb.Max.Add(f64.Vec2{x, 0})}
+
+	c.ItemSizeBBEx(bb, style.FramePadding.Y)
+	if !c.ItemAdd(frame_bb, id) {
+		return false
+	}
+	hovered := c.ItemHoverable(frame_bb, id)
+
+	if display_format == "" {
+		display_format = "%.3f"
+	}
+	decimal_precision := ParseFormatPrecision(display_format, 3)
+
+	if (hovered && c.IO.MouseClicked[0]) || c.NavActivateId == id || c.NavInputId == id {
+		c.SetActiveID(id, window)
+		c.SetFocusID(id, window)
+		c.FocusWindow(window)
+		c.ActiveIdAllowNavDirFlags = (1 << uint(DirLeft)) | (1 << uint(DirRight))
+	}
+
+	// Actual slider behavior + render grab
+	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, SliderFlagsVertical)
+
+	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+	// For the vertical slider we allow centered text to overlap the frame padding
+	value := fmt.Sprintf(display_format, *v)
+	c.RenderTextClippedEx(f64.Vec2{frame_bb.Min.X, frame_bb.Min.Y + style.FramePadding.Y}, frame_bb.Max, value, nil, f64.Vec2{0.5, 0.0}, nil)
+	if label_size.X > 0.0 {
+		c.RenderText(f64.Vec2{frame_bb.Max.X + style.ItemInnerSpacing.X, frame_bb.Min.Y + style.FramePadding.Y}, label)
+	}
+
+	return value_changed
 }
 
 // Create text input in place of a slider (when CTRL+Clicking on slider)
@@ -382,4 +427,63 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	}
 
 	return false
+}
+
+func (c *Context) SliderAngle(label string, v_rad *float64, v_degrees_min, v_degrees_max float64) bool {
+	v_deg := (*v_rad) * 360.0 / (2 * math.Pi)
+	value_changed := c.SliderFloatEx(label, &v_deg, v_degrees_min, v_degrees_max, "%.0f deg", 1.0)
+	*v_rad = v_deg * (2 * math.Pi) / 360.0
+	return value_changed
+}
+
+// Add multiple sliders on 1 line for compact edition of multiple components
+func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64, display_format string, power float64) bool {
+	components := len(v)
+
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	value_changed := false
+	c.BeginGroup()
+	c.PushStringID(label)
+	c.PushMultiItemsWidths(components)
+	for i := 0; i < components; i++ {
+		c.PushID(ID(i))
+		changed := c.SliderFloatEx("##v", &v[i], v_min, v_max, display_format, power)
+		if changed {
+			value_changed = true
+		}
+		c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+		c.PopID()
+		c.PopItemWidth()
+	}
+
+	c.PopID()
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+
+	return value_changed
+}
+
+func (c *Context) PushMultiItemsWidths(components int) {
+	c.PushMultiItemsWidthsEx(components, 0)
+}
+
+func (c *Context) PushMultiItemsWidthsEx(components int, w_full float64) {
+	window := c.GetCurrentWindow()
+	style := &c.Style
+	if w_full <= 0.0 {
+		w_full = c.CalcItemWidth()
+	}
+	w_item_one := math.Max(1.0, float64(int(w_full-style.ItemInnerSpacing.X*float64(components-1)))/float64(components))
+	w_item_last := math.Max(1, float64(int(w_full-(w_item_one+style.ItemInnerSpacing.X)*float64(components-1))))
+	window.DC.ItemWidthStack = append(window.DC.ItemWidthStack, w_item_last)
+	for i := 0; i < components-1; i++ {
+		window.DC.ItemWidthStack = append(window.DC.ItemWidthStack, w_item_one)
+	}
+	window.DC.ItemWidth = window.DC.ItemWidthStack[len(window.DC.ItemWidthStack)-1]
 }

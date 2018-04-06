@@ -33,7 +33,7 @@ func (c *Context) BeginMenuBar() bool {
 
 	// Save position
 	c.BeginGroup()
-	c.PushID("##menubar")
+	c.PushStringID("##menubar")
 
 	// We don't clip with regular window clipping rectangle as it is already set to the area below. However we clip with window full rect.
 	// We remove 1 worth of rounding to Max.x to that text in long menus don't tend to display over the lower-right rounded area, which looks particularly glitchy.

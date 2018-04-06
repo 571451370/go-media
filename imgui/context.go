@@ -426,9 +426,14 @@ func (c *Context) LogFinish() {
 	c.LogEnabled = false
 }
 
-func (c *Context) PushID(str_id string) {
+func (c *Context) PushStringID(str_id string) {
 	window := c.GetCurrentWindowRead()
 	window.IDStack = append(window.IDStack, window.GetID(str_id))
+}
+
+func (c *Context) PushID(id ID) {
+	window := c.GetCurrentWindowRead()
+	window.IDStack = append(window.IDStack, id)
 }
 
 func (c *Context) PopID() {
