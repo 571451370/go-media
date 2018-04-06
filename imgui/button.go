@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -534,4 +535,56 @@ func (c *Context) RadioButtonEx(label string, v *int, v_button int) bool {
 		*v = v_button
 	}
 	return pressed
+}
+
+func (c *Context) Bullet() {
+	style := &c.Style
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	line_height := math.Max(math.Min(window.DC.CurrentLineHeight, c.FontSize+c.Style.FramePadding.Y*2), c.FontSize)
+	bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(f64.Vec2{c.FontSize, line_height})}
+	c.ItemSizeBB(bb)
+	if !c.ItemAdd(bb, 0) {
+		c.SameLineEx(0, style.FramePadding.X*2)
+		return
+	}
+
+	// Render and stay on same line
+	c.RenderBullet(bb.Min.Add(f64.Vec2{style.FramePadding.X + c.FontSize*0.5, line_height * 0.5}))
+	c.SameLineEx(0, style.FramePadding.X*2)
+}
+
+// Text with a little bullet aligned to the typical tree node.
+func (c *Context) BulletText(format string, args ...interface{}) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+	style := &c.Style
+	text := fmt.Sprintf(format, args...)
+	label_size := c.CalcTextSizeEx(text, false, -1)
+	// Latch before ItemSize changes it
+	text_base_offset_y := math.Max(0.0, window.DC.CurrentLineTextBaseOffset)
+	line_height := math.Max(math.Min(window.DC.CurrentLineHeight, c.FontSize+c.Style.FramePadding.Y*2), c.FontSize)
+	// Empty text doesn't add padding
+	offset := f64.Vec2{c.FontSize, math.Max(line_height, label_size.Y)}
+	if label_size.X > 0.0 {
+		offset.X += label_size.X + style.FramePadding.X*2
+	}
+	bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(offset),
+	}
+
+	c.ItemSizeBB(bb)
+	if !c.ItemAdd(bb, 0) {
+		return
+	}
+
+	// Render
+	c.RenderBullet(bb.Min.Add(f64.Vec2{style.FramePadding.X + c.FontSize*0.5, line_height * 0.5}))
+	c.RenderTextEx(bb.Min.Add(f64.Vec2{c.FontSize + style.FramePadding.X*2, text_base_offset_y}), text, false)
 }

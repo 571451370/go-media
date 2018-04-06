@@ -436,8 +436,12 @@ func (c *Context) SliderAngle(label string, v_rad *float64, v_degrees_min, v_deg
 	return value_changed
 }
 
+func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64) bool {
+	return c.SliderFloatNEx(label, v, v_min, v_max, "%.3f", 1)
+}
+
 // Add multiple sliders on 1 line for compact edition of multiple components
-func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64, display_format string, power float64) bool {
+func (c *Context) SliderFloatNEx(label string, v []float64, v_min, v_max float64, display_format string, power float64) bool {
 	components := len(v)
 
 	window := c.GetCurrentWindow()
