@@ -414,7 +414,6 @@ func (c *Context) ItemAddEx(bb f64.Rectangle, id ID, nav_bb_arg *f64.Rectangle) 
 		//      it may not scale very well for windows with ten of thousands of item, but at least NavMoveRequest is only set on user interaction, aka maximum once a frame.
 		//      We could early out with "if (is_clipped && !g.NavInitRequest) return false;" but when we wouldn't be able to reach unclipped widgets. This would work if user had explicit scrolling control (e.g. mapped on a stick)
 		window.DC.NavLayerActiveMaskNext |= window.DC.NavLayerCurrentMask
-		//fmt.Printf("%#x %#x %v\n", c.NavId, id, c.NavAnyRequest)
 		if c.NavId == id || c.NavAnyRequest {
 			if c.NavWindow.RootWindowForNav == window.RootWindowForNav {
 				if window == c.NavWindow || (window.Flags|c.NavWindow.Flags)&WindowFlagsNavFlattened != 0 {

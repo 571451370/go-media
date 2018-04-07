@@ -111,7 +111,7 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 	label_size := c.CalcTextSizeEx(label, true, -1)
 
 	pressed := false
-	menu_is_open := c.IsPopupOpen(label)
+	menu_is_open := c.IsPopupOpenID(id)
 	menuset_is_open := window.Flags&WindowFlagsPopup == 0 && len(c.OpenPopupStack) > len(c.CurrentPopupStack) && c.OpenPopupStack[len(c.CurrentPopupStack)].OpenParentId == window.IDStack[len(window.IDStack)-1]
 	backed_nav_window := c.NavWindow
 	if menuset_is_open {
@@ -395,7 +395,6 @@ func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlag
 	if pressed && (window.Flags&WindowFlagsPopup) != 0 && flags&SelectableFlagsDontClosePopups == 0 && window.DC.ItemFlags&ItemFlagsSelectableDontClosePopup == 0 {
 		c.CloseCurrentPopup()
 	}
-
 	return pressed
 }
 

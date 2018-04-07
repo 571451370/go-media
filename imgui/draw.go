@@ -2702,7 +2702,6 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 }
 
 // Handle resize for: Resize Grips, Borders, Gamepad
-// TODO
 func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, border_held *int, resize_grip_col []color.RGBA) {
 	flags := window.Flags
 	if flags&WindowFlagsNoResize != 0 || flags&WindowFlagsAlwaysAutoResize != 0 || window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0 {
@@ -2718,8 +2717,6 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 
 	pos_target := f64.Vec2{math.MaxFloat32, math.MaxFloat32}
 	size_target := f64.Vec2{math.MaxFloat32, math.MaxFloat32}
-
-	_, _, _ = resize_border_count, pos_target, size_target
 
 	// Manual resize grips
 	c.PushStringID("#RESIZE")
@@ -2750,6 +2747,13 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 		} else if held {
 			// Resize from any of the four corners
 			// We don't use an incremental MouseDelta but rather compute an absolute target size based on mouse position
+
+			// Corner of the window corresponding to our corner grip
+			x := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
+			y := resize_rect.Size().Scale2(grip.CornerPos)
+			corner_target := x.Add(y)
+
+			pos_target, size_target = c.CalcResizePosSizeFromAnyCorner(window, corner_target, grip.CornerPos)
 		}
 
 		if resize_grip_n == 0 || held || hovered {
@@ -2757,6 +2761,78 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 			cornerTarget = cornerTarget.Scale2(grip.CornerPos)
 		}
 	}
+
+	for border_n := 0; border_n < resize_border_count; border_n++ {
+		const (
+			BORDER_SIZE         = 5    // FIXME: Only works _inside_ window because of HoveredWindow check.
+			BORDER_APPEAR_TIMER = 0.05 // Reduce visual noise
+		)
+		border_rect := c.GetBorderRect(window, border_n, grip_hover_size, BORDER_SIZE)
+		hovered, held, _ := c.ButtonBehavior(border_rect, window.GetIDByInt(border_n+4), ButtonFlagsFlattenChildren)
+		if (hovered && c.HoveredIdTimer > BORDER_APPEAR_TIMER) || held {
+			if border_n&1 != 0 {
+				c.MouseCursor = MouseCursorResizeEW
+			} else {
+				c.MouseCursor = MouseCursorResizeNS
+			}
+			if held {
+				*border_held = border_n
+			}
+		}
+		if held {
+			border_target := window.Pos
+			border_posn := f64.Vec2{}
+			switch border_n {
+			case 0:
+				border_posn = f64.Vec2{0, 0}
+				border_target.Y = (c.IO.MousePos.Y - c.ActiveIdClickOffset.Y)
+			case 1:
+				border_posn = f64.Vec2{1, 0}
+				border_target.X = (c.IO.MousePos.X - c.ActiveIdClickOffset.X + BORDER_SIZE)
+			case 2:
+				border_posn = f64.Vec2{0, 1}
+				border_target.Y = (c.IO.MousePos.Y - c.ActiveIdClickOffset.Y + BORDER_SIZE)
+			case 3:
+				border_posn = f64.Vec2{0, 0}
+				border_target.X = (c.IO.MousePos.X - c.ActiveIdClickOffset.X)
+			}
+			pos_target, size_target = c.CalcResizePosSizeFromAnyCorner(window, border_target, border_posn)
+		}
+	}
+	c.PopID()
+
+	// Navigation resize (keyboard/gamepad)
+	if c.NavWindowingTarget == window {
+		var nav_resize_delta f64.Vec2
+		if c.NavInputSource == InputSourceNavKeyboard && c.IO.KeyShift {
+			nav_resize_delta = c.GetNavInputAmount2d(NavDirSourceFlagsKeyboard, InputReadModeDown)
+		}
+		if c.NavInputSource == InputSourceNavGamepad {
+			nav_resize_delta = c.GetNavInputAmount2d(NavDirSourceFlagsPadDPad, InputReadModeDown)
+		}
+		if nav_resize_delta.X != 0.0 || nav_resize_delta.Y != 0.0 {
+			const NAV_RESIZE_SPEED = 600.0
+			delta_value := math.Floor(NAV_RESIZE_SPEED * c.IO.DeltaTime * math.Min(c.IO.DisplayFramebufferScale.X, c.IO.DisplayFramebufferScale.Y))
+			nav_resize_delta = nav_resize_delta.Scale(delta_value)
+			c.NavWindowingToggleLayer = false
+			c.NavDisableMouseHover = true
+			resize_grip_col[0] = c.GetColorFromStyle(ColResizeGripActive)
+			// FIXME-NAV: Should store and accumulate into a separate size buffer to handle sizing constraints properly, right now a constraint will make us stuck.
+			size_target = c.CalcSizeAfterConstraint(window, window.SizeFull.Add(nav_resize_delta))
+		}
+	}
+
+	// Apply back modified position/size to window
+	if size_target.X != math.MaxFloat32 {
+		window.SizeFull = size_target
+		c.MarkIniSettingsDirtyForWindow(window)
+	}
+	if pos_target.X != math.MaxFloat32 {
+		window.Pos = pos_target.Floor()
+		window.PosFloat = window.Pos
+		c.MarkIniSettingsDirtyForWindow(window)
+	}
+	window.Size = window.SizeFull
 }
 
 func (c *Context) CalcNextScrollFromScrollTargetAndClamp(window *Window) f64.Vec2 {
@@ -3237,4 +3313,22 @@ func (d *DrawList) AddTextEx(font *Font, font_size float64, pos f64.Vec2, col co
 	}
 
 	font.RenderText(d, font_size, pos, col, clip_rect, text, wrap_width, cpu_fine_clip_rect != nil)
+}
+
+func (c *Context) CalcResizePosSizeFromAnyCorner(window *Window, corner_target f64.Vec2, corner_norm f64.Vec2) (out_pos, out_size f64.Vec2) {
+	// Expected window upper-left
+	pos_min := corner_target.Lerp2(corner_norm, window.Pos)
+	pos_max := window.Pos.Add(window.Size)
+	pos_max = pos_max.Lerp2(corner_norm, corner_target)
+	size_expected := pos_max.Sub(pos_min)
+	size_constrained := c.CalcSizeAfterConstraint(window, size_expected)
+	out_pos = pos_min
+	if corner_norm.X == 0.0 {
+		out_pos.X -= (size_constrained.X - size_expected.X)
+	}
+	if corner_norm.Y == 0.0 {
+		out_pos.Y -= (size_constrained.Y - size_expected.Y)
+	}
+	out_size = size_constrained
+	return
 }

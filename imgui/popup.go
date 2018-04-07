@@ -55,7 +55,7 @@ func (c *Context) OpenPopupEx(id ID) {
 	}
 }
 
-func (c *Context) IsPopupOpen(str_id string) bool {
+func (c *Context) IsPopupOpenName(str_id string) bool {
 	return len(c.OpenPopupStack) > len(c.CurrentPopupStack) && c.OpenPopupStack[len(c.CurrentPopupStack)].PopupId == c.CurrentWindow.GetID(str_id)
 }
 
@@ -81,11 +81,12 @@ func (c *Context) ClosePopupsOverWindow(ref_window *Window) {
 	// Don't close our own child popup windows.
 	var n int
 	if ref_window != nil {
-		for n = range c.OpenPopupStack {
+		for ; n < len(c.OpenPopupStack); n++ {
 			popup := &c.OpenPopupStack[n]
 			if popup.Window == nil {
 				continue
 			}
+			assert((popup.Window.Flags & WindowFlagsPopup) != 0)
 			if popup.Window.Flags&WindowFlagsChildWindow != 0 {
 				continue
 			}
@@ -105,6 +106,7 @@ func (c *Context) ClosePopupsOverWindow(ref_window *Window) {
 	if n < len(c.OpenPopupStack) {
 		c.ClosePopupToLevel(n)
 	}
+
 }
 
 func (c *Context) ClosePopupToLevel(remaining int) {
@@ -149,6 +151,7 @@ func (c *Context) BeginPopupEx(id ID, extra_flags WindowFlags) bool {
 		// Not recycling, so we can close/open during the same frame
 		name = fmt.Sprintf("##Popup_%08x", id)
 	}
+
 	is_open := c.BeginEx(name, nil, extra_flags|WindowFlagsPopup)
 	// NB: Begin can return false when the popup is completely clipped (e.g. zero size display)
 	if !is_open {
