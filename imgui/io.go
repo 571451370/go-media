@@ -75,8 +75,8 @@ type IO struct {
 	// Output - Retrieve after calling NewFrame()
 	//------------------------------------------------------------------
 
-	WantCaptureMouse      bool     // When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application. This is set by ImGui when it wants to use your mouse (e.g. unclicked mouse is hovering a window, or a widget is active).
-	WantCaptureKeyboard   bool     // When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application. This is set by ImGui when it wants to use your keyboard inputs.
+	WantCaptureMouse      bool     // When io.WantCaptureMouse is true, imgui will use the mouse inputs, do not dispatch them to your main game/application. (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
+	WantCaptureKeyboard   bool     // When io.WantCaptureKeyboard is true, imgui will use the keyboard inputs, do not dispatch them to your main game/application. (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
 	WantTextInput         bool     // Mobile/console: when io.WantTextInput is true, you may display an on-screen keyboard. This is set by ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
 	WantSetMousePos       bool     // MousePos has been altered, back-end should reposition mouse on next frame. Set only when ImGuiConfigFlags_NavMoveMouse flag is enabled.
 	NavActive             bool     // Directional navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.

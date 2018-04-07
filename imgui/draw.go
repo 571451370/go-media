@@ -115,6 +115,14 @@ func (c *Context) NewFrame() {
 		c.SettingsLoaded = true
 	}
 
+	// Save settings (with a delay so we don't spam disk too much)
+	if c.SettingsDirtyTimer > 0.0 {
+		c.SettingsDirtyTimer -= c.IO.DeltaTime
+		if c.SettingsDirtyTimer <= 0.0 {
+			c.SaveIniSettingsToDisk(c.IO.IniFilename)
+		}
+	}
+
 	c.Time += c.IO.DeltaTime
 	c.FrameCount += 1
 	c.TooltipOverrideCount = 0
@@ -190,56 +198,7 @@ func (c *Context) NewFrame() {
 	c.NavUpdate()
 
 	// Update mouse input state
-	// If mouse just appeared or disappeared (usually denoted by -FLT_MAX component, but in reality we test for -256000.0f) we cancel out movement in MouseDelta
-	if c.IsMousePosValid(&c.IO.MousePos) && c.IsMousePosValid(&c.IO.MousePosPrev) {
-		c.IO.MouseDelta = c.IO.MousePos.Sub(c.IO.MousePosPrev)
-	} else {
-		c.IO.MouseDelta = f64.Vec2{0, 0}
-	}
-	if c.IO.MouseDelta.X != 0 || c.IO.MouseDelta.Y != 0 {
-		c.NavDisableMouseHover = false
-	}
-
-	c.IO.MousePosPrev = c.IO.MousePos
-	for i := range c.IO.MouseDown {
-		c.IO.MouseClicked[i] = c.IO.MouseDown[i] && c.IO.MouseDownDuration[i] < 0
-		c.IO.MouseReleased[i] = !c.IO.MouseDown[i] && c.IO.MouseDownDuration[i] >= 0
-		c.IO.MouseDownDurationPrev[i] = c.IO.MouseDownDuration[i]
-		if c.IO.MouseDown[i] {
-			if c.IO.MouseDownDuration[i] < 0 {
-				c.IO.MouseDownDuration[i] = 0
-			} else {
-				c.IO.MouseDownDuration[i] = c.IO.MouseDownDuration[i] + c.IO.DeltaTime
-			}
-		} else {
-			c.IO.MouseDownDuration[i] = -1
-		}
-		c.IO.MouseDoubleClicked[i] = false
-
-		if c.IO.MouseClicked[i] {
-			if c.Time-c.IO.MouseClickedTime[i] < c.IO.MouseDoubleClickTime {
-				if c.IO.MousePos.DistanceSquared(c.IO.MouseClickedPos[i]) < c.IO.MouseDoubleClickMaxDist*c.IO.MouseDoubleClickMaxDist {
-					c.IO.MouseDoubleClicked[i] = true
-				}
-				c.IO.MouseClickedTime[i] = -math.MaxFloat32 // so the third click isn't turned into a double-click
-			} else {
-				c.IO.MouseClickedTime[i] = c.Time
-			}
-
-			c.IO.MouseClickedPos[i] = c.IO.MousePos
-			c.IO.MouseDragMaxDistanceAbs[i] = f64.Vec2{0, 0}
-			c.IO.MouseDragMaxDistanceSqr[i] = 0
-		} else if c.IO.MouseDown[i] {
-			mouse_delta := c.IO.MousePos.Sub(c.IO.MouseClickedPos[i])
-			c.IO.MouseDragMaxDistanceAbs[i].X = math.Max(c.IO.MouseDragMaxDistanceAbs[i].X, math.Abs(mouse_delta.X))
-			c.IO.MouseDragMaxDistanceAbs[i].Y = math.Max(c.IO.MouseDragMaxDistanceAbs[i].Y, math.Abs(mouse_delta.Y))
-			c.IO.MouseDragMaxDistanceSqr[i] = math.Max(c.IO.MouseDragMaxDistanceSqr[i], mouse_delta.LenSquared())
-		}
-		// Clicking any mouse button reactivate mouse hovering which may have been deactivated by gamepad/keyboard navigation
-		if c.IO.MouseClicked[i] {
-			c.NavDisableMouseHover = false
-		}
-	}
+	c.NewFrameUpdateMouseInputs()
 
 	// Calculate frame-rate for the user, as a purely luxurious feature
 	c.FramerateSecPerFrameAccum += c.IO.DeltaTime - c.FramerateSecPerFrame[c.FramerateSecPerFrameIdx]
@@ -248,91 +207,20 @@ func (c *Context) NewFrame() {
 	c.IO.Framerate = 1.0 / (c.FramerateSecPerFrameAccum / float64(len(c.FramerateSecPerFrame)))
 
 	// Handle user moving window with mouse (at the beginning of the frame to avoid input lag or sheering)
-	c.UpdateMovingWindow()
+	c.NewFrameUpdateMovingWindow()
+	c.NewFrameUpdateHoveredWindowAndCaptureFlags()
 
-	// Delay saving settings so we don't spam disk too much
-	if c.SettingsDirtyTimer > 0 {
-		c.SettingsDirtyTimer -= c.IO.DeltaTime
-		if c.SettingsDirtyTimer <= 0 {
-			c.SaveIniSettingsToDisk(c.IO.IniFilename)
-		}
-	}
-
-	// Find the window we are hovering
-	// - Child windows can extend beyond the limit of their parent so we need to derive HoveredRootWindow from HoveredWindow.
-	// - When moving a window we can skip the search, which also conveniently bypasses the fact that window->WindowRectClipped is lagging as this point.
-	// - We also support the moved window toggling the NoInputs flag after moving has started in order to be able to detect windows below it, which is useful for e.g. docking mechanisms.
-	if c.MovingWindow != nil && c.MovingWindow.Flags&WindowFlagsNoInputs == 0 {
-		c.HoveredWindow = c.MovingWindow
+	if c.GetFrontMostModalRootWindow() != nil {
+		c.ModalWindowDarkeningRatio = math.Min(c.ModalWindowDarkeningRatio+c.IO.DeltaTime*6.0, 1.0)
 	} else {
-		c.HoveredWindow = c.FindHoveredWindow()
-	}
-	c.HoveredRootWindow = nil
-	if c.HoveredWindow != nil {
-		c.HoveredRootWindow = c.HoveredWindow.RootWindow
+		c.ModalWindowDarkeningRatio = 0.0
 	}
 
-	modal_window := c.GetFrontMostModalRootWindow()
-	if modal_window != nil {
-		c.ModalWindowDarkeningRatio = math.Min(c.ModalWindowDarkeningRatio+c.IO.DeltaTime*6, 1)
-		if c.HoveredRootWindow != nil && !c.IsWindowChildOf(c.HoveredRootWindow, modal_window) {
-			c.HoveredRootWindow = nil
-			c.HoveredWindow = nil
-		}
-	} else {
-		c.ModalWindowDarkeningRatio = 0
-	}
-
-	// Update the WantCaptureMouse/WantCaptureKeyboard flags, so user can capture/discard the inputs away from the rest of their application.
-	// When clicking outside of a window we assume the click is owned by the application and won't request capture. We need to track click ownership.
-	mouse_earliest_button_down := -1
-	mouse_any_down := false
-	for i := range c.IO.MouseDown {
-		if c.IO.MouseClicked[i] {
-			c.IO.MouseDownOwned[i] = c.HoveredWindow != nil || len(c.OpenPopupStack) > 0
-		}
-		if c.IO.MouseDown[i] {
-			mouse_any_down = true
-		}
-		if c.IO.MouseDown[i] {
-			if mouse_earliest_button_down == -1 || c.IO.MouseClickedTime[i] < c.IO.MouseClickedTime[mouse_earliest_button_down] {
-				mouse_earliest_button_down = i
-			}
-		}
-	}
-	mouse_avail_to_imgui := (mouse_earliest_button_down == -1) || c.IO.MouseDownOwned[mouse_earliest_button_down]
-	if c.WantCaptureMouseNextFrame != -1 {
-		c.IO.WantCaptureMouse = c.WantCaptureMouseNextFrame != 0
-	} else {
-		c.IO.WantCaptureMouse = (mouse_avail_to_imgui && (c.HoveredWindow != nil || mouse_any_down)) || len(c.OpenPopupStack) > 0
-	}
-
-	if c.WantCaptureKeyboardNextFrame != -1 {
-		c.IO.WantCaptureKeyboard = c.WantCaptureKeyboardNextFrame != 0
-	} else {
-		c.IO.WantCaptureKeyboard = c.ActiveId != 0 || modal_window != nil
-	}
-	if c.IO.NavActive && c.IO.ConfigFlags&ConfigFlagsNavEnableKeyboard != 0 && c.IO.ConfigFlags&ConfigFlagsNavNoCaptureKeyboard == 0 {
-		c.IO.WantCaptureKeyboard = true
-	}
-
-	c.IO.WantTextInput = false
-	if c.WantTextInputNextFrame != -1 {
-		c.IO.WantTextInput = c.WantTextInputNextFrame != 0
-	}
 	c.MouseCursor = MouseCursorArrow
 	c.WantCaptureMouseNextFrame = -1
 	c.WantCaptureKeyboardNextFrame = -1
 	c.WantTextInputNextFrame = -1
 	c.OsImePosRequest = f64.Vec2{1, 1} // OS Input Method Editor showing on top-left of our window by default
-
-	// If mouse was first clicked outside of ImGui bounds we also cancel out hovering.
-	// FIXME: For patterns of drag and drop across OS windows, we may need to rework/remove this test (first committed 311c0ca9 on 2015/02)
-	mouse_dragging_extern_payload := c.DragDropActive && c.DragDropSourceFlags&DragDropFlagsSourceExtern != 0
-	if !mouse_avail_to_imgui && !mouse_dragging_extern_payload {
-		c.HoveredWindow = nil
-		c.HoveredRootWindow = nil
-	}
 
 	// Mouse wheel scrolling, scale
 	if c.HoveredWindow != nil && !c.HoveredWindow.Collapsed && (c.IO.MouseWheel != 0 || c.IO.MouseWheelH != 0) {
@@ -3331,4 +3219,202 @@ func (c *Context) CalcResizePosSizeFromAnyCorner(window *Window, corner_target f
 	}
 	out_size = size_constrained
 	return
+}
+
+func (d *DrawList) ChannelsSplit(channels_count int) {
+	assert(d._ChannelsCurrent == 0 && d._ChannelsCount == 1)
+	old_channels_count := len(d._Channels)
+	if old_channels_count < channels_count {
+		d._Channels = append(d._Channels, make([]DrawChannel, channels_count-old_channels_count)...)
+	}
+	d._ChannelsCount = channels_count
+
+	// _Channels[] (24/32 bytes each) hold storage that we'll swap with this->_CmdBuffer/_IdxBuffer
+	// The content of _Channels[0] at this point doesn't matter. We clear it to make state tidy in a debugger but we don't strictly need to.
+	// When we switch to the next channel, we'll copy _CmdBuffer/_IdxBuffer into _Channels[0] and then _Channels[1] into _CmdBuffer/_IdxBuffer
+	d._Channels[0] = DrawChannel{}
+	for i := 1; i < channels_count; i++ {
+		if i >= old_channels_count {
+			d._Channels[i].Init()
+		} else {
+			d._Channels[i].CmdBuffer = d._Channels[i].CmdBuffer[:0]
+			d._Channels[i].IdxBuffer = d._Channels[i].IdxBuffer[:0]
+		}
+
+		if len(d._Channels[i].CmdBuffer) == 0 {
+			var draw_cmd DrawCmd
+			draw_cmd.ClipRect = d._ClipRectStack[len(d._ClipRectStack)-1]
+			draw_cmd.TextureId = d._TextureIdStack[len(d._TextureIdStack)-1]
+			d._Channels[i].CmdBuffer = append(d._Channels[i].CmdBuffer, draw_cmd)
+		}
+	}
+}
+
+func (d *DrawChannel) Init() {
+	d.CmdBuffer = d.CmdBuffer[:0]
+	d.IdxBuffer = d.IdxBuffer[:0]
+}
+
+func (c *Context) NewFrameUpdateMouseInputs() {
+	// If mouse just appeared or disappeared (usually denoted by -FLT_MAX component, but in reality we test for -256000.0f) we cancel out movement in MouseDelta
+	if c.IsMousePosValid(&c.IO.MousePos) && c.IsMousePosValid(&c.IO.MousePosPrev) {
+		c.IO.MouseDelta = c.IO.MousePos.Sub(c.IO.MousePosPrev)
+	} else {
+		c.IO.MouseDelta = f64.Vec2{0.0, 0.0}
+	}
+
+	if c.IO.MouseDelta.X != 0.0 || c.IO.MouseDelta.Y != 0.0 {
+		c.NavDisableMouseHover = false
+	}
+
+	c.IO.MousePosPrev = c.IO.MousePos
+	for i := range c.IO.MouseDown {
+		c.IO.MouseClicked[i] = c.IO.MouseDown[i] && c.IO.MouseDownDuration[i] < 0.0
+		c.IO.MouseReleased[i] = !c.IO.MouseDown[i] && c.IO.MouseDownDuration[i] >= 0.0
+		c.IO.MouseDownDurationPrev[i] = c.IO.MouseDownDuration[i]
+		if c.IO.MouseDown[i] {
+			if c.IO.MouseDownDuration[i] < 0.0 {
+				c.IO.MouseDownDuration[i] = 0
+			} else {
+				c.IO.MouseDownDuration[i] = c.IO.MouseDownDuration[i] + c.IO.DeltaTime
+			}
+		} else {
+			c.IO.MouseDownDuration[i] = -1
+		}
+		c.IO.MouseDoubleClicked[i] = false
+		if c.IO.MouseClicked[i] {
+			if c.Time-c.IO.MouseClickedTime[i] < c.IO.MouseDoubleClickTime {
+				if c.IO.MousePos.Sub(c.IO.MouseClickedPos[i]).LenSquared() < c.IO.MouseDoubleClickMaxDist*c.IO.MouseDoubleClickMaxDist {
+					c.IO.MouseDoubleClicked[i] = true
+				}
+				// so the third click isn't turned into a double-click
+				c.IO.MouseClickedTime[i] = -math.MaxFloat32
+			} else {
+				c.IO.MouseClickedTime[i] = c.Time
+			}
+			c.IO.MouseClickedPos[i] = c.IO.MousePos
+			c.IO.MouseDragMaxDistanceAbs[i] = f64.Vec2{0.0, 0.0}
+			c.IO.MouseDragMaxDistanceSqr[i] = 0.0
+		} else if c.IO.MouseDown[i] {
+			mouse_delta := c.IO.MousePos.Sub(c.IO.MouseClickedPos[i])
+			c.IO.MouseDragMaxDistanceAbs[i].X = math.Max(c.IO.MouseDragMaxDistanceAbs[i].X, math.Abs(mouse_delta.X))
+			c.IO.MouseDragMaxDistanceAbs[i].Y = math.Max(c.IO.MouseDragMaxDistanceAbs[i].Y, math.Abs(mouse_delta.Y))
+			c.IO.MouseDragMaxDistanceSqr[i] = math.Max(c.IO.MouseDragMaxDistanceSqr[i], mouse_delta.LenSquared())
+		}
+
+		// Clicking any mouse button reactivate mouse hovering which may have been deactivated by gamepad/keyboard navigation
+		if c.IO.MouseClicked[i] {
+			c.NavDisableMouseHover = false
+		}
+	}
+}
+
+func (c *Context) NewFrameUpdateMovingWindow() {
+	if c.MovingWindow != nil && c.MovingWindow.MoveId == c.ActiveId && c.ActiveIdSource == InputSourceMouse {
+		// We actually want to move the root window. g.MovingWindow == window we clicked on (could be a child window).
+		// We track it to preserve Focus and so that ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
+		c.KeepAliveID(c.ActiveId)
+		assert(c.MovingWindow != nil && c.MovingWindow.RootWindow != nil)
+		moving_window := c.MovingWindow.RootWindow
+		if c.IO.MouseDown[0] {
+			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
+			if moving_window.PosFloat.X != pos.X || moving_window.PosFloat.Y != pos.Y {
+				c.MarkIniSettingsDirtyForWindow(moving_window)
+				moving_window.PosFloat = pos
+			}
+			c.FocusWindow(c.MovingWindow)
+		} else {
+			c.ClearActiveID()
+			c.MovingWindow = nil
+		}
+	} else {
+		// When clicking/dragging from a window that has the _NoMove flag, we still set the ActiveId in order to prevent hovering others.
+		if c.ActiveIdWindow != nil && c.ActiveIdWindow.MoveId == c.ActiveId {
+			c.KeepAliveID(c.ActiveId)
+			if !c.IO.MouseDown[0] {
+				c.ClearActiveID()
+			}
+		}
+		c.MovingWindow = nil
+	}
+}
+
+func (c *Context) NewFrameUpdateHoveredWindowAndCaptureFlags() {
+	// Find the window hovered by mouse:
+	// - Child windows can extend beyond the limit of their parent so we need to derive HoveredRootWindow from HoveredWindow.
+	// - When moving a window we can skip the search, which also conveniently bypasses the fact that window->WindowRectClipped is lagging as this point of the frame.
+	// - We also support the moved window toggling the NoInputs flag after moving has started in order to be able to detect windows below it, which is useful for e.g. docking mechanisms.
+	if c.MovingWindow != nil && c.MovingWindow.Flags&WindowFlagsNoInputs == 0 {
+		c.HoveredWindow = c.MovingWindow
+	} else {
+		c.HoveredWindow = c.FindHoveredWindow()
+	}
+	c.HoveredRootWindow = nil
+	if c.HoveredWindow != nil {
+		c.HoveredRootWindow = c.HoveredWindow.RootWindow
+	}
+
+	// Modal windows prevents cursor from hovering behind them.
+	modal_window := c.GetFrontMostModalRootWindow()
+	if modal_window != nil {
+		if c.HoveredRootWindow != nil && !c.IsWindowChildOf(c.HoveredRootWindow, modal_window) {
+			c.HoveredRootWindow = nil
+			c.HoveredWindow = nil
+		}
+	}
+
+	// Disabled mouse?
+	if c.IO.ConfigFlags&ConfigFlagsNoMouse != 0 {
+		c.HoveredWindow = nil
+		c.HoveredRootWindow = nil
+	}
+
+	// We track click ownership. When clicked outside of a window the click is owned by the application and won't report hovering nor request capture even while dragging over our windows afterward.
+	mouse_earliest_button_down := -1
+	mouse_any_down := false
+	for i := range c.IO.MouseDown {
+		if c.IO.MouseClicked[i] {
+			c.IO.MouseDownOwned[i] = c.HoveredWindow != nil || len(c.OpenPopupStack) > 0
+		}
+		if c.IO.MouseDown[i] {
+			mouse_any_down = true
+		}
+		if c.IO.MouseDown[i] {
+			if mouse_earliest_button_down == -1 || c.IO.MouseClickedTime[i] < c.IO.MouseClickedTime[mouse_earliest_button_down] {
+				mouse_earliest_button_down = i
+			}
+		}
+	}
+	mouse_avail_to_imgui := mouse_earliest_button_down == -1 || c.IO.MouseDownOwned[mouse_earliest_button_down]
+
+	// If mouse was first clicked outside of ImGui bounds we also cancel out hovering.
+	// FIXME: For patterns of drag and drop across OS windows, we may need to rework/remove this test (first committed 311c0ca9 on 2015/02)
+	mouse_dragging_extern_payload := c.DragDropActive && (c.DragDropSourceFlags&DragDropFlagsSourceExtern) != 0
+	if !mouse_avail_to_imgui && !mouse_dragging_extern_payload {
+		c.HoveredWindow = nil
+		c.HoveredRootWindow = nil
+	}
+
+	// Update io.WantCaptureMouse for the user application (true = dispatch mouse info to imgui, false = dispatch mouse info to imgui + app)
+	if c.WantCaptureMouseNextFrame != -1 {
+		c.IO.WantCaptureMouse = (c.WantCaptureMouseNextFrame != 0)
+	} else {
+		c.IO.WantCaptureMouse = (mouse_avail_to_imgui && (c.HoveredWindow != nil || mouse_any_down)) || len(c.OpenPopupStack) > 0
+	}
+
+	// Update io.WantCaptureKeyboard for the user application (true = dispatch keyboard info to imgui, false = dispatch keyboard info to imgui + app)
+	if c.WantCaptureKeyboardNextFrame != -1 {
+		c.IO.WantCaptureKeyboard = (c.WantCaptureKeyboardNextFrame != 0)
+	} else {
+		c.IO.WantCaptureKeyboard = (c.ActiveId != 0) || (modal_window != nil)
+	}
+	if c.IO.NavActive && (c.IO.ConfigFlags&ConfigFlagsNavEnableKeyboard != 0) && (c.IO.ConfigFlags&ConfigFlagsNavNoCaptureKeyboard) == 0 {
+		c.IO.WantCaptureKeyboard = true
+	}
+
+	// Update io.WantTextInput flag, this is to allow systems without a keyboard (e.g. mobile, hand-held) to show a software keyboard if possible
+	c.IO.WantTextInput = false
+	if c.WantTextInputNextFrame != -1 {
+		c.IO.WantTextInput = c.WantTextInputNextFrame != 0
+	}
 }

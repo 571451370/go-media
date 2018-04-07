@@ -3,7 +3,6 @@ package imgui
 import (
 	"encoding/binary"
 	"hash/fnv"
-	"image/color"
 	"math"
 	"sort"
 
@@ -185,46 +184,6 @@ type GroupData struct {
 	BackupLogLinePosY               float64
 	BackupActiveIdIsAlive           bool
 	AdvanceCursor                   bool
-}
-
-type ColumnData struct {
-	OffsetNorm             float64 // Column start offset, normalized 0.0 (far left) -> 1.0 (far right)
-	OffsetNormBeforeResize float64
-	Flags                  ColumnsFlags // Not exposed
-	ClipRect               f64.Rectangle
-}
-
-type ColumnsSet struct {
-	ID                 ID
-	Flags              ColumnsFlags
-	IsFirstFrame       bool
-	IsBeingResized     bool
-	Current            int
-	Count              int
-	MinX, MaxX         float64
-	LineMinY, LineMaxY float64
-	StartPosY          float64
-	StartMaxPosX       float64 // Backup of CursorMaxPos
-	CellMinY, CellMaxY float64
-	Columns            []ColumnData
-}
-
-type ColumnsFlags int
-
-const (
-	// Default: 0
-	ColumnsFlagsNoBorder               ColumnsFlags = 1 << 0 // Disable column dividers
-	ColumnsFlagsNoResize               ColumnsFlags = 1 << 1 // Disable resizing columns when clicking on the dividers
-	ColumnsFlagsNoPreserveWidths       ColumnsFlags = 1 << 2 // Disable column width preservation when adjusting columns
-	ColumnsFlagsNoForceWithinWindow    ColumnsFlags = 1 << 3 // Disable forcing columns to fit within window
-	ColumnsFlagsGrowParentContentsSize ColumnsFlags = 1 << 4 // (WIP) Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the columns width at all_. Will eventually remove.
-)
-
-type MenuColumns struct {
-	Count            int
-	Spacing          float64
-	Width, NextWidth float64
-	Pos, NextWidths  [4]float64
 }
 
 type ItemFlags int
@@ -1013,88 +972,6 @@ func (c *Context) BringWindowToFront(window *Window) {
 			break
 		}
 	}
-}
-
-func (c *Context) EndColumns() {
-	window := c.GetCurrentWindow()
-	columns := window.DC.ColumnsSet
-
-	c.PopItemWidth()
-	c.PopClipRect()
-	window.DrawList.ChannelsMerge()
-
-	columns.CellMaxY = math.Max(columns.CellMaxY, window.DC.CursorPos.Y)
-	window.DC.CursorPos.Y = columns.CellMaxY
-	if columns.Flags&ColumnsFlagsGrowParentContentsSize == 0 {
-		// Restore cursor max pos, as columns don't grow parent
-		window.DC.CursorMaxPos.X = math.Max(columns.StartMaxPosX, columns.MaxX)
-	}
-
-	// Draw columns borders and handle resize
-	is_being_resized := false
-	if columns.Flags&ColumnsFlagsNoBorder == 0 && !window.SkipItems {
-		y1 := columns.StartPosY
-		y2 := window.DC.CursorPos.Y
-		dragging_column := -1
-		for n := 1; n < columns.Count; n++ {
-			x := window.Pos.X + c.GetColumnOffset(n)
-			column_id := columns.ID + ID(n)
-			column_hw := c.GetColumnsRectHalfWidth() // Half-width for interaction
-			column_rect := f64.Rectangle{f64.Vec2{x - column_hw, y1}, f64.Vec2{x + column_hw, y2}}
-			c.KeepAliveID(column_id)
-			if c.IsClippedEx(column_rect, column_id, false) {
-				continue
-			}
-
-			var hovered, held bool
-			if columns.Flags&ColumnsFlagsNoResize == 0 {
-				hovered, held, _ = c.ButtonBehavior(column_rect, column_id, 0)
-				if hovered || held {
-					c.MouseCursor = MouseCursorResizeEW
-				}
-				if held && columns.Columns[n].Flags&ColumnsFlagsNoResize == 0 {
-					dragging_column = n
-				}
-			}
-
-			// Draw column (we clip the Y boundaries CPU side because very long triangles are mishandled by some GPU drivers.)
-			var col color.RGBA
-			switch {
-			case held:
-				col = c.GetColorFromStyle(ColSeparatorActive)
-			case hovered:
-				col = c.GetColorFromStyle(ColSeparatorHovered)
-			default:
-				col = c.GetColorFromStyle(ColSeparator)
-			}
-			xi := float64(int(x))
-			window.DrawList.AddLine(
-				f64.Vec2{xi, math.Max(y1+1, window.ClipRect.Min.Y)},
-				f64.Vec2{xi, math.Min(y2, window.ClipRect.Max.Y)},
-				col,
-			)
-		}
-
-		// Apply dragging after drawing the column lines, so our rendered lines are in sync
-		// with how items were displayed during the frame.
-		if dragging_column != -1 {
-			if !columns.IsBeingResized {
-				for n := 0; n < columns.Count+1; n++ {
-					columns.Columns[n].OffsetNormBeforeResize = columns.Columns[n].OffsetNorm
-				}
-				columns.IsBeingResized = true
-				is_being_resized = columns.IsBeingResized
-				x := c.GetDraggedColumnOffset(columns, dragging_column)
-				c.SetColumnOffset(dragging_column, x)
-			}
-		}
-	}
-
-	columns.IsBeingResized = is_being_resized
-
-	window.DC.ColumnsSet = nil
-	window.DC.ColumnsOffsetX = 0
-	window.DC.CursorPos.X = float64(int(window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX))
 }
 
 func (c *Context) SetCurrentWindow(window *Window) {
