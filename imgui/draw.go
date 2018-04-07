@@ -634,6 +634,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		}
 
 		// POSITION
+
 		// Popup latch its initial position, will position itself when it appears next frame
 		if window_just_activated_by_user {
 			window.AutoPosLastDirection = DirNone
@@ -659,6 +660,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			windowPos := window.SizeFull.Scale2(window.SetWindowPosPivot)
 			windowPos = window.SetWindowPosVal.Sub(windowPos)
 			windowPos = windowPos.Max(style.DisplaySafeAreaPadding)
+
 			c.SetWindowPos(window, windowPos, 0)
 		} else if flags&WindowFlagsChildMenu != 0 {
 			// Child menus typically request _any_ position within the parent menu item, and then our FindBestPopupWindowPos() function will move the new menu outside the parent bounds.

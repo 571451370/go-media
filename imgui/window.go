@@ -1777,6 +1777,35 @@ func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *
 			continue
 		}
 
+		var avail_w, avail_h float64
+		var x1, y1, x2, y2 float64
+		if dir == DirLeft {
+			x1 = r_avoid.Min.X
+		} else {
+			x1 = r_outer.Max.X
+		}
+		if dir == DirRight {
+			x2 = r_avoid.Max.X
+		} else {
+			x2 = r_outer.Min.X
+		}
+		if dir == DirUp {
+			y1 = r_avoid.Min.Y
+		} else {
+			y1 = r_outer.Max.Y
+		}
+		if dir == DirDown {
+			y2 = r_avoid.Max.Y
+		} else {
+			y2 = r_outer.Min.Y
+		}
+
+		avail_w = x1 - x2
+		avail_h = y1 - y2
+		if avail_w < size.X || avail_h < size.Y {
+			continue
+		}
+
 		var pos f64.Vec2
 		switch dir {
 		case DirLeft:

@@ -267,3 +267,37 @@ func (c *ColumnsSet) Clear() {
 	c.StartMaxPosX = 0.0
 	c.Columns = c.Columns[:0]
 }
+
+func (m *MenuColumns) DeclColumns(w0, w1, w2 float64) float64 {
+	m.NextWidth = 0.0
+	m.NextWidths[0] = math.Max(m.NextWidths[0], w0)
+	m.NextWidths[1] = math.Max(m.NextWidths[1], w1)
+	m.NextWidths[2] = math.Max(m.NextWidths[2], w2)
+	for i := 0; i < 3; i++ {
+		m.NextWidth += m.NextWidths[i]
+		if i > 0 && m.NextWidths[i] > 0.0 {
+			m.NextWidth += m.Spacing
+		}
+	}
+	return math.Max(m.Width, m.NextWidth)
+}
+
+func (m *MenuColumns) Update(count int, spacing float64, clear bool) {
+	m.Count = count
+	m.Width = 0
+	m.NextWidth = 0
+	m.Spacing = spacing
+	if clear {
+		for i := range m.NextWidths {
+			m.NextWidths[i] = 0
+		}
+	}
+	for i := 0; i < m.Count; i++ {
+		if i > 0 && m.NextWidths[i] > 0 {
+			m.Width += m.Spacing
+		}
+		m.Pos[i] = float64(int(m.Width))
+		m.Width += m.NextWidths[i]
+		m.NextWidths[i] = 0
+	}
+}
