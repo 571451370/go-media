@@ -23,6 +23,14 @@ func IsPow2(v int) bool {
 	return v&(v-1) == 0
 }
 
+func UpperPow2(v int) int {
+	x := 1
+	for x < v {
+		x <<= 1
+	}
+	return x
+}
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
