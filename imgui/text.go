@@ -326,3 +326,30 @@ func (c *Context) AlignTextToFramePadding() {
 	window.DC.CurrentLineHeight = math.Max(window.DC.CurrentLineHeight, c.FontSize+c.Style.FramePadding.Y*2)
 	window.DC.CurrentLineTextBaseOffset = math.Max(window.DC.CurrentLineTextBaseOffset, c.Style.FramePadding.Y)
 }
+
+func (c *Context) TextWrapped(format string, args ...interface{}) {
+	// Keep existing wrap position is one ia already set
+	need_wrap := c.CurrentWindow.DC.TextWrapPos < 0.0
+	if need_wrap {
+		c.PushTextWrapPos(0.0)
+	}
+	c.Text(format, args...)
+	if need_wrap {
+		c.PopTextWrapPos()
+	}
+}
+
+func (c *Context) PushTextWrapPos(wrap_pos_x float64) {
+	window := c.GetCurrentWindow()
+	window.DC.TextWrapPos = wrap_pos_x
+	window.DC.TextWrapPosStack = append(window.DC.TextWrapPosStack, wrap_pos_x)
+}
+
+func (c *Context) PopTextWrapPos() {
+	window := c.GetCurrentWindow()
+	window.DC.TextWrapPosStack = window.DC.TextWrapPosStack[:len(window.DC.TextWrapPosStack)-1]
+	window.DC.TextWrapPos = -1.0
+	if len(window.DC.TextWrapPosStack) > 0 {
+		window.DC.TextWrapPos = window.DC.TextWrapPosStack[len(window.DC.TextWrapPosStack)-1]
+	}
+}

@@ -1147,9 +1147,9 @@ func (c *Context) Unindent() {
 func (c *Context) IndentEx(indent_w float64) {
 	window := c.GetCurrentWindow()
 	if indent_w != 0 {
-		window.DC.IndentX = indent_w
+		window.DC.IndentX += indent_w
 	} else {
-		window.DC.IndentX = c.Style.IndentSpacing
+		window.DC.IndentX += c.Style.IndentSpacing
 	}
 	window.DC.CursorPos.X = window.Pos.X + window.DC.IndentX + window.DC.ColumnsOffsetX
 }
@@ -1276,6 +1276,8 @@ func (w *Window) Init(ctx *Context, name string) {
 	w.SetWindowCollapsedAllowFlags = w.SetWindowPosAllowFlags
 	w.SetWindowPosVal = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
 	w.SetWindowPosPivot = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
+
+	w.StateStorage = make(map[ID]interface{})
 
 	w.LastFrameActive = -1
 	w.ItemWidthDefault = 0.0
@@ -1953,4 +1955,25 @@ func (n *NextWindowData) Clear() {
 	n.SizeConstraintCond = 0
 	n.FocusCond = 0
 	n.BgAlphaCond = 0
+}
+
+func (c *Context) Spacing() {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+	c.ItemSize(f64.Vec2{0, 0})
+}
+
+func (c *Context) SetStateStorage(tree map[ID]interface{}) {
+	window := c.GetCurrentWindow()
+	if tree == nil {
+		tree = window.StateStorage
+	}
+	window.DC.StateStorage = tree
+}
+
+func (c *Context) GetStateStorage() map[ID]interface{} {
+	window := c.GetCurrentWindowRead()
+	return window.DC.StateStorage
 }

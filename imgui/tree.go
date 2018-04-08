@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"image/color"
 	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -49,7 +50,11 @@ func (b *ItemHoveredDataBackup) Restore(c *Context) {
 	window.DC.LastItemDisplayRect = b.LastItemDisplayRect
 }
 
-func (c *Context) CollapsingHeader(label string, flags TreeNodeFlags) bool {
+func (c *Context) CollapsingHeader(label string) bool {
+	return c.CollapsingHeaderEx(label, 0)
+}
+
+func (c *Context) CollapsingHeaderEx(label string, flags TreeNodeFlags) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -57,7 +62,11 @@ func (c *Context) CollapsingHeader(label string, flags TreeNodeFlags) bool {
 	return c.TreeNodeBehavior(window.GetID(label), flags|TreeNodeFlagsCollapsingHeader|TreeNodeFlagsNoTreePushOnOpen, label)
 }
 
-func (c *Context) CollapsingHeaderEx(label string, p_open *bool, flags TreeNodeFlags) bool {
+func (c *Context) CollapsingHeaderOpen(label string, p_open *bool) bool {
+	return c.CollapsingHeaderOpenEx(label, p_open, 0)
+}
+
+func (c *Context) CollapsingHeaderOpenEx(label string, p_open *bool, flags TreeNodeFlags) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -95,5 +104,239 @@ func (c *Context) TreeNode(label string) bool {
 }
 
 func (c *Context) TreeNodeBehavior(id ID, flags TreeNodeFlags, label string) bool {
-	return false
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	display_frame := (flags & TreeNodeFlagsFramed) != 0
+	padding := f64.Vec2{style.FramePadding.X, 0.0}
+	if display_frame || flags&TreeNodeFlagsFramePadding != 0 {
+		padding = style.FramePadding
+	}
+
+	label_end := c.FindRenderedTextEnd(label)
+	label = label[:label_end]
+	label_size := c.CalcTextSizeEx(label, false, -1)
+
+	// We vertically grow up to current line height up the typical widget height.
+	// Latch before ItemSize changes it
+	text_base_offset_y := math.Max(padding.Y, window.DC.CurrentLineTextBaseOffset)
+	frame_height := math.Max(math.Min(window.DC.CurrentLineHeight, c.FontSize+style.FramePadding.Y*2), label_size.Y+padding.Y*2)
+	frame_bb := f64.Rectangle{
+		window.DC.CursorPos,
+		f64.Vec2{window.Pos.X + c.GetContentRegionMax().X, window.DC.CursorPos.Y + frame_height},
+	}
+	if display_frame {
+		// Framed header expand a little outside the default padding
+		frame_bb.Min.X -= float64(int(window.WindowPadding.X*0.5)) - 1
+		frame_bb.Max.X += float64(int(window.WindowPadding.X*0.5)) - 1
+	}
+
+	// Collapser arrow width + Spacing
+	text_offset_x := c.FontSize
+	if display_frame {
+		text_offset_x += padding.X * 3
+	} else {
+		text_offset_x += padding.X * 2
+	}
+	// Include collapser
+	text_width := c.FontSize
+	if label_size.X > 0.0 {
+		text_width += label_size.X + padding.X*2
+	}
+	c.ItemSizeEx(f64.Vec2{text_width, frame_height}, text_base_offset_y)
+
+	// For regular tree nodes, we arbitrary allow to click past 2 worth of ItemSpacing
+	// (Ideally we'd want to add a flag for the user to specify if we want the hit test to be done up to the right side of the content or not)
+	var interact_bb f64.Rectangle
+	if display_frame {
+		interact_bb = frame_bb
+	} else {
+		interact_bb = f64.Rect(frame_bb.Min.X, frame_bb.Min.Y, frame_bb.Min.X+text_width+style.ItemSpacing.X*2, frame_bb.Max.Y)
+	}
+	is_open := c.TreeNodeBehaviorIsOpen(id, flags)
+
+	// Store a flag for the current depth to tell if we will allow closing this node when navigating one of its child.
+	// For this purpose we essentially compare if g.NavIdIsAlive went from 0 to 1 between TreeNode() and TreePop().
+	// This is currently only support 32 level deep and we are fine with (1 << Depth) overflowing into a zero.
+	if is_open && !c.NavIdIsAlive && flags&TreeNodeFlagsNavLeftJumpsBackHere != 0 && flags&TreeNodeFlagsNoTreePushOnOpen == 0 {
+		window.DC.TreeDepthMayJumpToParentOnPop |= (1 << uint(window.DC.TreeDepth))
+	}
+
+	item_add := c.ItemAdd(interact_bb, id)
+	window.DC.LastItemStatusFlags |= ItemStatusFlagsHasDisplayRect
+	window.DC.LastItemDisplayRect = frame_bb
+
+	if !item_add {
+		if is_open && flags&TreeNodeFlagsNoTreePushOnOpen == 0 {
+			c.TreePushRawID(id)
+		}
+		return is_open
+	}
+
+	// Flags that affects opening behavior:
+	// - 0(default) ..................... single-click anywhere to open
+	// - OpenOnDoubleClick .............. double-click anywhere to open
+	// - OpenOnArrow .................... single-click on arrow to open
+	// - OpenOnDoubleClick|OpenOnArrow .. single-click on arrow or double-click anywhere to open
+	button_flags := ButtonFlagsNoKeyModifiers
+	if flags&TreeNodeFlagsAllowItemOverlap != 0 {
+		button_flags |= ButtonFlagsAllowItemOverlap
+	}
+
+	if flags&TreeNodeFlagsLeaf == 0 {
+		button_flags |= ButtonFlagsPressedOnDragDropHold
+	}
+	if flags&TreeNodeFlagsOpenOnDoubleClick != 0 {
+		button_flags |= ButtonFlagsPressedOnDoubleClick
+		if flags&TreeNodeFlagsOpenOnArrow != 0 {
+			button_flags |= ButtonFlagsPressedOnClickRelease
+		}
+	}
+	hovered, held, pressed := c.ButtonBehavior(interact_bb, id, button_flags)
+	if flags&TreeNodeFlagsLeaf == 0 {
+		toggled := false
+		if pressed {
+			toggled = (flags&(TreeNodeFlagsOpenOnArrow|TreeNodeFlagsOpenOnDoubleClick)) == 0 || (c.NavActivateId == id)
+			if flags&TreeNodeFlagsOpenOnArrow != 0 {
+				if c.IsMouseHoveringRect(interact_bb.Min, f64.Vec2{interact_bb.Min.X + text_offset_x, interact_bb.Max.Y}) && !c.NavDisableMouseHover {
+					toggled = true
+				}
+			}
+			if flags&TreeNodeFlagsOpenOnDoubleClick != 0 {
+				if c.IO.MouseDoubleClicked[0] {
+					toggled = true
+				}
+			}
+			// When using Drag and Drop "hold to open" we keep the node highlighted after opening, but never close it again.
+			if c.DragDropActive && is_open {
+				toggled = false
+			}
+		}
+
+		if c.NavId == id && c.NavMoveRequest && c.NavMoveDir == DirLeft && is_open {
+			toggled = true
+			c.NavMoveRequestCancel()
+		}
+		// If there's something upcoming on the line we may want to give it the priority?
+		if c.NavId == id && c.NavMoveRequest && c.NavMoveDir == DirRight && !is_open {
+			toggled = true
+			c.NavMoveRequestCancel()
+		}
+		if toggled {
+			is_open = !is_open
+			window.DC.StateStorage[id] = is_open
+		}
+	}
+	if flags&TreeNodeFlagsAllowItemOverlap != 0 {
+		c.SetItemAllowOverlap()
+	}
+
+	// Render
+	var col color.RGBA
+	switch {
+	case held && hovered:
+		col = c.GetColorFromStyle(ColHeaderActive)
+	case hovered:
+		col = c.GetColorFromStyle(ColHeaderHovered)
+	default:
+		col = c.GetColorFromStyle(ColHeader)
+	}
+	text_pos := frame_bb.Min.Add(f64.Vec2{text_offset_x, text_base_offset_y})
+	if display_frame {
+		// Framed type
+		c.RenderFrameEx(frame_bb.Min, frame_bb.Max, col, true, style.FrameRounding)
+		c.RenderNavHighlightEx(frame_bb, id, NavHighlightFlagsTypeThin)
+		dir := DirRight
+		if is_open {
+			dir = DirDown
+		}
+		c.RenderArrowEx(frame_bb.Min.Add(f64.Vec2{padding.X, text_base_offset_y}), dir, 1.0)
+		if c.LogEnabled {
+			// NB: '##' is normally used to hide text (as a library-wide feature), so we need to specify the text range to make sure the ## aren't stripped out here.
+			c.LogRenderedText(&text_pos, "\n##")
+			c.RenderTextClipped(text_pos, frame_bb.Max, label, &label_size)
+			c.LogRenderedText(&text_pos, "#")
+		} else {
+			c.RenderTextClipped(text_pos, frame_bb.Max, label, &label_size)
+		}
+	} else {
+		// Unframed typed for tree nodes
+		if hovered || flags&TreeNodeFlagsSelected != 0 {
+			c.RenderFrameEx(frame_bb.Min, frame_bb.Max, col, false, 0)
+			c.RenderNavHighlightEx(frame_bb, id, NavHighlightFlagsTypeThin)
+		}
+
+		if flags&TreeNodeFlagsBullet != 0 {
+			c.RenderBullet(frame_bb.Min.Add(f64.Vec2{text_offset_x * 0.5, c.FontSize*0.50 + text_base_offset_y}))
+		} else if flags&TreeNodeFlagsLeaf == 0 {
+			dir := DirDown
+			if is_open {
+				dir = DirRight
+			}
+			c.RenderArrowEx(frame_bb.Min.Add(f64.Vec2{padding.X, c.FontSize*0.15 + text_base_offset_y}), dir, 0.70)
+		}
+		if c.LogEnabled {
+			c.LogRenderedText(&text_pos, ">")
+		}
+		c.RenderTextEx(text_pos, label, false)
+	}
+
+	if is_open && flags&TreeNodeFlagsNoTreePushOnOpen == 0 {
+		c.TreePushRawID(id)
+	}
+
+	return is_open
+}
+
+func (c *Context) TreeNodeBehaviorIsOpen(id ID, flags TreeNodeFlags) bool {
+	if flags&TreeNodeFlagsLeaf != 0 {
+		return true
+	}
+
+	// We only write to the tree storage if the user clicks (or explicitely use SetNextTreeNode*** functions)
+	window := c.CurrentWindow
+	var is_open bool
+	if c.NextTreeNodeOpenCond != 0 {
+		if c.NextTreeNodeOpenCond&CondAlways != 0 {
+			is_open = c.NextTreeNodeOpenVal
+			window.DC.StateStorage[id] = is_open
+		} else {
+			// We treat ImGuiCond_Once and ImGuiCond_FirstUseEver the same because tree node state are not saved persistently.
+			stored_value, found := window.DC.StateStorage[id]
+			if !found {
+				is_open = c.NextTreeNodeOpenVal
+				window.DC.StateStorage[id] = is_open
+			} else {
+				is_open = stored_value != 0
+			}
+		}
+		c.NextTreeNodeOpenCond = 0
+	} else {
+		stored_value, found := window.DC.StateStorage[id]
+		if !found {
+			stored_value = false
+			if flags&TreeNodeFlagsDefaultOpen != 0 {
+				stored_value = true
+			}
+		}
+		is_open = stored_value.(bool)
+	}
+
+	// When logging is enabled, we automatically expand tree nodes (but *NOT* collapsing headers.. seems like sensible behavior).
+	// NB- If we are above max depth we still allow manually opened nodes to be logged.
+	if c.LogEnabled && flags&TreeNodeFlagsNoAutoOpenOnLog == 0 && window.DC.TreeDepth < c.LogAutoExpandMaxDepth {
+		is_open = true
+	}
+
+	return is_open
+}
+
+func (c *Context) TreePushRawID(id ID) {
+	window := c.GetCurrentWindow()
+	c.Indent()
+	window.DC.TreeDepth++
+	window.IDStack = append(window.IDStack, id)
 }
