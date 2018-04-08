@@ -10,6 +10,14 @@ import (
 	"github.com/qeedquan/go-media/math/mathutil"
 )
 
+// Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
+// NB: For basic min/max size constraint on each axis you don't need to use the callback! The SetNextWindowSizeConstraints() parameters are enough.
+type SizeCallbackData struct {
+	Pos         f64.Vec2 // Read-only.   Window position, for reference.
+	CurrentSize f64.Vec2 // Read-only.   Current window size.
+	DesiredSize f64.Vec2 // Read-write.  Desired size, based on user's mouse position. Write to this field to restrain resizing.
+}
+
 type WindowFlags int
 
 const (
@@ -224,22 +232,21 @@ type PopupRef struct {
 }
 
 type NextWindowData struct {
-	PosCond              Cond
-	SizeCond             Cond
-	ContentSizeCond      Cond
-	CollapsedCond        Cond
-	SizeConstraintCond   Cond
-	FocusCond            Cond
-	BgAlphaCond          Cond
-	PosVal               f64.Vec2
-	PosPivotVal          f64.Vec2
-	SizeVal              f64.Vec2
-	ContentSizeVal       f64.Vec2
-	CollapsedVal         bool
-	SizeConstraintRect   f64.Rectangle // Valid if 'SetNextWindowSizeConstraint' is true
-	SizeCallback         func()
-	SizeCallbackUserData interface{}
-	BgAlphaVal           float64
+	PosCond            Cond
+	SizeCond           Cond
+	ContentSizeCond    Cond
+	CollapsedCond      Cond
+	SizeConstraintCond Cond
+	FocusCond          Cond
+	BgAlphaCond        Cond
+	PosVal             f64.Vec2
+	PosPivotVal        f64.Vec2
+	SizeVal            f64.Vec2
+	ContentSizeVal     f64.Vec2
+	CollapsedVal       bool
+	SizeConstraintRect f64.Rectangle // Valid if 'SetNextWindowSizeConstraint' is true
+	SizeCallback       func(*SizeCallbackData)
+	BgAlphaVal         float64
 }
 
 type DragDropFlags int
@@ -1638,7 +1645,6 @@ func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Ve
 		// Tooltip always resize. We keep the spacing symmetric on both axises for aesthetic purpose.
 		size_auto_fit = size_contents
 	} else {
-
 		// When the window cannot fit all contents (either because of constraints, either because screen is too small): we are growing the size on the other axis to compensate for expected scrollbar. FIXME: Might turn bigger than DisplaySize-WindowPadding.
 		size_auto_fit = f64.Vec2{
 			f64.Clamp(size_contents.X, style.WindowMinSize.X, math.Max(style.WindowMinSize.X, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.X)),
@@ -1662,14 +1668,24 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 		cr := c.NextWindowData.SizeConstraintRect
 		if cr.Min.X >= 0 && cr.Max.X >= 0 {
 			new_size.X = f64.Clamp(new_size.X, cr.Min.X, cr.Max.X)
-		}
-		if cr.Min.Y >= 0 && cr.Max.Y >= 0 {
-			new_size.Y = f64.Clamp(new_size.Y, cr.Min.Y, cr.Max.Y)
+		} else {
+			new_size.X = window.SizeFull.X
 		}
 
-		// TODO
+		if cr.Min.Y >= 0 && cr.Max.Y >= 0 {
+			new_size.Y = f64.Clamp(new_size.Y, cr.Min.Y, cr.Max.Y)
+		} else {
+			new_size.Y = window.SizeFull.Y
+		}
+
 		if c.NextWindowData.SizeCallback != nil {
-			c.NextWindowData.SizeCallback()
+			data := SizeCallbackData{
+				Pos:         window.Pos,
+				CurrentSize: window.SizeFull,
+				DesiredSize: new_size,
+			}
+			c.NextWindowData.SizeCallback(&data)
+			new_size = data.DesiredSize
 		}
 	}
 

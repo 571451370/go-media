@@ -653,6 +653,7 @@ func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col c
 	}
 
 	// Give back unused vertices
+
 	draw_list.VtxBuffer = draw_list.VtxBuffer[:vtx_write_idx]
 	draw_list.IdxBuffer = draw_list.IdxBuffer[:idx_write_idx]
 	draw_list.CmdBuffer[len(draw_list.CmdBuffer)-1].ElemCount -= (idx_expected_size - len(draw_list.IdxBuffer))

@@ -355,9 +355,9 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	// Update the Appearing flag
 	// Not using !WasActive because the implicit "Debug" window would always toggle off->on
 	window_just_activated_by_user := window.LastFrameActive < current_frame-1
-	window_just_appearing_after_hidden_for_resize := window.HiddenFrames == 1
+	window_just_appearing_after_hidden_for_resize := window.HiddenFrames > 0
 	if flags&WindowFlagsPopup != 0 {
-		popup_ref := c.OpenPopupStack[len(c.CurrentPopupStack)]
+		popup_ref := &c.OpenPopupStack[len(c.CurrentPopupStack)]
 		// We recycle popups so treat window as activated if popup id changed
 		if window.PopupId != popup_ref.PopupId {
 			window_just_activated_by_user = true
@@ -382,9 +382,9 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	c.CurrentWindowStack = append(c.CurrentWindowStack, window)
 	c.SetCurrentWindow(window)
 	if flags&WindowFlagsPopup != 0 {
-		popup_ref := c.OpenPopupStack[len(c.CurrentPopupStack)]
+		popup_ref := &c.OpenPopupStack[len(c.CurrentPopupStack)]
 		popup_ref.Window = window
-		c.CurrentPopupStack = append(c.CurrentPopupStack, popup_ref)
+		c.CurrentPopupStack = append(c.CurrentPopupStack, *popup_ref)
 		window.PopupId = popup_ref.PopupId
 	}
 
@@ -634,7 +634,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		}
 
 		// POSITION
-
 		// Popup latch its initial position, will position itself when it appears next frame
 		if window_just_activated_by_user {
 			window.AutoPosLastDirection = DirNone
@@ -1178,6 +1177,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 	// Return false if we don't intend to display anything to allow user to perform an early out optimization
 	window.SkipItems = (window.Collapsed || !window.Active) && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0
+
 	return !window.SkipItems
 }
 
