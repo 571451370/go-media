@@ -105,7 +105,6 @@ func (c *Context) Text(format string, args ...interface{}) {
 	if window.SkipItems {
 		return
 	}
-
 	text := fmt.Sprintf(format, args...)
 	c.TextUnformatted(text)
 }

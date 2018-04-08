@@ -374,8 +374,16 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 	// Parent window is latched only on the first call to Begin() of the frame, so further append-calls can be done from a different window stack
 	var parent_window_in_stack *Window
+	var parent_window *Window
 	if len(c.CurrentWindowStack) > 0 {
 		parent_window_in_stack = c.CurrentWindowStack[len(c.CurrentWindowStack)-1]
+	}
+	if first_begin_of_the_frame {
+		if flags&(WindowFlagsChildWindow|WindowFlagsPopup) != 0 {
+			parent_window = parent_window_in_stack
+		}
+	} else {
+		parent_window = window.ParentWindow
 	}
 
 	// Add to stack
@@ -443,7 +451,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		c.SetWindowConditionAllowFlags(window, CondAppearing, false)
 	}
 
-	var parent_window *Window
 	// When reusing window again multiple times a frame, just append content (don't need to setup again)
 	if first_begin_of_the_frame {
 		// FIXME-WIP: Undocumented behavior of Child+Tooltip for pinned tooltip (#1345)
@@ -748,7 +755,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 		// Apply scrolling
 		window.Scroll = c.CalcNextScrollFromScrollTargetAndClamp(window)
-		window.ScrollTarget = f64.Vec2{math.MaxInt32, math.MaxInt32}
+		window.ScrollTarget = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
 
 		// Apply focus, new windows appears in front
 		want_focus := false
