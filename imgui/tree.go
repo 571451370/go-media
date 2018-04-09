@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -100,7 +101,20 @@ func (c *Context) CollapsingHeaderOpenEx(label string, p_open *bool, flags TreeN
 }
 
 func (c *Context) TreeNode(label string) bool {
-	return false
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+	return c.TreeNodeBehavior(window.GetID(label), 0, label)
+}
+
+func (c *Context) TreeNodeEx(str_id string, flags TreeNodeFlags, format string, args ...interface{}) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+	label := fmt.Sprintf(format, args...)
+	return c.TreeNodeBehavior(window.GetID(str_id), flags, label)
 }
 
 func (c *Context) TreeNodeBehavior(id ID, flags TreeNodeFlags, label string) bool {
@@ -339,4 +353,19 @@ func (c *Context) TreePushRawID(id ID) {
 	c.Indent()
 	window.DC.TreeDepth++
 	window.IDStack = append(window.IDStack, id)
+}
+
+func (c *Context) TreePop() {
+	window := c.CurrentWindow
+	c.Unindent()
+
+	window.DC.TreeDepth--
+	if c.NavMoveDir == DirLeft && c.NavWindow == window && c.NavMoveRequestButNoResultYet() {
+		if c.NavIdIsAlive && (window.DC.TreeDepthMayJumpToParentOnPop&(1<<uint(window.DC.TreeDepth)) != 0) {
+			c.SetNavID(window.IDStack[len(window.IDStack)-1], c.NavLayer)
+			c.NavMoveRequestCancel()
+		}
+	}
+	window.DC.TreeDepthMayJumpToParentOnPop &= (1 << uint(window.DC.TreeDepth)) - 1
+	c.PopID()
 }

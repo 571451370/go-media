@@ -1977,3 +1977,8 @@ func (c *Context) GetStateStorage() map[ID]interface{} {
 	window := c.GetCurrentWindowRead()
 	return window.DC.StateStorage
 }
+
+func (c *Context) GetWindowSize() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.Size
+}

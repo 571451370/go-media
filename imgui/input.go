@@ -139,3 +139,11 @@ func (c *Context) IsKeyPressedMapEx(key Key, repeat bool) bool {
 	}
 	return false
 }
+
+func (c *Context) InputFloat(label string, v *float64, step float64) bool {
+	return c.InputFloatEx(label, v, step, 0, -1, 0)
+}
+
+func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64, decimal_precision int, extra_flags InputTextFlags) bool {
+	return false
+}

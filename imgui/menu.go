@@ -248,16 +248,16 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 	return menu_is_open
 }
 
-func (c *Context) MenuItem(label, shortcut string, p_selected *bool) bool {
-	return c.MenuItemEx(label, shortcut, p_selected, true)
+func (c *Context) MenuItemSelect(label, shortcut string, p_selected *bool) bool {
+	return c.MenuItemSelectEx(label, shortcut, p_selected, true)
 }
 
-func (c *Context) MenuItemEx(label, shortcut string, p_selected *bool, enable bool) bool {
+func (c *Context) MenuItemSelectEx(label, shortcut string, p_selected *bool, enable bool) bool {
 	selected := false
 	if p_selected != nil {
 		selected = *p_selected
 	}
-	if c.MenuItemSelectEx(label, shortcut, selected, enable) {
+	if c.MenuItemEx(label, shortcut, selected, enable) {
 		if p_selected != nil {
 			*p_selected = !*p_selected
 		}
@@ -266,11 +266,11 @@ func (c *Context) MenuItemEx(label, shortcut string, p_selected *bool, enable bo
 	return false
 }
 
-func (c *Context) MenuItemSelect(label, shortcut string, selected bool) bool {
-	return c.MenuItemSelectEx(label, shortcut, selected, true)
+func (c *Context) MenuItem(label string) bool {
+	return c.MenuItemEx(label, "", false, true)
 }
 
-func (c *Context) MenuItemSelectEx(label, shortcut string, selected, enabled bool) bool {
+func (c *Context) MenuItemEx(label, shortcut string, selected, enabled bool) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false

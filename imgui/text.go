@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 type SeparatorFlags int
@@ -231,13 +232,14 @@ func (c *Context) Separator() {
 
 	var flags SeparatorFlags
 	if flags&(SeparatorFlagsHorizontal|SeparatorFlagsVertical) == 0 {
-		flags |= SeparatorFlagsVertical
 		if window.DC.LayoutType == LayoutTypeHorizontal {
 			flags |= SeparatorFlagsVertical
 		} else {
 			flags |= SeparatorFlagsHorizontal
 		}
 	}
+	// Check that only 1 option is selected
+	assert(mathutil.IsPow2(int(flags & (SeparatorFlagsHorizontal | SeparatorFlagsVertical))))
 
 	if flags&SeparatorFlagsVertical != 0 {
 		c.VerticalSeparator()

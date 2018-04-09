@@ -22,7 +22,7 @@ const (
 )
 
 func (c *Context) Selectable(label string, selected bool, flags SelectableFlags, size_arg f64.Vec2) bool {
-	return c.SelectableEx(label, selected, 0, size_arg)
+	return c.SelectableEx(label, selected, flags, size_arg)
 }
 
 // Tip: pass an empty label (e.g. "##dummy") then you can use the space to draw other text or image.
