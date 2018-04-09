@@ -1982,3 +1982,9 @@ func (c *Context) GetWindowSize() f64.Vec2 {
 	window := c.GetCurrentWindowRead()
 	return window.Size
 }
+
+func (c *Context) SetNextWindowSizeConstraints(size_min, size_max f64.Vec2, custom_callback func(*SizeCallbackData)) {
+	c.NextWindowData.SizeConstraintCond = CondAlways
+	c.NextWindowData.SizeConstraintRect = f64.Rectangle{size_min, size_max}
+	c.NextWindowData.SizeCallback = custom_callback
+}

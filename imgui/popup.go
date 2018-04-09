@@ -1,6 +1,9 @@
 package imgui
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 type PopupPositionPolicy int
 
@@ -158,4 +161,15 @@ func (c *Context) BeginPopupEx(id ID, extra_flags WindowFlags) bool {
 		c.EndPopup()
 	}
 	return is_open
+}
+
+func (c *Context) IsPopupOpen(id ID) bool {
+	return len(c.OpenPopupStack) > len(c.CurrentPopupStack) && c.OpenPopupStack[len(c.CurrentPopupStack)].PopupId == id
+}
+
+func (c *Context) CalcMaxPopupHeightFromItemCount(items_count int) float64 {
+	if items_count <= 0 {
+		return math.MaxFloat32
+	}
+	return (c.FontSize+c.Style.ItemSpacing.Y)*float64(items_count) - c.Style.ItemSpacing.Y + (c.Style.WindowPadding.Y * 2)
 }

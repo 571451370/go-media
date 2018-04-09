@@ -313,7 +313,7 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 }
 
 func (c *Context) GetVersion() string {
-	return "1.60"
+	return "1.61 WIP"
 }
 
 func (c *Context) GetIO() *IO {

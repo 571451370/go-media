@@ -91,7 +91,9 @@ func (f *FontAtlas) GetMouseCursorTexData(cursor_type MouseCursor, out_offset, o
 		return false
 	}
 
+	assert(f.CustomRectIds[0] != -1)
 	r := &f.CustomRects[f.CustomRectIds[0]]
+	assert(r.ID == FONT_ATLAS_DEFAULT_TEX_DATA_ID)
 	pos := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][0]
 	pos = pos.Add(f64.Vec2{float64(r.X), float64(r.Y)})
 	size := FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[cursor_type][1]
