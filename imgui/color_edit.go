@@ -81,3 +81,65 @@ func (c *Context) ColorTooltip(text string, col color.RGBA, flags ColorEditFlags
 	}
 	c.EndTooltip()
 }
+
+// Edit colors components (each component in 0.0f..1.0f range).
+// See enum ImGuiColorEditFlags_ for available options. e.g. Only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
+// With typical options: Left-click on colored square to open color picker. Right-click to open option menu. CTRL-Click over input fields to edit them and TAB to go to next item.
+func (c *Context) ColorEdit4(label string, col []float64, flags ColorEditFlags) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	c.BeginGroup()
+	c.PushStringID(label)
+
+	// If we're not showing any slider there's no point in doing any HSV conversions
+	if flags&ColorEditFlagsNoInputs != 0 {
+		flags = (flags &^ (ColorEditFlags_InputsMask)) | ColorEditFlagsRGB | ColorEditFlagsNoOptions
+	}
+
+	// Context menu: display and modify options (before defaults are applied)
+	if flags&ColorEditFlagsNoOptions == 0 {
+		c.ColorEditOptionsPopup(col, flags)
+	}
+
+	// Read stored options
+	if flags&ColorEditFlags_InputsMask == 0 {
+		flags |= (c.ColorEditOptions & ColorEditFlags_InputsMask)
+	}
+	if flags&ColorEditFlags_DataTypeMask == 0 {
+		flags |= (c.ColorEditOptions & ColorEditFlags_DataTypeMask)
+	}
+	if flags&ColorEditFlags_PickerMask == 0 {
+		flags |= (c.ColorEditOptions & ColorEditFlags_PickerMask)
+	}
+	flags |= (c.ColorEditOptions &^ (ColorEditFlags_InputsMask | ColorEditFlags_DataTypeMask | ColorEditFlags_PickerMask))
+
+	// Convert to the formats we need
+	if flags&(ColorEditFlagsRGB|ColorEditFlagsHSV) != 0 && flags&ColorEditFlagsNoInputs == 0 {
+		// RGB/HSV 0..255 Sliders
+	} else if (flags&ColorEditFlagsHEX) != 0 && (flags&ColorEditFlagsNoInputs) == 0 {
+	}
+	// TODO
+
+	return false
+}
+
+// ColorPicker
+// Note: only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
+// FIXME: we adjust the big color square height based on item width, which may cause a flickering feedback loop (if automatic height makes a vertical scrollbar appears, affecting automatic width..)
+func (c *Context) ColorPicker4(label string, col []float64, flags ColorEditFlags, ref_col *float64) bool {
+	return false
+}
+func (c *Context) ColorEditOptionsPopup(col []float64, flags ColorEditFlags) {
+	allow_opt_inputs := flags&ColorEditFlags_InputsMask == 0
+	allow_opt_datatype := flags&ColorEditFlags_DataTypeMask == 0
+	if (!allow_opt_inputs && !allow_opt_datatype) || !c.BeginPopup("context") {
+		return
+	}
+
+	if allow_opt_inputs {
+	}
+	// TODO
+}

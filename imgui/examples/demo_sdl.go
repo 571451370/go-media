@@ -68,6 +68,16 @@ type UI struct {
 		Float   float64
 		Check   bool
 	}
+
+	Widgets struct {
+		Clicked int
+		Check   bool
+	}
+
+	Colors struct {
+		OutputOnlyModified bool
+		AlphaFlags         int
+	}
 }
 
 var (
@@ -771,6 +781,17 @@ func showDemoWindow() {
 	}
 
 	if im.CollapsingHeader("Widgets") {
+		if im.TreeNode("Basic") {
+			if im.Button("Button") {
+				ui.Widgets.Clicked++
+			}
+			if ui.Widgets.Clicked != 0 {
+				im.SameLine()
+				im.Text("Thanks for clicking me!")
+			}
+
+			im.Checkbox("checkbox", &ui.Widgets.Check)
+		}
 	}
 	if im.CollapsingHeader("Layout") {
 	}
@@ -885,6 +906,32 @@ func showExampleMenuFile() {
 		im.EndMenu()
 	}
 	if im.BeginMenu("Colors") {
+		if im.Button("Export Unsaved") {
+			im.LogToClipboard()
+		} else {
+			im.LogToTTY()
+		}
+		im.LogText("ImVec4* colors = ImGui::GetStyle().Colors;\n")
+		for i := imgui.Col(0); i < imgui.ColCOUNT; i++ {
+			style := im.GetStyle()
+			col := style.Colors[i]
+			name := im.GetStyleColorName(i)
+		}
+		im.LogFinish()
+		im.SameLine()
+		im.PushItemWidth(120)
+		im.PopItemWidth()
+		im.SameLine()
+		im.Checkbox("Only Modified Colors", &ui.Colors.OutputOnlyModified)
+
+		im.Text("Tip: Left-click on colored square to open color picker,\nRight-click to open edit options menu.")
+
+		im.RadioButtonEx("Opaque", &ui.Colors.AlphaFlags, 0)
+		im.SameLine()
+		im.RadioButtonEx("Alpha", &ui.Colors.AlphaFlags, int(imgui.ColorEditFlagsAlphaPreview))
+		im.SameLine()
+		im.RadioButtonEx("Both", &ui.Colors.AlphaFlags, int(imgui.ColorEditFlagsAlphaPreviewHalf))
+
 		im.EndMenu()
 	}
 	if im.BeginMenuEx("Disabled", false) {

@@ -173,3 +173,17 @@ func (c *Context) CalcMaxPopupHeightFromItemCount(items_count int) float64 {
 	}
 	return (c.FontSize+c.Style.ItemSpacing.Y)*float64(items_count) - c.Style.ItemSpacing.Y + (c.Style.WindowPadding.Y * 2)
 }
+
+func (c *Context) BeginPopup(str_id string) bool {
+	return c.BeginPopupWindow(str_id, 0)
+}
+
+func (c *Context) BeginPopupWindow(str_id string, flags WindowFlags) bool {
+	// Early out for performance
+	if len(c.OpenPopupStack) <= len(c.CurrentPopupStack) {
+		// We behave like Begin() and need to consume those values
+		c.NextWindowData.Clear()
+		return false
+	}
+	return c.BeginPopupEx(c.CurrentWindow.GetID(str_id), flags|WindowFlagsAlwaysAutoResize|WindowFlagsNoTitleBar|WindowFlagsNoSavedSettings)
+}

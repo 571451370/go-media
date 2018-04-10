@@ -286,9 +286,9 @@ func (c *Context) TreeNodeBehavior(id ID, flags TreeNodeFlags, label string) boo
 		if flags&TreeNodeFlagsBullet != 0 {
 			c.RenderBullet(frame_bb.Min.Add(f64.Vec2{text_offset_x * 0.5, c.FontSize*0.50 + text_base_offset_y}))
 		} else if flags&TreeNodeFlagsLeaf == 0 {
-			dir := DirDown
+			dir := DirRight
 			if is_open {
-				dir = DirRight
+				dir = DirDown
 			}
 			c.RenderArrowEx(frame_bb.Min.Add(f64.Vec2{padding.X, c.FontSize*0.15 + text_base_offset_y}), dir, 0.70)
 		}

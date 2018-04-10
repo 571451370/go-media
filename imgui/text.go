@@ -305,12 +305,6 @@ func (c *Context) VerticalSeparator() {
 	}
 }
 
-func (c *Context) LogText(text string) {
-}
-
-func (c *Context) LogRenderedText(ref_pos *f64.Vec2, text string) {
-}
-
 func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags) bool {
 	return c.InputTextExCallback(label, buf, size_arg, flags, nil)
 }

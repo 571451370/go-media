@@ -338,3 +338,94 @@ func (c *Context) PopStyleColorN(count int) {
 		c.ColorModifiers = c.ColorModifiers[:len(c.ColorModifiers)-1]
 	}
 }
+
+func (c *Context) GetStyleColorName(idx Col) string {
+	switch idx {
+	case ColText:
+		return "Text"
+	case ColTextDisabled:
+		return "TextDisabled"
+	case ColWindowBg:
+		return "WindowBg"
+	case ColChildBg:
+		return "ChildBg"
+	case ColPopupBg:
+		return "PopupBg"
+	case ColBorder:
+		return "Border"
+	case ColBorderShadow:
+		return "BorderShadow"
+	case ColFrameBg:
+		return "FrameBg"
+	case ColFrameBgHovered:
+		return "FrameBgHovered"
+	case ColFrameBgActive:
+		return "FrameBgActive"
+	case ColTitleBg:
+		return "TitleBg"
+	case ColTitleBgActive:
+		return "TitleBgActive"
+	case ColTitleBgCollapsed:
+		return "TitleBgCollapsed"
+	case ColMenuBarBg:
+		return "MenuBarBg"
+	case ColScrollbarBg:
+		return "ScrollbarBg"
+	case ColScrollbarGrab:
+		return "ScrollbarGrab"
+	case ColScrollbarGrabHovered:
+		return "ScrollbarGrabHovered"
+	case ColScrollbarGrabActive:
+		return "ScrollbarGrabActive"
+	case ColCheckMark:
+		return "CheckMark"
+	case ColSliderGrab:
+		return "SliderGrab"
+	case ColSliderGrabActive:
+		return "SliderGrabActive"
+	case ColButton:
+		return "Button"
+	case ColButtonHovered:
+		return "ButtonHovered"
+	case ColButtonActive:
+		return "ButtonActive"
+	case ColHeader:
+		return "Header"
+	case ColHeaderHovered:
+		return "HeaderHovered"
+	case ColHeaderActive:
+		return "HeaderActive"
+	case ColSeparator:
+		return "Separator"
+	case ColSeparatorHovered:
+		return "SeparatorHovered"
+	case ColSeparatorActive:
+		return "SeparatorActive"
+	case ColResizeGrip:
+		return "ResizeGrip"
+	case ColResizeGripHovered:
+		return "ResizeGripHovered"
+	case ColResizeGripActive:
+		return "ResizeGripActive"
+	case ColPlotLines:
+		return "PlotLines"
+	case ColPlotLinesHovered:
+		return "PlotLinesHovered"
+	case ColPlotHistogram:
+		return "PlotHistogram"
+	case ColPlotHistogramHovered:
+		return "PlotHistogramHovered"
+	case ColTextSelectedBg:
+		return "TextSelectedBg"
+	case ColModalWindowDarkening:
+		return "ModalWindowDarkening"
+	case ColDragDropTarget:
+		return "DragDropTarget"
+	case ColNavHighlight:
+		return "NavHighlight"
+	case ColNavWindowingHighlight:
+		return "NavWindowingHighlight"
+	}
+	assert(false)
+	return "Unknown"
+}

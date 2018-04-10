@@ -1,6 +1,7 @@
-commit 6f1f5cbc20d8357a3c5efdedccce86baa14c1519
+commit 9117632bf0eda99f64229d4b4a1e9d07c0b53ffc
 Author: omar <omarcornut@gmail.com>
-Date:   Mon Apr 9 14:02:32 2018 +0200
+Date:   Mon Apr 9 20:42:49 2018 +0200
 
-    Version 1.61 WIP
+    Misc: IM_DELETE() helper function added in 1.60 doesn't clear the input _pointer_ reference, more consistent with expectation and allows passing r-value.
+
 
