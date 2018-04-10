@@ -916,6 +916,7 @@ func showExampleMenuFile() {
 			style := im.GetStyle()
 			col := style.Colors[i]
 			name := im.GetStyleColorName(i)
+			_, _ = col, name
 		}
 		im.LogFinish()
 		im.SameLine()
