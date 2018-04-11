@@ -360,7 +360,7 @@ func (c *Context) GetStyleColorName(idx Col) string {
 	case ColFrameBgHovered:
 		return "FrameBgHovered"
 	case ColFrameBgActive:
-		return "FrameBgActive"
+		return "ColFrameBgActive"
 	case ColTitleBg:
 		return "TitleBg"
 	case ColTitleBgActive:
@@ -407,6 +407,12 @@ func (c *Context) GetStyleColorName(idx Col) string {
 		return "ResizeGripHovered"
 	case ColResizeGripActive:
 		return "ResizeGripActive"
+	case ColCloseButton:
+		return "CloseButton"
+	case ColCloseButtonHovered:
+		return "CloseButtonHovered"
+	case ColCloseButtonActive:
+		return "CloseButtonActive"
 	case ColPlotLines:
 		return "PlotLines"
 	case ColPlotLinesHovered:

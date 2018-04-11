@@ -194,3 +194,109 @@ func (c *Context) EndCombo() {
 	}
 	c.EndPopup()
 }
+
+func (c *Context) ComboString(label string, current_item *int, items []string) bool {
+	return c.ComboStringEx(label, current_item, items, -1)
+}
+
+func (c *Context) ComboStringEx(label string, current_item *int, items []string, popup_max_height_in_items int) bool {
+	items_getter := func(idx int) (string, bool) {
+		if 0 <= idx && idx < len(items) {
+			return items[idx], true
+		}
+		return "", false
+	}
+	return c.ComboItemEx(label, current_item, items_getter, len(items), popup_max_height_in_items)
+}
+
+func (c *Context) ComboItem(label string, current_item *int, items_getter func(idx int) (string, bool), item_counts int) bool {
+	return c.ComboItemEx(label, current_item, items_getter, item_counts, -1)
+}
+
+func (c *Context) ComboItemEx(label string, current_item *int, items_getter func(idx int) (string, bool), items_count int, popup_max_height_in_items int) bool {
+	var preview_text string
+	if *current_item >= 0 && *current_item < items_count {
+		preview_text, _ = items_getter(*current_item)
+	}
+
+	// The old Combo() API exposed "popup_max_height_in_items", however the new more general BeginCombo() API doesn't, so we emulate it here.
+	if popup_max_height_in_items != -1 && c.NextWindowData.SizeConstraintCond == 0 {
+		popup_max_height := c.CalcMaxPopupHeightFromItemCount(popup_max_height_in_items)
+		c.SetNextWindowSizeConstraints(f64.Vec2{0, 0}, f64.Vec2{math.MaxFloat32, popup_max_height}, nil)
+	}
+
+	if !c.BeginComboEx(label, preview_text, 0) {
+		return false
+	}
+
+	// Display items
+	// FIXME-OPT: Use clipper (but we need to disable it on the appearing frame to make sure our call to SetItemDefaultFocus() is processed)
+	value_changed := false
+	for i := 0; i < items_count; i++ {
+		c.PushID(ID(i))
+		item_selected := (i == *current_item)
+		item_text, found := items_getter(i)
+		if !found {
+			item_text = "*Unknown item*"
+		}
+		if c.Selectable(item_text, item_selected, 0, f64.Vec2{0, 0}) {
+			value_changed = true
+			*current_item = i
+		}
+		if item_selected {
+			c.SetItemDefaultFocus()
+		}
+		c.PopID()
+	}
+	c.EndCombo()
+	return value_changed
+}
+
+func (c *Context) SetItemDefaultFocus() {
+	window := c.CurrentWindow
+	if !window.Appearing {
+		return
+	}
+
+	if c.NavWindow == window.RootWindowForNav && (c.NavInitRequest || c.NavInitResultId != 0) && c.NavLayer == c.NavWindow.DC.NavLayerCurrent {
+		c.NavInitRequest = false
+		c.NavInitResultId = c.NavWindow.DC.LastItemId
+		c.NavInitResultRectRel = f64.Rectangle{
+			c.NavWindow.DC.LastItemRect.Min.Sub(c.NavWindow.Pos),
+			c.NavWindow.DC.LastItemRect.Max.Sub(c.NavWindow.Pos),
+		}
+		c.NavUpdateAnyRequestFlag()
+		if !c.IsItemVisible() {
+			c.SetScrollHere()
+		}
+	}
+}
+
+func (c *Context) SetScrollHere() {
+	c.SetScrollHereEx(0.5)
+}
+
+// center_y_ratio: 0.0f top of last item, 0.5f vertical center of last item, 1.0f bottom of last item.
+func (c *Context) SetScrollHereEx(center_y_ratio float64) {
+	window := c.GetCurrentWindow()
+	// Top of last item, in window space
+	target_y := window.DC.CursorPosPrevLine.Y - window.Pos.Y
+	// Precisely aim above, in the middle or below the last line.
+	target_y += (window.DC.PrevLineHeight * center_y_ratio) + (c.Style.ItemSpacing.Y * (center_y_ratio - 0.5) * 2.0)
+	c.SetScrollFromPosY(target_y, center_y_ratio)
+}
+
+func (c *Context) SetScrollFromPosY(pos_y, center_y_ratio float64) {
+	// We store a target position so centering can occur on the next frame when we are guaranteed to have a known window size
+	window := c.GetCurrentWindow()
+	assert(center_y_ratio >= 0.0 && center_y_ratio <= 1.0)
+	window.ScrollTarget.Y = float64(int(pos_y + window.Scroll.Y))
+	window.ScrollTargetCenterRatio.Y = center_y_ratio
+
+	// Minor hack to to make scrolling to top/bottom of window take account of WindowPadding, it looks more right to the user this way
+	if center_y_ratio <= 0.0 && window.ScrollTarget.Y <= window.WindowPadding.Y {
+		window.ScrollTarget.Y = 0.0
+	} else if center_y_ratio >= 1.0 && window.ScrollTarget.Y >= window.SizeContents.Y-window.WindowPadding.Y+c.Style.ItemSpacing.Y {
+		window.ScrollTarget.Y = window.SizeContents.Y
+	}
+}

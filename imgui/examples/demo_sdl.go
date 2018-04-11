@@ -64,9 +64,10 @@ type UI struct {
 	NoClose     bool
 
 	MenuOptions struct {
-		Enabled bool
-		Float   float64
-		Check   bool
+		Enabled    bool
+		Float      float64
+		Check      bool
+		ComboItems int
 	}
 
 	Widgets struct {
@@ -76,6 +77,7 @@ type UI struct {
 
 	Colors struct {
 		OutputOnlyModified bool
+		OutputDest         int
 		AlphaFlags         int
 	}
 }
@@ -902,37 +904,20 @@ func showExampleMenuFile() {
 		im.EndChild()
 		im.SliderFloat("Value", &ui.MenuOptions.Float, 0, 1)
 		im.InputFloat("Input", &ui.MenuOptions.Float, 0.1)
+		im.ComboString("Combo", &ui.MenuOptions.ComboItems, []string{"Yes", "No", "Maybe"})
 		im.Checkbox("Check", &ui.MenuOptions.Check)
 		im.EndMenu()
 	}
 	if im.BeginMenu("Colors") {
-		if im.Button("Export Unsaved") {
-			im.LogToClipboard()
-		} else {
-			im.LogToTTY()
-		}
-		im.LogText("ImVec4* colors = ImGui::GetStyle().Colors;\n")
+		sz := im.GetTextLineHeight()
 		for i := imgui.Col(0); i < imgui.ColCOUNT; i++ {
-			style := im.GetStyle()
-			col := style.Colors[i]
 			name := im.GetStyleColorName(i)
-			_, _ = col, name
+			p := im.GetCursorScreenPos()
+			im.GetWindowDrawList().AddRectFilled(p, f64.Vec2{p.X + sz, p.Y + sz}, im.GetColorFromStyle(i))
+			im.Dummy(f64.Vec2{sz, sz})
+			im.SameLine()
+			im.MenuItem(name)
 		}
-		im.LogFinish()
-		im.SameLine()
-		im.PushItemWidth(120)
-		im.PopItemWidth()
-		im.SameLine()
-		im.Checkbox("Only Modified Colors", &ui.Colors.OutputOnlyModified)
-
-		im.Text("Tip: Left-click on colored square to open color picker,\nRight-click to open edit options menu.")
-
-		im.RadioButtonEx("Opaque", &ui.Colors.AlphaFlags, 0)
-		im.SameLine()
-		im.RadioButtonEx("Alpha", &ui.Colors.AlphaFlags, int(imgui.ColorEditFlagsAlphaPreview))
-		im.SameLine()
-		im.RadioButtonEx("Both", &ui.Colors.AlphaFlags, int(imgui.ColorEditFlagsAlphaPreviewHalf))
-
 		im.EndMenu()
 	}
 	if im.BeginMenuEx("Disabled", false) {

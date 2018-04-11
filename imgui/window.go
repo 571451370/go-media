@@ -1988,3 +1988,24 @@ func (c *Context) SetNextWindowSizeConstraints(size_min, size_max f64.Vec2, cust
 	c.NextWindowData.SizeConstraintRect = f64.Rectangle{size_min, size_max}
 	c.NextWindowData.SizeCallback = custom_callback
 }
+
+func (c *Context) GetCursorScreenPos() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.CursorPos
+}
+
+func (c *Context) GetWindowDrawList() *DrawList {
+	window := c.GetCurrentWindow()
+	return window.DrawList
+}
+
+func (c *Context) Dummy(size f64.Vec2) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(size)}
+	c.ItemSizeBB(bb)
+	c.ItemAdd(bb, 0)
+}
