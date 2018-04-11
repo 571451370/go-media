@@ -360,7 +360,7 @@ func (c *Context) GetStyleColorName(idx Col) string {
 	case ColFrameBgHovered:
 		return "FrameBgHovered"
 	case ColFrameBgActive:
-		return "ColFrameBgActive"
+		return "FrameBgActive"
 	case ColTitleBg:
 		return "TitleBg"
 	case ColTitleBgActive:
