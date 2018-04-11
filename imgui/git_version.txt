@@ -1,6 +1,7 @@
-commit 296f03374bd48ec407e62844d181dbdf7054ead3
+commit bfc0efaae9c4322557abc0146af1b3244a3a63a4
 Author: omar <omarcornut@gmail.com>
-Date:   Tue Apr 10 23:48:27 2018 +0200
+Date:   Wed Apr 11 12:43:38 2018 +0200
 
-    NewFrame: Prevent division by zero in frame rate calculation if io.DeltaTime is continuously zero. (#1740, #881)
+    Internals: Window: Aggregating ImDrawList into the ImGuiWindow structure.
+
 
