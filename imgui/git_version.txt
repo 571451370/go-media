@@ -1,7 +1,6 @@
-commit 9117632bf0eda99f64229d4b4a1e9d07c0b53ffc
+commit 296f03374bd48ec407e62844d181dbdf7054ead3
 Author: omar <omarcornut@gmail.com>
-Date:   Mon Apr 9 20:42:49 2018 +0200
+Date:   Tue Apr 10 23:48:27 2018 +0200
 
-    Misc: IM_DELETE() helper function added in 1.60 doesn't clear the input _pointer_ reference, more consistent with expectation and allows passing r-value.
-
+    NewFrame: Prevent division by zero in frame rate calculation if io.DeltaTime is continuously zero. (#1740, #881)
 

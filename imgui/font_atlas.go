@@ -325,6 +325,7 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		assert(cfg.DstFont != nil && (!cfg.DstFont.IsLoaded() || cfg.DstFont.ContainerAtlas == f))
 
 		font_offset := stbtt.GetFontOffsetForIndex(cfg.FontData, cfg.FontNo)
+		// FontData is incorrect, or FontNo cannot be found.
 		assert(font_offset >= 0)
 		err := tmp.FontInfo.Init(cfg.FontData, font_offset)
 		if err != nil {

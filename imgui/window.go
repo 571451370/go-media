@@ -1046,7 +1046,7 @@ func (c *Context) PixelsToOffsetNorm(columns *ColumnsSet, offset float64) float6
 	return offset / (columns.MaxX - columns.MinX)
 }
 
-func (c *Context) GetFrontMostModalRootWindow() *Window {
+func (c *Context) GetFrontMostPopupModal() *Window {
 	for n := len(c.OpenPopupStack) - 1; n >= 0; n-- {
 		popup := c.OpenPopupStack[n].Window
 		if popup != nil && popup.Flags&WindowFlagsModal != 0 {

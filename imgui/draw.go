@@ -204,13 +204,17 @@ func (c *Context) NewFrame() {
 	c.FramerateSecPerFrameAccum += c.IO.DeltaTime - c.FramerateSecPerFrame[c.FramerateSecPerFrameIdx]
 	c.FramerateSecPerFrame[c.FramerateSecPerFrameIdx] = c.IO.DeltaTime
 	c.FramerateSecPerFrameIdx = (c.FramerateSecPerFrameIdx + 1) % len(c.FramerateSecPerFrame)
-	c.IO.Framerate = 1.0 / (c.FramerateSecPerFrameAccum / float64(len(c.FramerateSecPerFrame)))
+	if c.FramerateSecPerFrameAccum > 0.0 {
+		c.IO.Framerate = 1.0 / (c.FramerateSecPerFrameAccum / float64(len(c.FramerateSecPerFrame)))
+	} else {
+		c.IO.Framerate = math.MaxFloat32
+	}
 
 	// Handle user moving window with mouse (at the beginning of the frame to avoid input lag or sheering)
 	c.NewFrameUpdateMovingWindow()
 	c.NewFrameUpdateHoveredWindowAndCaptureFlags()
 
-	if c.GetFrontMostModalRootWindow() != nil {
+	if c.GetFrontMostPopupModal() != nil {
 		c.ModalWindowDarkeningRatio = math.Min(c.ModalWindowDarkeningRatio+c.IO.DeltaTime*6.0, 1.0)
 	} else {
 		c.ModalWindowDarkeningRatio = 0.0
@@ -693,10 +697,8 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 				f64.Vec2{window.PosFloat.X + 1, window.PosFloat.Y + 1},
 			}
 			window.PosFloat = c.FindBestWindowPosForPopup(window.PosFloat, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
-		}
-
-		// Position tooltip (always follows mouse)
-		if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
+		} else if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
+			// Position tooltip (always follow mouse but avoid cursor)
 			sc := c.Style.MouseCursorScale
 			ref_pos := c.IO.MousePos
 			if !c.NavDisableHighlight && c.NavDisableMouseHover {
@@ -796,7 +798,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		}
 
 		// Draw modal window background (darkens what is behind them)
-		if flags&WindowFlagsModal != 0 && window == c.GetFrontMostModalRootWindow() {
+		if flags&WindowFlagsModal != 0 && window == c.GetFrontMostPopupModal() {
 			window.DrawList.AddRectFilled(
 				viewport_rect.Min,
 				viewport_rect.Max,
@@ -1304,7 +1306,7 @@ func (c *Context) EndFrame() {
 					if c.HoveredWindow.Flags&WindowFlagsNoMove == 0 && c.HoveredRootWindow.Flags&WindowFlagsNoMove == 0 {
 						c.MovingWindow = c.HoveredWindow
 					}
-				} else if c.NavWindow != nil && c.GetFrontMostModalRootWindow() == nil {
+				} else if c.NavWindow != nil && c.GetFrontMostPopupModal() == nil {
 					// Clicking on void disable focus
 					c.FocusWindow(nil)
 				}
@@ -1315,7 +1317,7 @@ func (c *Context) EndFrame() {
 			if c.IO.MouseClicked[1] {
 				// Find the top-most window between HoveredWindow and the front most Modal Window.
 				// This is where we can trim the popup stack.
-				modal := c.GetFrontMostModalRootWindow()
+				modal := c.GetFrontMostPopupModal()
 				hovered_window_above_modal := false
 				if modal == nil {
 					hovered_window_above_modal = true
@@ -3364,7 +3366,7 @@ func (c *Context) NewFrameUpdateHoveredWindowAndCaptureFlags() {
 	}
 
 	// Modal windows prevents cursor from hovering behind them.
-	modal_window := c.GetFrontMostModalRootWindow()
+	modal_window := c.GetFrontMostPopupModal()
 	if modal_window != nil {
 		if c.HoveredRootWindow != nil && !c.IsWindowChildOf(c.HoveredRootWindow, modal_window) {
 			c.HoveredRootWindow = nil
