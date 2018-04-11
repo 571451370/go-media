@@ -132,6 +132,7 @@ func (c *Context) ColorEdit4(label string, col []float64, flags ColorEditFlags) 
 func (c *Context) ColorPicker4(label string, col []float64, flags ColorEditFlags, ref_col *float64) bool {
 	return false
 }
+
 func (c *Context) ColorEditOptionsPopup(col []float64, flags ColorEditFlags) {
 	allow_opt_inputs := flags&ColorEditFlags_InputsMask == 0
 	allow_opt_datatype := flags&ColorEditFlags_DataTypeMask == 0

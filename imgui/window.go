@@ -115,8 +115,9 @@ type Window struct {
 	MenuColumns                    MenuColumns // Simplified columns storage for menu items
 	StateStorage                   map[ID]interface{}
 	ColumnsStorage                 []ColumnsSet
-	FontWindowScale                float64 // Scale multiplier per-window
-	DrawList                       *DrawList
+	FontWindowScale                float64   // Scale multiplier per-window
+	DrawList                       *DrawList // == &DrawListInst (for backward compatibility reason with code using imgui_internal.h we keep this a pointer)
+	DrawListInst                   DrawList
 	ParentWindow                   *Window // If we are a child _or_ popup window, this is pointing to our parent. Otherwise NULL.
 	RootWindow                     *Window // Point to ourself or first ancestor that is not a child window.
 	RootWindowForTitleBarHighlight *Window // Point to ourself or first ancestor which will display TitleBgActive color when this window is active.
@@ -1283,7 +1284,8 @@ func (w *Window) Init(ctx *Context, name string) {
 	w.ItemWidthDefault = 0.0
 	w.FontWindowScale = 1.0
 
-	w.DrawList = NewDrawList(&w.Ctx.DrawListSharedData)
+	w.DrawListInst.Init(&w.Ctx.DrawListSharedData)
+	w.DrawList = &w.DrawListInst
 	w.DrawList._OwnerName = w.Name
 	w.ParentWindow = nil
 	w.RootWindow = nil
