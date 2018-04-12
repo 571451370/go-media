@@ -179,6 +179,12 @@ func (p Vec2) Clamp(s, e float64) Vec2 {
 	return p
 }
 
+func (p Vec2) Clamp2(s, e Vec2) Vec2 {
+	p.X = Clamp(p.X, s.X, e.X)
+	p.Y = Clamp(p.Y, s.Y, e.Y)
+	return p
+}
+
 func (p Vec2) Equals(q Vec2) bool {
 	const eps = 1e-6
 	return math.Abs(p.X-q.X) <= eps && math.Abs(p.Y-q.Y) <= eps
@@ -404,6 +410,13 @@ func (p Vec3) Clamp(s, e float64) Vec3 {
 	p.X = Clamp(p.X, s, e)
 	p.Y = Clamp(p.Y, s, e)
 	p.Z = Clamp(p.Z, s, e)
+	return p
+}
+
+func (p Vec3) Clamp3(s, e Vec3) Vec3 {
+	p.X = Clamp(p.X, s.X, e.X)
+	p.Y = Clamp(p.Y, s.Y, e.Y)
+	p.Z = Clamp(p.Z, s.Z, e.Z)
 	return p
 }
 

@@ -1767,26 +1767,7 @@ func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
 // r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
 // r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
 func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *Dir, r_outer, r_avoid f64.Rectangle, policy PopupPositionPolicy) f64.Vec2 {
-	style := &c.Style
-
-	// r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
-	// r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
-	safe_padding := style.DisplaySafeAreaPadding
-	r_outer = c.GetViewportRect()
-	safe_padding_x := 0.0
-	safe_padding_y := 0.0
-	if size.X-r_outer.Dx() > safe_padding.Y*2 {
-		safe_padding_x = -safe_padding.X
-	}
-	if size.Y-r_outer.Dy() > safe_padding.Y*2 {
-		safe_padding_y = -safe_padding.Y
-	}
-	r_outer = r_outer.Expand(safe_padding_x, safe_padding_y)
-
-	base_pos_clamped := f64.Vec2{
-		f64.Clamp(ref_pos.X, r_outer.Min.X, r_outer.Max.X-size.X),
-		f64.Clamp(ref_pos.Y, r_outer.Min.Y, r_outer.Max.Y-size.Y),
-	}
+	base_pos_clamped := ref_pos.Clamp2(r_outer.Min, r_outer.Max.Sub(size))
 
 	// Combo Box policy (we want a connecting edge)
 	if policy == PopupPositionPolicyComboBox {
