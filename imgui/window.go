@@ -1704,17 +1704,75 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 	return new_size
 }
 
-func (c *Context) FindBestWindowPosForPopup(ref_pos, size f64.Vec2, last_dir *Dir, r_avoid f64.Rectangle) f64.Vec2 {
-	return c.FindBestWindowPosForPopupEx(ref_pos, size, last_dir, r_avoid, PopupPositionPolicyDefault)
+func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
+	r_screen := c.FindScreenRectForWindow(window)
+	if window.Flags&WindowFlagsChildMenu != 0 {
+		// Child menus typically request _any_ position within the parent menu item, and then our FindBestPopupWindowPos() function will move the new menu outside the parent bounds.
+		// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
+		assert(c.CurrentWindow == window)
+		parent_menu := c.CurrentWindowStack[len(c.CurrentWindowStack)-2]
+		// We want some overlap to convey the relative depth of each menu (currently the amount of overlap is hard-coded to style.ItemSpacing.x).
+		horizontal_overlap := c.Style.ItemSpacing.X
+
+		var r_avoid f64.Rectangle
+		if parent_menu.DC.MenuBarAppending {
+			r_avoid = f64.Rect(
+				-math.MaxFloat32,
+				parent_menu.Pos.Y+parent_menu.TitleBarHeight(),
+				math.MaxFloat32,
+				parent_menu.Pos.Y+parent_menu.TitleBarHeight()+parent_menu.MenuBarHeight(),
+			)
+		} else {
+			r_avoid = f64.Rect(
+				parent_menu.Pos.X+horizontal_overlap,
+				-math.MaxFloat32,
+				parent_menu.Pos.X+parent_menu.Size.X-horizontal_overlap-parent_menu.ScrollbarSizes.X,
+				math.MaxFloat32,
+			)
+		}
+		return c.FindBestWindowPosForPopupEx(window.PosFloat, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+	}
+
+	if window.Flags&WindowFlagsPopup != 0 {
+		r_avoid := f64.Rect(window.PosFloat.X-1, window.PosFloat.Y-1, window.PosFloat.X+1, window.PosFloat.Y+1)
+		return c.FindBestWindowPosForPopupEx(window.PosFloat, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+	}
+
+	if window.Flags&WindowFlagsTooltip != 0 {
+		// Position tooltip (always follows mouse)
+		sc := c.Style.MouseCursorScale
+		ref_pos := c.IO.MousePos
+		if !c.NavDisableHighlight && c.NavDisableMouseHover {
+			ref_pos = c.NavCalcPreferredMousePos()
+		}
+		var r_avoid f64.Rectangle
+		if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos == 0 {
+			r_avoid = f64.Rect(ref_pos.X-16, ref_pos.Y-8, ref_pos.X+16, ref_pos.Y+8)
+		} else {
+			// FIXME: Hard-coded based on mouse cursor shape expectation. Exact dimension not very important.
+			r_avoid = f64.Rect(ref_pos.X-16, ref_pos.Y-8, ref_pos.X+24*sc, ref_pos.Y+24*sc)
+		}
+		pos := c.FindBestWindowPosForPopupEx(ref_pos, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+		if window.AutoPosLastDirection == DirNone {
+			// If there's not enough room, for tooltip we prefer avoiding the cursor at all cost even if it means that part of the tooltip won't be visible.
+			pos = ref_pos.Add(f64.Vec2{2, 2})
+		}
+		return pos
+	}
+
+	assert(false)
+	return window.Pos
 }
 
-func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *Dir, r_avoid f64.Rectangle, policy PopupPositionPolicy) f64.Vec2 {
+// r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
+// r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
+func (c *Context) FindBestWindowPosForPopupEx(ref_pos, size f64.Vec2, last_dir *Dir, r_outer, r_avoid f64.Rectangle, policy PopupPositionPolicy) f64.Vec2 {
 	style := &c.Style
 
 	// r_avoid = the rectangle to avoid (e.g. for tooltip it is a rectangle around the mouse cursor which we want to avoid. for popups it's a small point around the cursor.)
 	// r_outer = the visible area rectangle, minus safe area padding. If our popup size won't fit because of safe area padding we ignore it.
 	safe_padding := style.DisplaySafeAreaPadding
-	r_outer := c.GetViewportRect()
+	r_outer = c.GetViewportRect()
 	safe_padding_x := 0.0
 	safe_padding_y := 0.0
 	if size.X-r_outer.Dx() > safe_padding.Y*2 {
@@ -2010,4 +2068,19 @@ func (c *Context) Dummy(size f64.Vec2) {
 	bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(size)}
 	c.ItemSizeBB(bb)
 	c.ItemAdd(bb, 0)
+}
+
+func (c *Context) FindScreenRectForWindow(window *Window) f64.Rectangle {
+	padding := c.Style.DisplaySafeAreaPadding
+	expand := f64.Vec2{0, 0}
+	r_screen := c.GetViewportRect()
+	if window.Size.X-r_screen.Dx() > padding.X*2 {
+		expand.X = -padding.X
+	}
+	if window.Size.Y-r_screen.Dy() > padding.Y*2 {
+		expand.Y = -padding.Y
+	}
+
+	r_screen = r_screen.Expand2(expand)
+	return r_screen
 }

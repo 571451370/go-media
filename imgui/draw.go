@@ -670,52 +670,13 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			windowPos := window.SizeFull.Scale2(window.SetWindowPosPivot)
 			windowPos = window.SetWindowPosVal.Sub(windowPos)
 			windowPos = windowPos.Max(style.DisplaySafeAreaPadding)
-
 			c.SetWindowPos(window, windowPos, 0)
 		} else if flags&WindowFlagsChildMenu != 0 {
-			// Child menus typically request _any_ position within the parent menu item, and then our FindBestPopupWindowPos() function will move the new menu outside the parent bounds.
-			// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
-			// We want some overlap to convey the relative depth of each popup (currently the amount of overlap it is hard-coded to style.ItemSpacing.x, may need to introduce another style value).
-			horizontal_overlap := style.ItemSpacing.X
-			parent_menu := parent_window_in_stack
-			var rect_to_avoid f64.Rectangle
-			if parent_menu.DC.MenuBarAppending {
-				rect_to_avoid = f64.Rectangle{
-					f64.Vec2{-math.MaxFloat32, parent_menu.Pos.Y + parent_menu.TitleBarHeight()},
-					f64.Vec2{math.MaxFloat32, parent_menu.Pos.Y + parent_menu.TitleBarHeight() + parent_menu.MenuBarHeight()},
-				}
-			} else {
-				rect_to_avoid = f64.Rectangle{
-					f64.Vec2{parent_menu.Pos.X + horizontal_overlap, -math.MaxFloat32},
-					f64.Vec2{parent_menu.Pos.X + parent_menu.Size.X - horizontal_overlap - parent_menu.ScrollbarSizes.X, math.MaxFloat32},
-				}
-			}
-			window.PosFloat = c.FindBestWindowPosForPopup(window.PosFloat, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
+			window.PosFloat = c.FindBestWindowPosForPopup(window)
 		} else if flags&WindowFlagsPopup != 0 && !window_pos_set_by_api && window_just_appearing_after_hidden_for_resize {
-			rect_to_avoid := f64.Rectangle{
-				f64.Vec2{window.PosFloat.X - 1, window.PosFloat.Y - 1},
-				f64.Vec2{window.PosFloat.X + 1, window.PosFloat.Y + 1},
-			}
-			window.PosFloat = c.FindBestWindowPosForPopup(window.PosFloat, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
+			window.PosFloat = c.FindBestWindowPosForPopup(window)
 		} else if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
-			// Position tooltip (always follow mouse but avoid cursor)
-			sc := c.Style.MouseCursorScale
-			ref_pos := c.IO.MousePos
-			if !c.NavDisableHighlight && c.NavDisableMouseHover {
-				ref_pos = c.NavCalcPreferredMousePos()
-			}
-			var rect_to_avoid f64.Rectangle
-			if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos == 0 {
-				rect_to_avoid = f64.Rectangle{f64.Vec2{ref_pos.X - 16, ref_pos.Y - 8}, f64.Vec2{ref_pos.X + 16, ref_pos.Y + 8}}
-			} else {
-				// FIXME: Hard-coded based on mouse cursor shape expectation. Exact dimension not very important.
-				rect_to_avoid = f64.Rectangle{f64.Vec2{ref_pos.X - 16, ref_pos.Y - 8}, f64.Vec2{ref_pos.X + 24*sc, ref_pos.Y + 24*sc}}
-			}
-			window.PosFloat = c.FindBestWindowPosForPopup(ref_pos, window.Size, &window.AutoPosLastDirection, rect_to_avoid)
-			if window.AutoPosLastDirection == DirNone {
-				// If there's not enough room, for tooltip we prefer avoiding the cursor at all cost even if it means that part of the tooltip won't be visible.
-				window.PosFloat = ref_pos.Add(f64.Vec2{2, 2})
-			}
+			window.PosFloat = c.FindBestWindowPosForPopup(window)
 		}
 
 		// Clamp position so it stays visible

@@ -1,7 +1,8 @@
-commit bfc0efaae9c4322557abc0146af1b3244a3a63a4
-Author: omar <omarcornut@gmail.com>
-Date:   Wed Apr 11 12:43:38 2018 +0200
+Author: omar <omarcornut@gmail.com>  2018-04-11 09:33:11
+Committer: omar <omarcornut@gmail.com>  2018-04-11 11:01:19
+Parent: bfc0efaae9c4322557abc0146af1b3244a3a63a4 (Internals: Window: Aggregating ImDrawList into the ImGuiWindow structure.)
+Branches: master, remotes/origin/master, remotes/origin/viewport
+Follows: v1.60
+Precedes: 
 
-    Internals: Window: Aggregating ImDrawList into the ImGuiWindow structure.
-
-
+    Internals: Popup: Moved popup/menu/tooltip positioning code (viewport branch needs it organized in a different manner, so we are pushing the bulk of it here to minimize differences).
