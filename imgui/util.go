@@ -262,6 +262,10 @@ func ParseFormatPrecision(format string, default_precision int) int {
 	return precision
 }
 
+func DataTypeFormatStringCustom(data interface{}, display_format string) string {
+	return fmt.Sprintf(display_format, data)
+}
+
 func DataTypeFormatString(data interface{}, decimal_precision int) string {
 	switch v := data.(type) {
 	case int:

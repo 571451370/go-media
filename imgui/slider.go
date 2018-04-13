@@ -14,15 +14,6 @@ const (
 	SliderFlagsVertical SliderFlags = 1 << 0
 )
 
-type DataType int
-
-const (
-	DataTypeInt = iota
-	DataTypeFloat
-	DataTypeDouble
-	DataTypeCOUNT
-)
-
 func (c *Context) SliderBehaviorCalcRatioFromValue(v, v_min, v_max, power, linear_zero_pos float64) float64 {
 	if v_min == v_max {
 		return 0
@@ -414,7 +405,7 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	c.FocusableItemUnregister(window)
 
 	buf := DataTypeFormatString(data, decimal_precision)
-	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), InputTextFlagsCharsDecimal|InputTextFlagsAutoSelectAll)
+	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), InputTextFlagsCharsDecimal|InputTextFlagsAutoSelectAll, nil)
 	// First frame we started displaying the InputText widget
 	if c.ScalarAsInputTextId == 0 {
 		// InputText ID expected to match the Slider ID (else we'd need to store them both, which is also possible)

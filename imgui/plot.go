@@ -16,20 +16,51 @@ const (
 )
 
 func (c *Context) PlotLines(label string, values []float64) {
-	c.PlotLinesEx(label, values, 0, "", math.MaxFloat32, math.MaxFloat32, f64.Vec2{0, 0}, 4)
+	c.PlotLinesEx(label, values, 0, "", math.MaxFloat32, math.MaxFloat32, f64.Vec2{0, 0})
 }
 
-func (c *Context) PlotLinesEx(label string, values []float64, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2, stride int) {
+func (c *Context) PlotLinesEx(label string, values []float64, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+	values_getter := func(idx int) (float64, bool) {
+		if 0 <= idx && idx < len(values) {
+			return values[idx], true
+		}
+		return 0, false
+	}
+
+	c.PlotEx(PlotTypeLines, label, values_getter, len(values), values_offset, overlay_text, scale_min, scale_max, graph_size)
 }
 
-func (c *Context) PlotLinesItem(label string, values_getter func(idx int) float64, values_count int) {
+func (c *Context) PlotLinesItem(label string, values_getter func(idx int) (float64, bool), values_count int) {
 	c.PlotLinesItemEx(label, values_getter, values_count, 0, "", math.MaxFloat32, math.MaxFloat32, f64.Vec2{0, 0})
 }
 
-func (c *Context) PlotLinesItemEx(label string, values_getter func(idx int) float64, values_count, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+func (c *Context) PlotLinesItemEx(label string, values_getter func(idx int) (float64, bool), values_count, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+	c.PlotEx(PlotTypeLines, label, values_getter, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size)
 }
 
-func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(idx int) float64, values_count, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+func (c *Context) PlotHistogram(label string, values []float64) {
+	c.PlotHistogramEx(label, values, 0, "", math.MaxFloat32, math.MaxFloat32, f64.Vec2{0, 0})
+}
+
+func (c *Context) PlotHistogramEx(label string, values []float64, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+	values_getter := func(idx int) (float64, bool) {
+		if 0 <= idx && idx < len(values) {
+			return values[idx], true
+		}
+		return 0, false
+	}
+	c.PlotEx(PlotTypeHistogram, label, values_getter, len(values), values_offset, overlay_text, scale_min, scale_max, graph_size)
+}
+
+func (c *Context) PlotHistogramItem(label string, values_getter func(idx int) (float64, bool), values_count int) {
+	c.PlotHistogramItemEx(label, values_getter, values_count, 0, "", math.MaxFloat32, math.MaxFloat32, f64.Vec2{0, 0})
+}
+
+func (c *Context) PlotHistogramItemEx(label string, values_getter func(idx int) (float64, bool), values_count, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
+	c.PlotEx(PlotTypeHistogram, label, values_getter, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size)
+}
+
+func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(idx int) (float64, bool), values_count, values_offset int, overlay_text string, scale_min, scale_max float64, graph_size f64.Vec2) {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return
@@ -72,7 +103,7 @@ func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(id
 		v_min := math.MaxFloat32
 		v_max := -math.MaxFloat32
 		for i := 0; i < values_count; i++ {
-			v := values_getter(i)
+			v, _ := values_getter(i)
 			v_min = math.Min(v_min, v)
 			v_max = math.Max(v_max, v)
 		}
@@ -101,8 +132,8 @@ func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(id
 			v_idx := int(t * float64(item_count))
 			assert(v_idx >= 0 && v_idx < values_count)
 
-			v0 := values_getter((v_idx + values_offset) % values_count)
-			v1 := values_getter((v_idx + 1 + values_offset) % values_count)
+			v0, _ := values_getter((v_idx + values_offset) % values_count)
+			v1, _ := values_getter((v_idx + 1 + values_offset) % values_count)
 			if plot_type == PlotTypeLines {
 				c.SetTooltip("%d: %8.4g\n%d: %8.4g", v_idx, v0, v_idx+1, v1)
 			} else if plot_type == PlotTypeHistogram {
@@ -117,7 +148,7 @@ func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(id
 			inv_scale = 1.0 / (scale_max - scale_min)
 		}
 
-		v0 := values_getter((0 + values_offset) % values_count)
+		v0, _ := values_getter((0 + values_offset) % values_count)
 		t0 := 0.0
 		// Point in the normalized space of our target rectangle
 		tp0 := f64.Vec2{t0, 1.0 - f64.Saturate((v0-scale_min)*inv_scale)}
@@ -145,7 +176,7 @@ func (c *Context) PlotEx(plot_type PlotType, label string, values_getter func(id
 			t1 := t0 + t_step
 			v1_idx := int(t0*float64(item_count) + 0.5)
 			assert(v1_idx >= 0 && v1_idx < values_count)
-			v1 := values_getter((v1_idx + values_offset + 1) % values_count)
+			v1, _ := values_getter((v1_idx + values_offset + 1) % values_count)
 			tp1 := f64.Vec2{t1, 1.0 - f64.Saturate((v1-scale_min)*inv_scale)}
 
 			// NB: Draw calls are merged together by the DrawList system. Still, we should render our batch are lower level to save a bit of CPU.

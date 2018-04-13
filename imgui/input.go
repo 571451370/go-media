@@ -1,5 +1,11 @@
 package imgui
 
+import (
+	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
+
 type Key int
 
 const (
@@ -140,10 +146,103 @@ func (c *Context) IsKeyPressedMapEx(key Key, repeat bool) bool {
 	return false
 }
 
+func (c *Context) InputInt(label string, v *int) bool {
+	return c.InputIntEx(label, v, 1, 100, 0)
+}
+
+func (c *Context) InputIntEx(label string, v *int, step, step_fast int, extra_flags InputTextFlags) bool {
+	// Hexadecimal input provided as a convenience but the flag name is awkward. Typically you'd use InputText() to parse your own data, if you want to handle prefixes.
+	return false
+}
+
+func (c *Context) InputIntN(label string, v []int, extra_flags InputTextFlags) bool {
+	components := len(v)
+
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	value_changed := false
+	c.BeginGroup()
+	c.PushStringID(label)
+	c.PushMultiItemsWidths(components)
+	for i := 0; i < components; i++ {
+		c.PushID(ID(i))
+		if c.InputIntEx("##v", &v[i], 0, 0, extra_flags) {
+			value_changed = true
+		}
+		c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+		c.PopID()
+		c.PopItemWidth()
+	}
+	c.PopID()
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+
+	return value_changed
+}
+
 func (c *Context) InputFloat(label string, v *float64, step float64) bool {
 	return c.InputFloatEx(label, v, step, 0, -1, 0)
 }
 
 func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64, decimal_precision int, extra_flags InputTextFlags) bool {
 	return false
+}
+
+// NB: scalar_format here must be a simple "%xx" format string with no prefix/suffix (unlike the Drag/Slider functions "display_format" argument)
+func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr interface{}, scalar_format string, extra_flags InputTextFlags) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	label_size := c.CalcTextSizeEx(label, true, -1)
+
+	c.BeginGroup()
+	c.PushStringID(label)
+	button_sz := f64.Vec2{c.GetFrameHeight(), c.GetFrameHeight()}
+	if step_ptr != nil {
+		c.PushItemWidth(math.Max(1.0, c.CalcItemWidth()-(button_sz.X+style.ItemInnerSpacing.X)*2))
+	}
+
+	buf := DataTypeFormatStringCustom(data, scalar_format)
+	value_changed := false
+	if (extra_flags & (InputTextFlagsCharsHexadecimal | InputTextFlagsCharsScientific)) == 0 {
+		extra_flags |= InputTextFlagsCharsDecimal
+	}
+	extra_flags |= InputTextFlagsAutoSelectAll
+
+	// PushId(label) + "" gives us the expected ID from outside point of view
+	if c.InputText("", buf, extra_flags, nil) {
+		value_changed = DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, scalar_format)
+	}
+
+	// Step buttons
+	if step_ptr != nil {
+		c.PopItemWidth()
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		if c.ButtonEx("-", button_sz, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
+			value_changed = true
+		}
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		if c.ButtonEx("+", button_sz, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
+			value_changed = true
+		}
+	}
+	c.PopID()
+
+	if label_size.X > 0 {
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		c.RenderText(f64.Vec2{window.DC.CursorPos.X, window.DC.CursorPos.Y + style.FramePadding.Y}, label)
+		c.ItemSizeEx(label_size, style.FramePadding.Y)
+
+	}
+	c.EndGroup()
+
+	return value_changed
 }

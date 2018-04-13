@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strings"
@@ -8,6 +9,27 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/math/mathutil"
 )
+
+// Shared state of InputText(), passed to callback when a ImGuiInputTextFlags_Callback* flag is used and the corresponding callback is triggered.
+type TextEditCallbackData struct {
+	EventFlag InputTextFlags // One of ImGuiInputTextFlags_Callback* // Read-only
+	Flags     InputTextFlags // What user passed to InputText()      // Read-only
+	ReadOnly  bool           // Read-only mode                       // Read-only
+
+	// CharFilter event:
+	EventChar rune // Character input                      // Read-write (replace character or set to zero)
+
+	// Completion,History,Always events:
+	// If you modify the buffer contents make sure you update 'BufTextLen' and set 'BufDirty' to true.
+	EventKey       Key           // Key pressed (Up/Down/TAB)            // Read-only
+	Buf            *bytes.Buffer // Current text buffer                  // Read-write (pointed data only, can't replace the actual pointer)
+	BufDirty       bool          // Set if you modify Buf/BufTextLen!!   // Write
+	CursorPos      int           //                                      // Read-write
+	SelectionStart int           //                                      // Read-write (== to SelectionEnd when no selection)
+	SelectionEnd   int           //                                      // Read-write
+}
+
+type TextEditCallback func(*TextEditCallbackData)
 
 type SeparatorFlags int
 
@@ -36,6 +58,7 @@ const (
 	InputTextFlagsReadOnly            InputTextFlags = 1 << 14 // Read-only mode
 	InputTextFlagsPassword            InputTextFlags = 1 << 15 // Password mode display all characters as '*'
 	InputTextFlagsNoUndoRedo          InputTextFlags = 1 << 16 // Disable undo/redo. Note that input text owns the text data while active if you want to provide your own undo/redo stack you need e.g. to call ClearActiveID().
+	InputTextFlagsCharsScientific     InputTextFlags = 1 << 17 // Allow 0123456789.+-*/eE (Scientific notation input)
 	// [Internal]
 	InputTextFlagsMultiline InputTextFlags = 1 << 20 // For internal use by InputTextMultiline()
 )
@@ -305,10 +328,6 @@ func (c *Context) VerticalSeparator() {
 	}
 }
 
-func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags) bool {
-	return c.InputTextExCallback(label, buf, size_arg, flags, nil)
-}
-
 func (c *Context) InputTextExCallback(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback func()) bool {
 	return false
 }
@@ -348,4 +367,21 @@ func (c *Context) PopTextWrapPos() {
 	if len(window.DC.TextWrapPosStack) > 0 {
 		window.DC.TextWrapPos = window.DC.TextWrapPosStack[len(window.DC.TextWrapPosStack)-1]
 	}
+}
+
+func (c *Context) InputText(label, buf string, flags InputTextFlags, callback TextEditCallback) bool {
+	// call InputTextMultiline()
+	assert(flags&InputTextFlagsMultiline == 0)
+	return c.InputTextEx(label, buf, f64.Vec2{0, 0}, flags, callback)
+}
+
+func (c *Context) InputTextMultiline(label, buf string, size f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
+	return c.InputTextEx(label, buf, size, flags|InputTextFlagsMultiline, callback)
+}
+
+// Edit a string of text
+// NB: when active, hold on a privately held copy of the text (and apply back to 'buf'). So changing 'buf' while active has no effect.
+// FIXME: Rather messy function partly because we are doing UTF8 > u16 > UTF8 conversions on the go to more easily handle stb_textedit calls. Ideally we should stay in UTF-8 all the time. See https://github.com/nothings/stb/issues/188
+func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
+	return false
 }
