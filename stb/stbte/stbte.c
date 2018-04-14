@@ -30,7 +30,9 @@ void STB_TEXTEDIT_DELETECHARS(STB_TEXTEDIT_STRING *str, int pos, int n) {
 }
 
 int STB_TEXTEDIT_INSERTCHARS(STB_TEXTEDIT_STRING *str, int pos, STB_TEXTEDIT_CHARTYPE *new_text, int new_text_len) {
-	return insertchars(str, pos, new_text, new_text_len);
+	if (insertchars(str, pos, new_text, new_text_len))
+		return 1;
+	return 0;
 }
 
 int STB_TEXTEDIT_KEYTOTEXT(int key) {

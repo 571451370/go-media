@@ -8,6 +8,7 @@ import (
 
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/math/mathutil"
+	"github.com/qeedquan/go-media/stb/stbte"
 )
 
 // Shared state of InputText(), passed to callback when a ImGuiInputTextFlags_Callback* flag is used and the corresponding callback is triggered.
@@ -64,6 +65,7 @@ const (
 )
 
 type TextEditState struct {
+	Ctx                  *Context
 	Id                   ID     // widget id owning the text state
 	Text                 []rune // edit buffer, we need to persist but can't guarantee the persistence of the user-provided buffer. so we copy into own buffer.
 	InitialText          []byte // backup of end-user buffer at the time of focus (in UTF-8, unaltered)
@@ -71,7 +73,7 @@ type TextEditState struct {
 	CurLenA, CurLenW     int // we need to maintain our buffer length in both UTF-8 and wchar format.
 	BufSizeA             int // end-user buffer size
 	ScrollX              float64
-	StbState             int
+	StbState             stbte.State
 	CursorAnim           float64
 	CursorFollow         bool
 	SelectedAllMouseLock bool
@@ -383,5 +385,301 @@ func (c *Context) InputTextMultiline(label, buf string, size f64.Vec2, flags Inp
 // NB: when active, hold on a privately held copy of the text (and apply back to 'buf'). So changing 'buf' while active has no effect.
 // FIXME: Rather messy function partly because we are doing UTF8 > u16 > UTF8 conversions on the go to more easily handle stb_textedit calls. Ideally we should stay in UTF-8 all the time. See https://github.com/nothings/stb/issues/188
 func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+	io := &c.IO
+
+	// Can't use both together (they both use up/down keys)
+	assert(!(flags&InputTextFlagsCallbackHistory != 0 && flags&InputTextFlagsMultiline != 0))
+	// Can't use both together (they both use tab key)
+	assert(!(flags&InputTextFlagsCallbackCompletion != 0 && flags&InputTextFlagsAllowTabInput != 0))
+
+	is_multiline := flags&InputTextFlagsMultiline != 0
+	is_editable := flags&InputTextFlagsReadOnly == 0
+	is_password := flags&InputTextFlagsPassword != 0
+	is_undoable := flags&InputTextFlagsNoUndoRedo == 0
+
+	// Open group before calling GetID() because groups tracks id created during their spawn
+	if is_multiline {
+		c.BeginGroup()
+	}
+	id := window.GetID(label)
+	label_size := c.CalcTextSizeEx(label, true, -1)
+
+	// Arbitrary default of 8 lines high for multi-line
+	item_size := label_size.Y
+	if is_multiline {
+		item_size = c.GetTextLineHeight() * 8.0
+	}
+	size := c.CalcItemSize(size_arg, c.CalcItemWidth(), item_size+style.FramePadding.Y*2.0)
+	frame_bb := f64.Rectangle{window.DC.CursorPos, window.DC.CursorPos.Add(size)}
+	total_bb_x := 0.0
+	if label_size.X > 0 {
+		total_bb_x = style.ItemInnerSpacing.X + label_size.X
+	}
+	total_bb := f64.Rectangle{frame_bb.Min, frame_bb.Max.Add(f64.Vec2{total_bb_x, 0.0})}
+
+	draw_window := window
+	if is_multiline {
+		c.ItemAddEx(total_bb, id, &frame_bb)
+		if !c.BeginChildFrame(id, frame_bb.Size(), 0) {
+			c.EndChildFrame()
+			c.EndGroup()
+			return false
+		}
+		draw_window = c.GetCurrentWindow()
+		size.X -= draw_window.ScrollbarSizes.X
+	} else {
+		c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
+		if !c.ItemAddEx(total_bb, id, &frame_bb) {
+			return false
+		}
+	}
+
+	hovered := c.ItemHoverable(frame_bb, id)
+	if hovered {
+		c.MouseCursor = MouseCursorTextInput
+	}
+
+	// Password pushes a temporary font with only a fallback glyph
+	if is_password {
+		glyph := c.Font.FindGlyph('*')
+		password_font := &c.InputTextPasswordFont
+		password_font.FontSize = c.Font.FontSize
+		password_font.Scale = c.Font.Scale
+		password_font.DisplayOffset = c.Font.DisplayOffset
+		password_font.Ascent = c.Font.Ascent
+		password_font.Descent = c.Font.Descent
+		password_font.ContainerAtlas = c.Font.ContainerAtlas
+		password_font.FallbackGlyph = glyph
+		password_font.FallbackAdvanceX = glyph.AdvanceX
+		assert(len(password_font.Glyphs) == 0 && len(password_font.IndexAdvanceX) == 0 && len(password_font.IndexLookup) == 0)
+		c.PushFont(password_font)
+	}
+
+	// NB: we are only allowed to access 'edit_state' if we are the active widget.
+	edit_state := &c.InputTextState
+
+	// Using completion callback disable keyboard tabbing
+	focus_requested := c.FocusableItemRegisterEx(window, id, flags&(InputTextFlagsCallbackCompletion|InputTextFlagsAllowTabInput) != 0)
+	focus_requested_by_code := focus_requested && (window.FocusIdxAllCounter == window.FocusIdxAllRequestCurrent)
+	focus_requested_by_tab := focus_requested && !focus_requested_by_code
+
+	user_clicked := hovered && io.MouseClicked[0]
+	user_scrolled := is_multiline && c.ActiveId == 0 && edit_state.Id == id && c.ActiveIdPreviousFrame == draw_window.GetIDNoKeepAlive("#SCROLLY")
+	user_nav_input_start := (c.ActiveId != id) && ((c.NavInputId == id) || (c.NavActivateId == id && c.NavInputSource == InputSourceNavKeyboard))
+
+	clear_active_id := false
+
+	select_all := (c.ActiveId != id) && ((flags&InputTextFlagsAutoSelectAll) != 0 || user_nav_input_start) && (!is_multiline)
+	if focus_requested || user_clicked || user_scrolled || user_nav_input_start {
+		if c.ActiveId != id {
+			// Start edition
+			// Take a copy of the initial buffer value (both in original UTF-8 format and converted to wchar)
+			// From the moment we focused we are ignoring the content of 'buf' (unless we are in read-only mode)
+			prev_len_w := edit_state.CurLenW
+			edit_state.Text = []rune(buf)
+			edit_state.InitialText = []byte(buf)
+			edit_state.CurLenW = len(edit_state.Text)
+			edit_state.CurLenA = len(buf)
+			edit_state.CursorAnimReset()
+
+			// Preserve cursor position and undo/redo stack if we come back to same widget
+			// FIXME: We should probably compare the whole buffer to be on the safety side. Comparing buf (utf8) and edit_state.Text (wchar).
+			recycle_state := (edit_state.Id == id) && (prev_len_w == edit_state.CurLenW)
+			if recycle_state {
+				// Recycle existing cursor/selection/undo stack but clamp position
+				// Note a single mouse click will override the cursor/position immediately by calling stb_textedit_click handler.
+				edit_state.CursorClamp()
+			} else {
+				edit_state.Id = id
+				edit_state.ScrollX = 0.0
+				edit_state.StbState.Init(!is_multiline)
+				if !is_multiline && focus_requested_by_code {
+					select_all = true
+				}
+			}
+
+			if flags&InputTextFlagsAlwaysInsertMode != 0 {
+				edit_state.StbState.SetInsertMode(true)
+			}
+			if !is_multiline && (focus_requested_by_tab || (user_clicked && io.KeyCtrl)) {
+				select_all = true
+			}
+		}
+		c.SetActiveID(id, window)
+		c.SetFocusID(id, window)
+		c.FocusWindow(window)
+		if !is_multiline && flags&InputTextFlagsCallbackHistory == 0 {
+			c.ActiveIdAllowNavDirFlags |= ((1 << uint(DirUp)) | (1 << uint(DirDown)))
+		}
+	} else if io.MouseClicked[0] {
+		// Release focus when we click outside
+		clear_active_id = true
+	}
+
+	value_changed := false
+	enter_pressed := false
+	if c.ActiveId == id {
+		if !is_editable && !c.ActiveIdIsJustActivated {
+			// When read-only we always use the live data passed to the function
+			if len(buf) > len(edit_state.Text) {
+				edit_state.Text = append(edit_state.Text, make([]rune, len(buf)-len(edit_state.Text))...)
+			}
+			edit_state.CurLenW = len(edit_state.Text)
+			edit_state.CurLenA = len(buf)
+			edit_state.CursorClamp()
+		}
+
+		edit_state.BufSizeA = len(buf)
+
+		// Although we are active we don't prevent mouse from hovering other elements unless we are interacting right now with the widget.
+		// Down the line we should have a cleaner library-wide concept of Selected vs Active.
+		c.ActiveIdAllowOverlap = !io.MouseDown[0]
+		c.WantTextInputNextFrame = 1
+
+		// Edit in progress
+		mouse_x := (io.MousePos.X - frame_bb.Min.X - style.FramePadding.X) + edit_state.ScrollX
+		mouse_y := c.FontSize * 0.5
+		if is_multiline {
+			mouse_y = io.MousePos.Y - draw_window.DC.CursorPos.Y - style.FramePadding.Y
+		}
+		// OS X style: Double click selects by word instead of selecting whole text
+		osx_double_click_selects_words := io.OptMacOSXBehaviors
+		if select_all || (hovered && !osx_double_click_selects_words && io.MouseDoubleClicked[0]) {
+			edit_state.SelectAll()
+			edit_state.SelectedAllMouseLock = true
+		} else if hovered && osx_double_click_selects_words && io.MouseDoubleClicked[0] {
+			// Select a word only, OS X style (by simulating keystrokes)
+			edit_state.OnKeyPressed(stbte.K_WORDLEFT)
+			edit_state.OnKeyPressed(stbte.K_WORDRIGHT | stbte.K_SHIFT)
+		} else if io.MouseClicked[0] && !edit_state.SelectedAllMouseLock {
+			if hovered {
+				edit_state.StbState.Click(edit_state, mouse_x, mouse_y)
+				edit_state.CursorAnimReset()
+			}
+		} else if io.MouseDown[0] && !edit_state.SelectedAllMouseLock && (io.MouseDelta.X != 0.0 || io.MouseDelta.Y != 0.0) {
+			edit_state.StbState.Drag(edit_state, mouse_x, mouse_y)
+			edit_state.CursorAnimReset()
+			edit_state.CursorFollow = true
+		}
+
+		if io.InputCharacters[0] != 0 {
+			// Process text input (before we check for Return because using some IME will effectively send a Return?)
+			// We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
+			if !(io.KeyCtrl && !io.KeyAlt) && is_editable && !user_nav_input_start {
+			}
+			// Consume characters
+			for i := range c.IO.InputCharacters {
+				c.IO.InputCharacters[i] = 0
+			}
+		}
+	}
+
+	cancel_edit := false
+	if c.ActiveId == id && !c.ActiveIdIsJustActivated && !clear_active_id {
+		// Handle key-presses
+		k_mask := 0
+		if io.KeyShift {
+			k_mask = stbte.K_SHIFT
+		}
+		// OS X style: Shortcuts using Cmd/Super instead of Ctrl
+		_, _, _, _, _ = is_undoable, value_changed, enter_pressed, cancel_edit, k_mask
+	}
+
 	return false
+}
+
+func (t *TextEditState) Init(ctx *Context) {
+	*t = TextEditState{
+		Ctx: ctx,
+	}
+}
+
+func (t *TextEditState) CursorAnimReset() {
+	// After a user-input the cursor stays on for a while without blinking
+	t.CursorAnim = -0.30
+}
+
+func (t *TextEditState) CursorClamp() {
+	t.StbState.SetCursor(mathutil.Min(t.StbState.Cursor(), t.CurLenW))
+	t.StbState.SetSelectStart(mathutil.Min(t.StbState.SelectStart(), t.CurLenW))
+	t.StbState.SetSelectEnd(mathutil.Min(t.StbState.SelectEnd(), t.CurLenW))
+}
+
+func (t *TextEditState) SelectAll() {
+	t.StbState.SetSelectStart(0)
+	t.StbState.SetCursor(t.CurLenW)
+	t.StbState.SetSelectEnd(t.CurLenW)
+	t.StbState.SetHasPreferredX(false)
+}
+
+func (t *TextEditState) OnKeyPressed(key int) {
+	t.StbState.Key(t, key)
+	t.CursorFollow = true
+	t.CursorAnimReset()
+}
+
+func (t *TextEditState) GetChar(idx int) rune {
+	return t.Text[idx]
+}
+
+func (t *TextEditState) GetWidth(line_start_idx, char_idx int) float64 {
+	ctx := t.Ctx
+
+	const STB_TEXTEDIT_GETWIDTH_NEWLINE = -1
+	c := t.Text[line_start_idx+char_idx]
+	if c == '\n' {
+		return STB_TEXTEDIT_GETWIDTH_NEWLINE
+	}
+	return ctx.Font.GetCharAdvance(c) * (ctx.FontSize / ctx.Font.FontSize)
+}
+
+func (t *TextEditState) InsertChars(pos int, new_text []rune) bool {
+	t.Text = append(t.Text[:pos], append(new_text, t.Text[pos:]...)...)
+	t.CurLenW += len(new_text)
+	t.CurLenA += TextCountUtf8BytesFromStr(new_text)
+	return true
+}
+
+func (t *TextEditState) DeleteChars(pos, n int) {
+	// We maintain our buffer length in both UTF-8 and wchar formats
+	t.CurLenA -= TextCountUtf8BytesFromStr(t.Text[pos:])
+	t.CurLenW -= n
+
+	// Offset remaining text
+	copy(t.Text[pos:pos+n], t.Text[pos+n:])
+	t.Text = t.Text[:len(t.Text)-n]
+}
+
+func (t *TextEditState) LayoutRow(r *stbte.TextEditRow, line_start_idx int) {
+	ctx := t.Ctx
+	text := t.Text
+	size, text_remaining, _ := ctx.InputTextCalcTextSizeW(text[line_start_idx:], true)
+	r.SetX0(0.0)
+	r.SetX1(size.X)
+	r.SetBaselineYDelta(size.Y)
+	r.SetYMin(0)
+	r.SetYMax(size.Y)
+	r.SetNumChars(text_remaining)
+}
+
+func (t *TextEditState) Len() int {
+	return t.CurLenW
+}
+
+func (t *TextEditState) MoveWordLeft(n int) int {
+	return 0
+}
+
+func (t *TextEditState) MoveWordRight(n int) int {
+	return 0
+}
+
+func (c *Context) InputTextCalcTextSizeW(text []rune, stop_on_new_line bool) (text_size f64.Vec2, remaining int, out_offset f64.Vec2) {
+	return
 }

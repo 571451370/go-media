@@ -661,3 +661,10 @@ func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col c
 	draw_list._IdxWritePtr = idx_write_idx
 	draw_list._VtxCurrentIdx = len(draw_list.VtxBuffer)
 }
+
+func (f *Font) GetCharAdvance(c rune) float64 {
+	if int(c) < len(f.IndexAdvanceX) {
+		return f.IndexAdvanceX[c]
+	}
+	return f.FallbackAdvanceX
+}

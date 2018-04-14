@@ -1,0 +1,5 @@
+go build
+# github.com/qeedquan/go-media/stb/stbte
+../stb/stbte/stbte.go:174: cannot use s (type []rune) as type []byte in argument to p.InsertChars
+exit status 2
+2018-04-14 16:11:01.067675717 -0400 EDT

@@ -1,7 +1,5 @@
-commit 58fd8ea303e59504baf0d5d01fc85e97c0fd8671
-Author: Guillaume Chereau <guillaume@noctua-software.com>
-Date:   Thu Apr 12 19:11:49 2018 +0800
+commit 83d97d4a9b8c4a7129bb6132500cb9f7442a373e
+Author: daniel-murray <daniel.account@gmail.com>
+Date:   Sat Apr 14 00:05:09 2018 +0200
 
-    Fix minor error in doc
-    
-    Not a big deal.
+    Fix typos KeyDown => KeysDown

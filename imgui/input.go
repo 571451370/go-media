@@ -85,7 +85,7 @@ func (c *Context) CalcTypematicPressedRepeatAmount(t, t_prev, repeat_delay, repe
 	return 0
 }
 
-// Note that imgui doesn't know the semantic of each entry of io.KeyDown[]. Use your own indices/enums according to how your back-end/engine stored them into KeyDown[]!
+// Note that imgui doesn't know the semantic of each entry of io.KeysDown[]. Use your own indices/enums according to how your back-end/engine stored them into io.KeysDown[]!
 func (c *Context) IsKeyDown(user_key_index int) bool {
 	if user_key_index < 0 {
 		return false

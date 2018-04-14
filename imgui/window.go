@@ -2065,3 +2065,14 @@ func (c *Context) FindScreenRectForWindow(window *Window) f64.Rectangle {
 	r_screen = r_screen.Expand2(expand)
 	return r_screen
 }
+
+func (w *Window) GetIDNoKeepAlive(str string) ID {
+	var buf [4]byte
+	seed := w.IDStack[len(w.IDStack)-1]
+	binary.LittleEndian.PutUint32(buf[:], uint32(seed))
+
+	h := fnv.New32()
+	h.Write(buf[:])
+	h.Write([]byte(str))
+	return ID(h.Sum32())
+}

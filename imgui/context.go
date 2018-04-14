@@ -157,7 +157,7 @@ type Context struct {
 type ConfigFlags int
 
 const (
-	ConfigFlagsNavEnableKeyboard    ConfigFlags = 1 << 0 // Master keyboard navigation enable flag. NewFrame() will automatically fill io.NavInputs[] based on io.KeyDown[].
+	ConfigFlagsNavEnableKeyboard    ConfigFlags = 1 << 0 // Master keyboard navigation enable flag. NewFrame() will automatically fill io.NavInputs[] based on io.KeysDown[].
 	ConfigFlagsNavEnableGamepad     ConfigFlags = 1 << 1 // Master gamepad navigation enable flag. This is mostly to instruct your imgui back-end to fill io.NavInputs[].
 	ConfigFlagsNavEnableSetMousePos ConfigFlags = 1 << 2 // Instruct navigation to move the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is awkward. Will update io.MousePos and set io.WantSetMousePos=true. If enabled you MUST honor io.WantSetMousePos requests in your binding, otherwise ImGui will react as if the mouse is jumping around back and forth.
 	ConfigFlagsNavNoCaptureKeyboard ConfigFlags = 1 << 3 // Instruct navigation to not set the io.WantCaptureKeyboard flag with io.NavActive is set.
@@ -299,6 +299,7 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.WantCaptureMouseNextFrame = -1
 	c.WantCaptureKeyboardNextFrame = -1
 	c.WantTextInputNextFrame = -1
+	c.InputTextState.Init(c)
 
 	// Add .ini handle for ImGuiWindow type
 	ini_handler := &SettingsHandler{

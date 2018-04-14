@@ -11,6 +11,25 @@ import (
 	"unsafe"
 )
 
+const (
+	K_START     = C.STB_TEXTEDIT_K_START
+	K_LEFT      = C.STB_TEXTEDIT_K_LEFT
+	K_RIGHT     = C.STB_TEXTEDIT_K_RIGHT
+	K_UP        = C.STB_TEXTEDIT_K_UP
+	K_DOWN      = C.STB_TEXTEDIT_K_DOWN
+	K_LINESTART = C.STB_TEXTEDIT_K_LINESTART
+	K_LINEEND   = C.STB_TEXTEDIT_K_LINEEND
+	K_TEXTSTART = C.STB_TEXTEDIT_K_TEXTSTART
+	K_TEXTEND   = C.STB_TEXTEDIT_K_TEXTEND
+	K_DELETE    = C.STB_TEXTEDIT_K_DELETE
+	K_BACKSPACE = C.STB_TEXTEDIT_K_BACKSPACE
+	K_UNDO      = C.STB_TEXTEDIT_K_UNDO
+	K_REDO      = C.STB_TEXTEDIT_K_REDO
+	K_WORDLEFT  = C.STB_TEXTEDIT_K_WORDLEFT
+	K_WORDRIGHT = C.STB_TEXTEDIT_K_WORDRIGHT
+	K_SHIFT     = C.STB_TEXTEDIT_K_SHIFT
+)
+
 type (
 	State       C.STB_TexteditState
 	TextEditRow C.StbTexteditRow
@@ -24,7 +43,7 @@ type String interface {
 	MoveWordRight(idx int) int
 	MoveWordLeft(idx int) int
 	DeleteChars(pos, n int)
-	InsertChars(pos int, new_text []byte) int
+	InsertChars(pos int, new_text []rune) bool
 }
 
 type context struct {
@@ -33,6 +52,54 @@ type context struct {
 }
 
 var ctx context
+
+func (r *TextEditRow) X0() float64 {
+	return float64(r.x0)
+}
+
+func (r *TextEditRow) X1() float64 {
+	return float64(r.x1)
+}
+
+func (r *TextEditRow) YMin() float64 {
+	return float64(r.ymin)
+}
+
+func (r *TextEditRow) YMax() float64 {
+	return float64(r.ymax)
+}
+
+func (r *TextEditRow) BaselineYDelta() float64 {
+	return float64(r.baseline_y_delta)
+}
+
+func (r *TextEditRow) SetX0(x0 float64) {
+	r.x0 = C.float(x0)
+}
+
+func (r *TextEditRow) SetX1(x1 float64) {
+	r.x1 = C.float(x1)
+}
+
+func (r *TextEditRow) SetYMin(ymin float64) {
+	r.ymin = C.float(ymin)
+}
+
+func (r *TextEditRow) SetYMax(ymax float64) {
+	r.ymax = C.float(ymax)
+}
+
+func (r *TextEditRow) SetBaselineYDelta(baseline_y_delta float64) {
+	r.baseline_y_delta = C.float(baseline_y_delta)
+}
+
+func (r *TextEditRow) NumChars() int {
+	return int(r.num_chars)
+}
+
+func (r *TextEditRow) SetNumChars(num_chars int) {
+	r.num_chars = C.int(num_chars)
+}
 
 func (s *State) Init(is_single_line bool) {
 	C.stb_textedit_initialize_state((*C.STB_TexteditState)(s), truth(is_single_line))
@@ -59,11 +126,11 @@ func (s *State) Cut(str String) {
 	C.stb_textedit_cut(nil, (*C.STB_TexteditState)(s))
 }
 
-func (s *State) Paste(str String, text []byte) int {
+func (s *State) Paste(str String, text []rune) int {
 	ctx.Lock()
 	ctx.str = str
 	defer ctx.Unlock()
-	return int(C.stb_textedit_paste(nil, (*C.STB_TexteditState)(s), (*C.char)(unsafe.Pointer(&text[0])), C.int(len(text))))
+	return int(C.stb_textedit_paste(nil, (*C.STB_TexteditState)(s), (*C.int)(unsafe.Pointer(&text[0])), C.int(len(text))))
 }
 
 func (s *State) Key(str String, key int) {
@@ -71,6 +138,54 @@ func (s *State) Key(str String, key int) {
 	ctx.str = str
 	defer ctx.Unlock()
 	C.stb_textedit_key(nil, (*C.STB_TexteditState)(s), C.int(key))
+}
+
+func (s *State) Cursor() int {
+	return int(s.cursor)
+}
+
+func (s *State) SetCursor(cursor int) {
+	s.cursor = C.int(cursor)
+}
+
+func (s *State) SelectStart() int {
+	return int(s.select_start)
+}
+
+func (s *State) SetSelectStart(select_start int) {
+	s.select_start = C.int(select_start)
+}
+
+func (s *State) SelectEnd() int {
+	return int(s.select_end)
+}
+
+func (s *State) SetSelectEnd(select_end int) {
+	s.select_end = C.int(select_end)
+}
+
+func (s *State) InsertMode() bool {
+	return s.insert_mode != 0
+}
+
+func (s *State) SetInsertMode(insert_mode bool) {
+	s.insert_mode = C.uchar(truth(insert_mode))
+}
+
+func (s *State) PreferredX() float64 {
+	return float64(s.preferred_x)
+}
+
+func (s *State) SetPreferredX(preferred_x float64) {
+	s.preferred_x = C.float(preferred_x)
+}
+
+func (s *State) HasPreferredX() bool {
+	return s.has_preferred_x != 0
+}
+
+func (s *State) SetHasPreferredX(has_preferred_x bool) {
+	s.has_preferred_x = C.uchar(truth(has_preferred_x))
 }
 
 func truth(cond bool) C.int {
@@ -117,8 +232,8 @@ func movewordleft(_ unsafe.Pointer, idx int) int {
 }
 
 //export insertchars
-func insertchars(_ unsafe.Pointer, pos int, text *byte, new_text_len int) int {
-	s := ((*[1 << 30]byte)(unsafe.Pointer(text)))[:new_text_len:new_text_len]
+func insertchars(_ unsafe.Pointer, pos int, text *rune, new_text_len int) bool {
+	s := ((*[1 << 30]rune)(unsafe.Pointer(text)))[:new_text_len:new_text_len]
 	p := ctx.str
 	return p.InsertChars(pos, s)
 }

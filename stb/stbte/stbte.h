@@ -1,6 +1,8 @@
+#include <stdint.h>
+
 typedef void STB_TEXTEDIT_STRING;
 
-#define STB_TEXTEDIT_CHARTYPE char
+#define STB_TEXTEDIT_CHARTYPE int
 
 #include "stb_textedit.h"
 

@@ -28,7 +28,7 @@ const (
 	NavInputTweakFast                   // faster tweaks                                // e.g. R1 or R2 (PS4) RB or RT (Xbox) R or ZL (Switch)
 
 	// [Internal] Don't use directly! This is used internally to differentiate keyboard from gamepad inputs for behaviors that require to differentiate them.
-	// Keyboard behavior that have no corresponding gamepad mapping (e.g. CTRL+TAB) may be directly reading from io.KeyDown[] instead of io.NavInputs[].
+	// Keyboard behavior that have no corresponding gamepad mapping (e.g. CTRL+TAB) will be directly reading from io.KeysDown[] instead of io.NavInputs[].
 	NavInputKeyMenu_  // toggle menu                                  // = io.KeyAlt
 	NavInputKeyLeft_  // move left                                    // = Arrow keys
 	NavInputKeyRight_ // move right
