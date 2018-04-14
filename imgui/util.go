@@ -5,7 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -311,12 +310,4 @@ func truth(x bool) int {
 		return 1
 	}
 	return 0
-}
-
-func TextCountUtf8BytesFromStr(r []rune) int {
-	n := 0
-	for i := range r {
-		n += utf8.RuneLen(r[i])
-	}
-	return n
 }

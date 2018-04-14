@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/math/mathutil"
@@ -672,6 +674,22 @@ func (t *TextEditState) Len() int {
 	return t.CurLenW
 }
 
+func (t *TextEditState) isSeparator(c rune) bool {
+	switch c {
+	case ',', ';', '(', ')', '{', '}', '[', ']', '|':
+		return true
+	}
+	return unicode.IsSpace(c)
+}
+
+func (t *TextEditState) isWordBoundaryFromRight(idx int) bool {
+	return false
+}
+
+func (t *TextEditState) isWordBoundaryFromLeft(idx int) bool {
+	return false
+}
+
 func (t *TextEditState) MoveWordLeft(n int) int {
 	return 0
 }
@@ -682,4 +700,12 @@ func (t *TextEditState) MoveWordRight(n int) int {
 
 func (c *Context) InputTextCalcTextSizeW(text []rune, stop_on_new_line bool) (text_size f64.Vec2, remaining int, out_offset f64.Vec2) {
 	return
+}
+
+func TextCountUtf8BytesFromStr(r []rune) int {
+	n := 0
+	for i := range r {
+		n += utf8.RuneLen(r[i])
+	}
+	return n
 }
