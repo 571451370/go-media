@@ -1069,6 +1069,13 @@ func Saturate(x float32) float32 {
 	return Max(0, Min(1, x))
 }
 
+func SignNZ(x float32) float32 {
+	if x >= 0 {
+		return 1
+	}
+	return -1
+}
+
 func Sign(x float32) float32 {
 	if x < 0 {
 		return -1

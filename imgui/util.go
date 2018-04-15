@@ -333,3 +333,11 @@ func Acos01(x float64) float64 {
 	}
 	return math.Acos(x)
 }
+
+func GetMinimumStepAtDecimalPrecision(decimal_precision int) float64 {
+	min_steps := [10]float64{1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001}
+	if decimal_precision >= 0 && decimal_precision < 10 {
+		return min_steps[decimal_precision]
+	}
+	return math.Pow(10, float64(-decimal_precision))
+}
