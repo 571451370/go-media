@@ -869,9 +869,71 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 		// - Measure text height (for scrollbar)
 		// We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
 		// FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
-		var cursor_offset f64.Vec2
+		var cursor_offset, select_start_offset f64.Vec2
 
+		text_begin := edit_state.Text
 		// Count lines + find lines numbers straddling 'cursor' and 'select_start' position.
+		searches_input_ptr := [2]int{
+			edit_state.StbState.Cursor(),
+			-1,
+		}
+		searches_remaining := 1
+		searches_result_line_number := [2]int{-1, -999}
+		if edit_state.StbState.SelectStart() != edit_state.StbState.SelectEnd() {
+			searches_input_ptr[1] = mathutil.Min(edit_state.StbState.SelectStart(), edit_state.StbState.SelectEnd())
+			searches_result_line_number[1] = -1
+			searches_remaining++
+		}
+
+		// Iterate all lines to find our line numbers
+		// In multi-line mode, we never exit the loop until all lines are counted, so add one extra to the searches_remaining counter.
+		if is_multiline {
+			searches_remaining += 1
+		}
+		line_count := 0
+		for i, s := range text_begin {
+			if s == '\n' {
+				line_count++
+				if searches_result_line_number[0] == -1 && i >= searches_input_ptr[0] {
+					searches_result_line_number[0] = line_count
+					if searches_remaining--; searches_remaining <= 0 {
+						break
+					}
+				}
+				if searches_result_line_number[1] == -1 && i >= searches_input_ptr[1] {
+					searches_result_line_number[1] = line_count
+					if searches_remaining--; searches_remaining <= 0 {
+						break
+					}
+				}
+			}
+		}
+		line_count++
+		if searches_result_line_number[0] == -1 {
+			searches_result_line_number[0] = line_count
+		}
+		if searches_result_line_number[1] == -1 {
+			searches_result_line_number[1] = line_count
+		}
+
+		// Calculate 2d position by finding the beginning of the line and measuring distance
+		start := StrbolW(text_begin, searches_input_ptr[0], 0)
+		end := searches_input_ptr[0]
+		sz, _, _ := c.InputTextCalcTextSizeW(text_begin[start:end], false)
+		cursor_offset.X = sz.X
+		cursor_offset.Y = float64(searches_result_line_number[0]) * c.FontSize
+		if searches_result_line_number[1] >= 0 {
+			start := StrbolW(text_begin, searches_input_ptr[1], 0)
+			end := searches_input_ptr[1]
+			sz, _, _ := c.InputTextCalcTextSizeW(text_begin[start:end], false)
+			cursor_offset.X = sz.X
+			cursor_offset.Y = float64(searches_result_line_number[1]) * c.FontSize
+		}
+
+		// Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
+		if is_multiline {
+			text_size = f64.Vec2{size.X, float64(line_count) * c.FontSize}
+		}
 
 		// Scroll
 		if edit_state.CursorFollow {
@@ -907,7 +969,56 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 
 		// Draw selection
 		if edit_state.StbState.SelectStart() != edit_state.StbState.SelectEnd() {
+			text_selected_begin := mathutil.Min(edit_state.StbState.SelectStart(), edit_state.StbState.SelectEnd())
+			text_selected_end := mathutil.Max(edit_state.StbState.SelectStart(), edit_state.StbState.SelectEnd())
+
+			// FIXME: those offsets should be part of the style? they don't play so well with multi-line selection.
+			bg_offy_up := -1.0
+			bg_offy_dn := 2.0
+			if is_multiline {
+				bg_offy_up = 0
+				bg_offy_dn = 0
+			}
+			bg_color := c.GetColorFromStyle(ColTextSelectedBg)
+			rect_pos := render_pos.Add(select_start_offset).Sub(render_scroll)
+			for p := text_selected_begin; p < text_selected_end; {
+				if rect_pos.Y > clip_rect.W+c.FontSize {
+					break
+				}
+				if rect_pos.Y < clip_rect.Y {
+					for p < text_selected_end {
+						if text_begin[p] == '\n' {
+							break
+						}
+						p++
+					}
+				} else {
+					rect_size, remaining, _ := c.InputTextCalcTextSizeW(text_begin[p:text_selected_end], true)
+					p += remaining
+					if rect_size.X <= 0.0 {
+						// So we can see selected empty lines
+						rect_size.X = float64(int((c.Font.GetCharAdvance(' ') * 0.50)))
+						rect := f64.Rectangle{
+							rect_pos.Add(f64.Vec2{0.0, bg_offy_up - c.FontSize}),
+							rect_pos.Add(f64.Vec2{rect_size.X, bg_offy_dn}),
+						}
+						clip_rect_ := f64.Rect(clip_rect.X, clip_rect.Y, clip_rect.Z, clip_rect.W)
+						rect = rect.Intersect(clip_rect_)
+						if rect.Overlaps(clip_rect_) {
+							draw_window.DrawList.AddRectFilled(rect.Min, rect.Max, bg_color)
+						}
+					}
+				}
+				rect_pos.X = render_pos.X - render_scroll.X
+				rect_pos.Y += c.FontSize
+			}
 		}
+
+		clip := &clip_rect
+		if is_multiline {
+			clip = nil
+		}
+		draw_window.DrawList.AddTextEx(c.Font, c.FontSize, render_pos.Sub(render_scroll), c.GetColorFromStyle(ColText), string(buf_display), 0.0, clip)
 
 		// Draw blinking cursor
 		cursor_is_visible := (!c.IO.OptCursorBlink) || (c.InputTextState.CursorAnim <= 0.0) || math.Mod(c.InputTextState.CursorAnim, 1.20) <= 0.80

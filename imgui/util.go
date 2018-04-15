@@ -315,3 +315,21 @@ func truth(x bool) int {
 func CharIsSpace(c rune) bool {
 	return c == ' ' || c == '\t' || c == 0x3000
 }
+
+// find beginning-of-line
+func StrbolW(buf []rune, buf_mid_line, buf_begin int) int {
+	for buf_mid_line > buf_begin && buf[buf_mid_line-1] != '\n' {
+		buf_mid_line--
+	}
+	return buf_mid_line
+}
+
+func Acos01(x float64) float64 {
+	if x <= 0.0 {
+		return math.Pi * 0.5
+	}
+	if x >= 1.0 {
+		return 0.0
+	}
+	return math.Acos(x)
+}

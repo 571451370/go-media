@@ -3390,3 +3390,54 @@ func (c *Context) NewFrameUpdateHoveredWindowAndCaptureFlags() {
 		c.IO.WantTextInput = c.WantTextInputNextFrame != 0
 	}
 }
+
+// FIXME: Cleanup and move code to ImDrawList.
+func (c *Context) RenderRectFilledRangeH(draw_list *DrawList, rect f64.Rectangle, col color.RGBA, x_start_norm, x_end_norm, rounding float64) {
+	if x_end_norm == x_start_norm {
+		return
+	}
+	if x_start_norm > x_end_norm {
+		x_start_norm, x_end_norm = x_end_norm, x_start_norm
+	}
+
+	p0 := f64.Vec2{f64.Lerp(x_start_norm, rect.Min.X, rect.Max.X), rect.Min.Y}
+	p1 := f64.Vec2{f64.Lerp(x_end_norm, rect.Min.X, rect.Max.X), rect.Max.Y}
+	if rounding == 0.0 {
+		draw_list.AddRectFilledEx(p0, p1, col, 0.0, DrawCornerFlagsAll)
+		return
+	}
+
+	rounding = f64.Clamp(math.Min((rect.Max.X-rect.Min.X)*0.5, (rect.Max.Y-rect.Min.Y)*0.5)-1.0, 0.0, rounding)
+	inv_rounding := 1.0 / rounding
+	arc0_b := Acos01(1.0 - (p0.X-rect.Min.X)*inv_rounding)
+	arc0_e := Acos01(1.0 - (p1.X-rect.Min.X)*inv_rounding)
+
+	x0 := math.Max(p0.X, rect.Min.X+rounding)
+	if arc0_b == arc0_e {
+		draw_list.PathLineTo(f64.Vec2{x0, p1.Y})
+		draw_list.PathLineTo(f64.Vec2{x0, p0.Y})
+	} else if arc0_b == 0.0 && arc0_e == math.Pi*0.5 {
+		draw_list.PathArcToFast(f64.Vec2{x0, p1.Y - rounding}, rounding, 3, 6) // BL
+		draw_list.PathArcToFast(f64.Vec2{x0, p0.Y + rounding}, rounding, 6, 9) // TR
+	} else {
+		draw_list.PathArcTo(f64.Vec2{x0, p1.Y - rounding}, rounding, math.Pi-arc0_e, math.Pi-arc0_b, 3) // BL
+		draw_list.PathArcTo(f64.Vec2{x0, p0.Y + rounding}, rounding, math.Pi+arc0_b, math.Pi+arc0_e, 3) // TR
+	}
+
+	if p1.X > rect.Min.X+rounding {
+		arc1_b := Acos01(1.0 - (rect.Max.X-p1.X)*inv_rounding)
+		arc1_e := Acos01(1.0 - (rect.Max.X-p0.X)*inv_rounding)
+		x1 := math.Min(p1.X, rect.Max.X-rounding)
+		if arc1_b == arc1_e {
+			draw_list.PathLineTo(f64.Vec2{x1, p0.Y})
+			draw_list.PathLineTo(f64.Vec2{x1, p1.Y})
+		} else if arc1_b == 0.0 && arc1_e == math.Pi*0.5 {
+			draw_list.PathArcToFast(f64.Vec2{x1, p0.Y + rounding}, rounding, 9, 12) // TR
+			draw_list.PathArcToFast(f64.Vec2{x1, p1.Y - rounding}, rounding, 0, 3)  // BR
+		} else {
+			draw_list.PathArcTo(f64.Vec2{x1, p0.Y + rounding}, rounding, -arc1_e, -arc1_b, 3) // TR
+			draw_list.PathArcTo(f64.Vec2{x1, p1.Y - rounding}, rounding, +arc1_b, +arc1_e, 3) // BR
+		}
+	}
+	draw_list.PathFillConvex(col)
+}
