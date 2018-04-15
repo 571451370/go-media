@@ -32,7 +32,7 @@ type TextEditCallbackData struct {
 	SelectionEnd   int           //                                      // Read-write
 }
 
-type TextEditCallback func(*TextEditCallbackData)
+type TextEditCallback func(*TextEditCallbackData) int
 
 type SeparatorFlags int
 
@@ -590,10 +590,189 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 			k_mask = stbte.K_SHIFT
 		}
 		// OS X style: Shortcuts using Cmd/Super instead of Ctrl
-		_, _, _, _, _ = is_undoable, value_changed, enter_pressed, cancel_edit, k_mask
+		is_shortcut_key_only := io.KeyCtrl && !io.KeySuper && !io.KeyAlt && !io.KeyShift
+		if io.OptMacOSXBehaviors {
+			is_shortcut_key_only = io.KeySuper && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift
+		}
+		// OS X style: Line/Text Start and End using Cmd+Arrows instead of Home/End
+		is_wordmove_key_down := io.KeyCtrl
+		if io.OptMacOSXBehaviors {
+			is_wordmove_key_down = io.KeyAlt
+		}
+		// OS X style: Line/Text Start and End using Cmd+Arrows instead of Home/End
+		is_startend_key_down := io.OptMacOSXBehaviors && io.KeySuper && !io.KeyCtrl && !io.KeyAlt
+		is_ctrl_key_only := io.KeyCtrl && !io.KeyShift && !io.KeyAlt && !io.KeySuper
+		is_shift_key_only := io.KeyShift && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper
+
+		is_cut := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyX)) || (is_shift_key_only && c.IsKeyPressedMap(KeyDelete))) && is_editable && !is_password && (!is_multiline || edit_state.HasSelection())
+		is_copy := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyC)) || (is_ctrl_key_only && c.IsKeyPressedMap(KeyInsert))) && !is_password && (!is_multiline || edit_state.HasSelection())
+		is_paste := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyV)) || (is_shift_key_only && c.IsKeyPressedMap(KeyInsert))) && is_editable
+
+		if c.IsKeyPressedMap(KeyLeftArrow) {
+			switch {
+			case is_startend_key_down:
+				edit_state.OnKeyPressed(stbte.K_LINESTART | k_mask)
+			case is_wordmove_key_down:
+				edit_state.OnKeyPressed(stbte.K_WORDLEFT | k_mask)
+			default:
+				edit_state.OnKeyPressed(stbte.K_LEFT | k_mask)
+			}
+		} else if c.IsKeyPressedMap(KeyRightArrow) {
+			switch {
+			case is_startend_key_down:
+				edit_state.OnKeyPressed(stbte.K_LINEEND | k_mask)
+			case is_wordmove_key_down:
+				edit_state.OnKeyPressed(stbte.K_WORDRIGHT | k_mask)
+			default:
+				edit_state.OnKeyPressed(stbte.K_RIGHT | k_mask)
+			}
+		} else if c.IsKeyPressedMap(KeyUpArrow) && is_multiline {
+			if io.KeyCtrl {
+				c.SetWindowScrollY(draw_window, math.Max(draw_window.Scroll.Y-c.FontSize, 0.0))
+			} else {
+				if is_startend_key_down {
+					edit_state.OnKeyPressed(stbte.K_TEXTSTART | k_mask)
+				} else {
+					edit_state.OnKeyPressed(stbte.K_UP | k_mask)
+				}
+			}
+		} else if c.IsKeyPressedMap(KeyDownArrow) && is_multiline {
+			if io.KeyCtrl {
+				c.SetWindowScrollY(draw_window, math.Min(draw_window.Scroll.Y+c.FontSize, c.GetScrollMaxY()))
+			} else {
+				if is_startend_key_down {
+					edit_state.OnKeyPressed(stbte.K_TEXTEND | k_mask)
+				} else {
+					edit_state.OnKeyPressed(stbte.K_DOWN | k_mask)
+				}
+			}
+		} else if c.IsKeyPressedMap(KeyHome) {
+			if io.KeyCtrl {
+				edit_state.OnKeyPressed(stbte.K_TEXTSTART | k_mask)
+			} else {
+				edit_state.OnKeyPressed(stbte.K_LINESTART | k_mask)
+			}
+		} else if c.IsKeyPressedMap(KeyEnd) {
+			if io.KeyCtrl {
+				edit_state.OnKeyPressed(stbte.K_TEXTEND | k_mask)
+			} else {
+				edit_state.OnKeyPressed(stbte.K_LINEEND | k_mask)
+			}
+		} else if c.IsKeyPressedMap(KeyDelete) && is_editable {
+			edit_state.OnKeyPressed(stbte.K_DELETE | k_mask)
+		} else if c.IsKeyPressedMap(KeyBackspace) && is_editable {
+			if !edit_state.HasSelection() {
+				if is_wordmove_key_down {
+					edit_state.OnKeyPressed(stbte.K_WORDLEFT | stbte.K_SHIFT)
+				} else if io.OptMacOSXBehaviors && io.KeySuper && !io.KeyAlt && !io.KeyCtrl {
+					edit_state.OnKeyPressed(stbte.K_LINESTART | stbte.K_SHIFT)
+				}
+			}
+			edit_state.OnKeyPressed(stbte.K_BACKSPACE | k_mask)
+		} else if c.IsKeyPressedMap(KeyEnter) {
+			ctrl_enter_for_new_line := flags&InputTextFlagsCtrlEnterForNewLine != 0
+			if !is_multiline || (ctrl_enter_for_new_line && !io.KeyCtrl) || (!ctrl_enter_for_new_line && io.KeyCtrl) {
+				enter_pressed, clear_active_id = true, true
+			} else if is_editable {
+				ch := '\n' // Insert new line
+				if c.InputTextFilterCharacter(&ch, flags, callback) {
+					edit_state.OnKeyPressed(int(ch))
+				}
+			}
+		} else if flags&InputTextFlagsAllowTabInput != 0 && c.IsKeyPressedMap(KeyTab) && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt && is_editable {
+			ch := '\t' // Insert TAB
+			if c.InputTextFilterCharacter(&ch, flags, callback) {
+				edit_state.OnKeyPressed(int(ch))
+			}
+		} else if c.IsKeyPressedMap(KeyEscape) {
+			clear_active_id, cancel_edit = true, true
+		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyZ) && is_editable && is_undoable {
+			edit_state.OnKeyPressed(stbte.K_UNDO)
+			edit_state.ClearSelection()
+		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyY) && is_editable && is_undoable {
+			edit_state.OnKeyPressed(stbte.K_REDO)
+			edit_state.ClearSelection()
+		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyA) {
+			edit_state.SelectAll()
+			edit_state.CursorFollow = true
+		} else if is_cut || is_copy {
+			// Cut, Copy
+			if io.SetClipboardTextFn != nil {
+			}
+		} else if is_paste {
+		}
 	}
 
-	return false
+	if c.ActiveId == id {
+	}
+
+	// Release active ID at the end of the function (so e.g. pressing Return still does a final application of the value)
+	if clear_active_id && c.ActiveId == id {
+		c.ClearActiveID()
+	}
+
+	// Render
+	// Select which buffer we are going to display. When ImGuiInputTextFlags_NoLiveEdit is set 'buf' might still be the old value. We set buf to NULL to prevent accidental usage from now on.
+	var buf_display []byte
+	if c.ActiveId == id && is_editable {
+		buf_display = edit_state.TempTextBuffer
+	} else {
+		buf_display = []byte(buf)
+	}
+
+	c.RenderNavHighlight(frame_bb, id)
+	if !is_multiline {
+		c.RenderFrameEx(frame_bb.Min, frame_bb.Max, c.GetColorFromStyle(ColFrameBg), true, style.FrameRounding)
+	}
+
+	// Not using frame_bb.Max because we have adjusted size
+	clip_rect := f64.Vec4{frame_bb.Min.X, frame_bb.Min.Y, frame_bb.Min.X + size.X, frame_bb.Min.Y + size.Y}
+	_, _ = cancel_edit, clip_rect
+
+	var render_pos f64.Vec2
+	if is_multiline {
+		render_pos = draw_window.DC.CursorPos
+	} else {
+		render_pos = frame_bb.Min.Add(style.FramePadding)
+	}
+	text_size := f64.Vec2{0, 0}
+	is_currently_scrolling := (edit_state.Id == id && is_multiline && c.ActiveId == draw_window.GetIDNoKeepAlive("#SCROLLY"))
+	if c.ActiveId == id || is_currently_scrolling {
+		edit_state.CursorAnim += io.DeltaTime
+
+		// This is going to be messy. We need to:
+		// - Display the text (this alone can be more easily clipped)
+		// - Handle scrolling, highlight selection, display cursor (those all requires some form of 1d->2d cursor position calculation)
+		// - Measure text height (for scrollbar)
+		// We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
+		// FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
+	} else {
+	}
+
+	if is_multiline {
+		// Always add room to scroll an extra line
+		c.Dummy(text_size.Add(f64.Vec2{0.0, c.FontSize}))
+		c.EndChildFrame()
+		c.EndGroup()
+	}
+
+	if is_password {
+		c.PopFont()
+	}
+
+	// Log as text
+	if c.LogEnabled && !is_password {
+		c.LogRenderedText(&render_pos, string(buf_display))
+	}
+
+	if label_size.X > 0 {
+		c.RenderText(f64.Vec2{frame_bb.Max.X + style.ItemInnerSpacing.X, frame_bb.Min.Y + style.FramePadding.Y}, label)
+	}
+
+	if flags&InputTextFlagsEnterReturnsTrue != 0 {
+		return enter_pressed
+	}
+	return value_changed
 }
 
 func (t *TextEditState) Init(ctx *Context) {
@@ -679,26 +858,168 @@ func (t *TextEditState) isSeparator(c rune) bool {
 	case ',', ';', '(', ')', '{', '}', '[', ']', '|':
 		return true
 	}
-	return unicode.IsSpace(c)
+	return CharIsSpace(c)
 }
 
 func (t *TextEditState) isWordBoundaryFromRight(idx int) bool {
-	return false
+	if t.isSeparator(t.Text[idx-1]) && !t.isSeparator(t.Text[idx]) {
+		return idx > 0
+	}
+	return true
 }
 
 func (t *TextEditState) isWordBoundaryFromLeft(idx int) bool {
-	return false
+	if !t.isSeparator(t.Text[idx-1]) && t.isSeparator(t.Text[idx]) {
+		return idx > 0
+	}
+	return true
 }
 
-func (t *TextEditState) MoveWordLeft(n int) int {
-	return 0
+func (t *TextEditState) MoveWordLeft(idx int) int {
+	idx--
+	for idx >= 0 && !t.isWordBoundaryFromRight(idx) {
+		idx--
+	}
+
+	if idx < 0 {
+		return 0
+	}
+	return idx
 }
 
-func (t *TextEditState) MoveWordRight(n int) int {
-	return 0
+func (t *TextEditState) MoveWordRight(idx int) int {
+	idx++
+	length := t.CurLenW
+	for idx < length && !t.isWordBoundaryFromLeft(idx) {
+		idx++
+	}
+
+	if idx > length {
+		return length
+	}
+	return idx
+}
+
+func (t *TextEditState) HasSelection() bool {
+	return t.StbState.SelectStart() != t.StbState.SelectEnd()
+}
+
+func (t *TextEditState) ClearSelection() {
+	cursor := t.StbState.Cursor()
+	t.StbState.SetSelectStart(cursor)
+	t.StbState.SetSelectEnd(cursor)
+}
+
+// Return false to discard a character.
+func (c *Context) InputTextFilterCharacter(p_char *rune, flags InputTextFlags, callback TextEditCallback) bool {
+	ch := *p_char
+	if ch < 128 && ch != ' ' && !unicode.IsPrint(ch&0xff) {
+		pass := false
+		if ch == '\n' && flags&InputTextFlagsMultiline != 0 {
+			pass = true
+		}
+		if ch == '\t' && flags&InputTextFlagsAllowTabInput != 0 {
+			pass = true
+		}
+		if !pass {
+			return false
+		}
+	}
+
+	// Filter private Unicode range. I don't imagine anybody would want to input them. GLFW on OSX seems to send private characters for special keys like arrow keys.
+	if ch >= 0xE000 && ch <= 0xF8FF {
+		return false
+	}
+
+	if flags&(InputTextFlagsCharsDecimal|InputTextFlagsCharsHexadecimal|InputTextFlagsCharsUppercase|InputTextFlagsCharsNoBlank|InputTextFlagsCharsScientific) != 0 {
+		if flags&InputTextFlagsCharsDecimal != 0 {
+			if !(ch >= '0' && ch <= '9') && (ch != '.') && (ch != '-') && (ch != '+') && (ch != '*') && (ch != '/') {
+				return false
+			}
+		}
+
+		if flags&InputTextFlagsCharsScientific != 0 {
+			if !(ch >= '0' && ch <= '9') && (ch != '.') && (ch != '-') && (ch != '+') && (ch != '*') && (ch != '/') && (ch != 'e') && (ch != 'E') {
+				return false
+			}
+		}
+
+		if flags&InputTextFlagsCharsHexadecimal != 0 {
+			if !(ch >= '0' && ch <= '9') && !(ch >= 'a' && ch <= 'f') && !(ch >= 'A' && ch <= 'F') {
+				return false
+			}
+		}
+
+		if flags&InputTextFlagsCharsUppercase != 0 {
+			if ch >= 'a' && ch <= 'z' {
+				ch += 'A' - 'a'
+				*p_char = ch
+			}
+		}
+
+		if flags&InputTextFlagsCharsNoBlank != 0 {
+			if CharIsSpace(ch) {
+				return false
+			}
+		}
+	}
+
+	if flags&InputTextFlagsCallbackCharFilter != 0 {
+		callback_data := TextEditCallbackData{
+			EventFlag: InputTextFlagsCallbackCharFilter,
+			EventChar: ch,
+			Flags:     flags,
+		}
+		if callback(&callback_data) != 0 {
+			return false
+		}
+		*p_char = callback_data.EventChar
+		if callback_data.EventChar == 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *Context) InputTextCalcTextSizeW(text []rune, stop_on_new_line bool) (text_size f64.Vec2, remaining int, out_offset f64.Vec2) {
+	font := c.Font
+	line_height := c.FontSize
+	scale := line_height / font.FontSize
+
+	line_width := 0.0
+	s := 0
+	for ; s < len(text); s++ {
+		c := text[s]
+		if c == '\n' {
+			text_size.X = math.Max(text_size.X, line_width)
+			text_size.Y += line_height
+			line_width = 0.0
+			if stop_on_new_line {
+				break
+			}
+			continue
+		}
+		if c == '\r' {
+			continue
+		}
+		char_width := font.GetCharAdvance(c) * scale
+		line_width += char_width
+	}
+
+	if text_size.X < line_width {
+		text_size.X = line_width
+	}
+
+	// offset allow for the possibility of sitting after a trailing \n
+	out_offset = f64.Vec2{line_width, text_size.Y + line_height}
+
+	// whereas size.y will ignore the trailing \n
+	if line_width > 0 || text_size.Y == 0.0 {
+		text_size.Y += line_height
+	}
+
+	remaining = s
 	return
 }
 

@@ -3,7 +3,6 @@ package imgui
 import (
 	"image/color"
 	"math"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/image/chroma"
@@ -315,10 +314,6 @@ func (f *Font) CalcWordWrapPositionA(scale float64, text string, wrap_width floa
 	return s
 }
 
-func CharIsSpace(c rune) bool {
-	return c == ' ' || c == '\t' || c == 0x3000
-}
-
 func (f *FontConfig) Init() {
 	f.FontData = nil
 	f.FontDataSize = 0
@@ -531,7 +526,7 @@ func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col c
 					if c == '\n' {
 						s++
 						break
-					} else if unicode.IsSpace(c) {
+					} else if CharIsSpace(c) {
 						s++
 					} else {
 						break

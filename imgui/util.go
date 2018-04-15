@@ -311,3 +311,7 @@ func truth(x bool) int {
 	}
 	return 0
 }
+
+func CharIsSpace(c rune) bool {
+	return c == ' ' || c == '\t' || c == 0x3000
+}
