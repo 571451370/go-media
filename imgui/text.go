@@ -1,7 +1,6 @@
 package imgui
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"strings"
@@ -24,12 +23,12 @@ type TextEditCallbackData struct {
 
 	// Completion,History,Always events:
 	// If you modify the buffer contents make sure you update 'BufTextLen' and set 'BufDirty' to true.
-	EventKey       Key           // Key pressed (Up/Down/TAB)            // Read-only
-	Buf            *bytes.Buffer // Current text buffer                  // Read-write (pointed data only, can't replace the actual pointer)
-	BufDirty       bool          // Set if you modify Buf/BufTextLen!!   // Write
-	CursorPos      int           //                                      // Read-write
-	SelectionStart int           //                                      // Read-write (== to SelectionEnd when no selection)
-	SelectionEnd   int           //                                      // Read-write
+	EventKey       Key    // Key pressed (Up/Down/TAB)            // Read-only
+	Buf            []byte // Current text buffer                  // Read-write (pointed data only, can't replace the actual pointer)
+	BufDirty       bool   // Set if you modify Buf/BufTextLen!!   // Write
+	CursorPos      int    //                                      // Read-write
+	SelectionStart int    //                                      // Read-write (== to SelectionEnd when no selection)
+	SelectionEnd   int    //                                      // Read-write
 }
 
 type TextEditCallback func(*TextEditCallbackData) int
@@ -71,9 +70,8 @@ type TextEditState struct {
 	Id                   ID     // widget id owning the text state
 	Text                 []rune // edit buffer, we need to persist but can't guarantee the persistence of the user-provided buffer. so we copy into own buffer.
 	InitialText          []byte // backup of end-user buffer at the time of focus (in UTF-8, unaltered)
-	TempTextBuffer       []byte
-	CurLenA, CurLenW     int // we need to maintain our buffer length in both UTF-8 and wchar format.
-	BufSizeA             int // end-user buffer size
+	CurLenA, CurLenW     int    // we need to maintain our buffer length in both UTF-8 and wchar format.
+	BufSizeA             int    // end-user buffer size
 	ScrollX              float64
 	StbState             stbte.State
 	CursorAnim           float64
@@ -392,6 +390,7 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 		return false
 	}
 
+	var temp_text_buffer []byte
 	style := &c.Style
 	io := &c.IO
 
@@ -698,12 +697,137 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 		} else if is_cut || is_copy {
 			// Cut, Copy
 			if io.SetClipboardTextFn != nil {
+				ib, ie := 0, edit_state.CurLenW
+				if edit_state.HasSelection() {
+					ib = mathutil.Min(edit_state.StbState.SelectStart(), edit_state.StbState.SelectEnd())
+					ie = mathutil.Max(edit_state.StbState.SelectStart(), edit_state.StbState.SelectEnd())
+					str := string(edit_state.Text[ib:ie])
+					c.SetClipboardText(str)
+				}
+			}
+
+			if is_cut {
+				if !edit_state.HasSelection() {
+					edit_state.SelectAll()
+				}
+				edit_state.CursorFollow = true
+				edit_state.StbState.Cut(edit_state)
 			}
 		} else if is_paste {
+			// Paste
+			clipboard := c.GetClipboardText()
+
+			// Filter pasted buffer
+			var clipboard_filtered []rune
+			for _, ch := range clipboard {
+				if ch == 0 {
+					break
+				}
+				if ch >= 0x10000 || !c.InputTextFilterCharacter(&ch, flags, callback) {
+					continue
+				}
+				clipboard_filtered = append(clipboard_filtered, ch)
+			}
+			// If everything was filtered, ignore the pasting operation
+			if len(clipboard_filtered) > 0 {
+				edit_state.StbState.Paste(edit_state, clipboard_filtered)
+				edit_state.CursorFollow = true
+			}
 		}
 	}
 
 	if c.ActiveId == id {
+		if cancel_edit {
+			// Restore initial value
+			if is_editable {
+				buf = string(edit_state.InitialText)
+				value_changed = true
+			}
+		}
+
+		// When using 'ImGuiInputTextFlags_EnterReturnsTrue' as a special case we reapply the live buffer back to the input buffer before clearing ActiveId, even though strictly speaking it wasn't modified on this frame.
+		// If we didn't do that, code like InputInt() with ImGuiInputTextFlags_EnterReturnsTrue would fail. Also this allows the user to use InputText() with ImGuiInputTextFlags_EnterReturnsTrue without maintaining any user-side storage.
+		apply_edit_back_to_user_buffer := !cancel_edit || (enter_pressed && (flags&InputTextFlagsEnterReturnsTrue) != 0)
+		if apply_edit_back_to_user_buffer {
+			// Apply new value immediately - copy modified buffer back
+			// Note that as soon as the input box is active, the in-widget value gets priority over any underlying modification of the input buffer
+			// FIXME: We actually always render 'buf' when calling DrawList->AddText, making the comment above incorrect.
+			// FIXME-OPT: CPU waste to do this every time the widget is active, should mark dirty state from the stb_textedit callbacks.
+			if is_editable {
+				temp_text_buffer = []byte(buf)
+			}
+
+			// User callback
+			if flags&(InputTextFlagsCallbackCompletion|InputTextFlagsCallbackHistory|InputTextFlagsCallbackAlways) != 0 {
+				assert(callback != nil)
+
+				// The reason we specify the usage semantic (Completion/History) is that Completion needs to disable keyboard TABBING at the moment.
+				event_flag := InputTextFlags(0)
+				event_key := KeyCOUNT
+				if (flags&InputTextFlagsCallbackCompletion) != 0 && c.IsKeyPressedMap(KeyTab) {
+					event_flag = InputTextFlagsCallbackCompletion
+					event_key = KeyTab
+				} else if (flags&InputTextFlagsCallbackHistory) != 0 && c.IsKeyPressedMap(KeyUpArrow) {
+					event_flag = InputTextFlagsCallbackHistory
+					event_key = KeyUpArrow
+				} else if (flags&InputTextFlagsCallbackHistory) != 0 && c.IsKeyPressedMap(KeyDownArrow) {
+					event_flag = InputTextFlagsCallbackHistory
+					event_key = KeyDownArrow
+				} else if flags&InputTextFlagsCallbackAlways != 0 {
+					event_flag = InputTextFlagsCallbackAlways
+				}
+
+				if event_flag != 0 {
+					callback_data := TextEditCallbackData{
+						EventFlag: event_flag,
+						Flags:     flags,
+						ReadOnly:  !is_editable,
+						EventKey:  event_key,
+						Buf:       temp_text_buffer,
+						BufDirty:  false,
+					}
+
+					// We have to convert from wchar-positions to UTF-8-positions, which can be pretty slow (an incentive to ditch the ImWchar buffer, see https://github.com/nothings/stb/issues/188)
+					text := edit_state.Text
+					utf8_cursor_pos := TextCountUtf8BytesFromStr(text[:edit_state.StbState.Cursor()])
+					utf8_selection_start := TextCountUtf8BytesFromStr(text[:edit_state.StbState.SelectStart()])
+					utf8_selection_end := TextCountUtf8BytesFromStr(text[:edit_state.StbState.SelectEnd()])
+					callback_data.CursorPos = utf8_cursor_pos
+					callback_data.SelectionStart = utf8_selection_start
+					callback_data.SelectionEnd = utf8_selection_end
+
+					// Call user code
+					callback(&callback_data)
+
+					// Read back what user may have modified
+					assert(len(callback_data.Buf) == edit_state.BufSizeA)
+					assert(callback_data.Flags == flags)
+					if callback_data.CursorPos != utf8_cursor_pos {
+						edit_state.StbState.SetCursor(utf8.RuneCount(callback_data.Buf[:callback_data.CursorPos]))
+					}
+					if callback_data.SelectionStart != utf8_selection_start {
+						edit_state.StbState.SetSelectStart(utf8.RuneCount(callback_data.Buf[:callback_data.SelectionStart]))
+					}
+					if callback_data.SelectionEnd != utf8_selection_end {
+						edit_state.StbState.SetSelectEnd(utf8.RuneCount(callback_data.Buf[:callback_data.SelectionEnd]))
+					}
+
+					if callback_data.BufDirty {
+						// Assume correct length and valid UTF-8 from user, saves us an extra strlen()
+						edit_state.Text = []rune(string(callback_data.Buf))
+						edit_state.CurLenW = len(edit_state.Text)
+						edit_state.CurLenA = len(callback_data.Buf)
+						edit_state.CursorAnimReset()
+					}
+				}
+			}
+
+			// Copy back to user buffer
+			if is_editable && string(temp_text_buffer) != buf {
+				buf = string(temp_text_buffer)
+				value_changed = true
+			}
+		}
 	}
 
 	// Release active ID at the end of the function (so e.g. pressing Return still does a final application of the value)
@@ -715,7 +839,7 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 	// Select which buffer we are going to display. When ImGuiInputTextFlags_NoLiveEdit is set 'buf' might still be the old value. We set buf to NULL to prevent accidental usage from now on.
 	var buf_display []byte
 	if c.ActiveId == id && is_editable {
-		buf_display = edit_state.TempTextBuffer
+		buf_display = temp_text_buffer
 	} else {
 		buf_display = []byte(buf)
 	}
@@ -727,7 +851,6 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 
 	// Not using frame_bb.Max because we have adjusted size
 	clip_rect := f64.Vec4{frame_bb.Min.X, frame_bb.Min.Y, frame_bb.Min.X + size.X, frame_bb.Min.Y + size.Y}
-	_, _ = cancel_edit, clip_rect
 
 	var render_pos f64.Vec2
 	if is_multiline {
@@ -746,7 +869,70 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 		// - Measure text height (for scrollbar)
 		// We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
 		// FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
+		var cursor_offset f64.Vec2
+
+		// Count lines + find lines numbers straddling 'cursor' and 'select_start' position.
+
+		// Scroll
+		if edit_state.CursorFollow {
+			// Horizontal scroll in chunks of quarter width
+			if flags&InputTextFlagsNoHorizontalScroll == 0 {
+				scroll_increment_x := size.X * 0.25
+				if cursor_offset.X < edit_state.ScrollX {
+					edit_state.ScrollX = float64(int(math.Max(0.0, cursor_offset.X-scroll_increment_x)))
+				} else if cursor_offset.X-size.X >= edit_state.ScrollX {
+					edit_state.ScrollX = float64(int(cursor_offset.X - size.X + scroll_increment_x))
+				}
+			} else {
+				edit_state.ScrollX = 0.0
+			}
+
+			// Vertical scroll
+			if is_multiline {
+				scroll_y := draw_window.Scroll.Y
+				if cursor_offset.Y-c.FontSize < scroll_y {
+					scroll_y = math.Max(0.0, cursor_offset.Y-c.FontSize)
+				} else if cursor_offset.Y-size.Y >= scroll_y {
+					scroll_y = cursor_offset.Y - size.Y
+				}
+				// To avoid a frame of lag
+				draw_window.DC.CursorPos.Y += (draw_window.Scroll.Y - scroll_y)
+				draw_window.Scroll.Y = scroll_y
+				render_pos.Y = draw_window.DC.CursorPos.Y
+			}
+		}
+
+		edit_state.CursorFollow = false
+		render_scroll := f64.Vec2{edit_state.ScrollX, 0.0}
+
+		// Draw selection
+		if edit_state.StbState.SelectStart() != edit_state.StbState.SelectEnd() {
+		}
+
+		// Draw blinking cursor
+		cursor_is_visible := (!c.IO.OptCursorBlink) || (c.InputTextState.CursorAnim <= 0.0) || math.Mod(c.InputTextState.CursorAnim, 1.20) <= 0.80
+		cursor_screen_pos := render_pos.Add(cursor_offset).Sub(render_scroll)
+		cursor_screen_rect := f64.Rect(cursor_screen_pos.X, cursor_screen_pos.Y-c.FontSize+0.5, cursor_screen_pos.X+1.0, cursor_screen_pos.Y-1.5)
+		clip_rect_ := f64.Rect(clip_rect.X, clip_rect.Y, clip_rect.Z, clip_rect.W)
+		if cursor_is_visible && cursor_screen_rect.Overlaps(clip_rect_) {
+			draw_window.DrawList.AddLine(cursor_screen_rect.Min, cursor_screen_rect.BL(), c.GetColorFromStyle(ColText))
+		}
+
+		// Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
+		if is_editable {
+			c.OsImePosRequest = f64.Vec2{cursor_screen_pos.X - 1, cursor_screen_pos.Y - c.FontSize}
+		}
 	} else {
+		// Render text only
+		if is_multiline {
+			// We don't need width
+			text_size = f64.Vec2{size.X, float64(InputTextCalcTextLenAndLineCount(string(buf_display))) * c.FontSize}
+			clip := &clip_rect
+			if is_multiline {
+				clip = nil
+			}
+			draw_window.DrawList.AddTextEx(c.Font, c.FontSize, render_pos, c.GetColorFromStyle(ColText), string(buf_display), 0.0, clip)
+		}
 	}
 
 	if is_multiline {
@@ -1021,6 +1207,22 @@ func (c *Context) InputTextCalcTextSizeW(text []rune, stop_on_new_line bool) (te
 
 	remaining = s
 	return
+}
+
+func InputTextCalcTextLenAndLineCount(text string) int {
+	line_count := 0
+
+	// We are only matching for \n so we can ignore UTF-8 decoding
+	for _, ch := range text {
+		if ch == '\n' {
+			line_count++
+		}
+	}
+	ch := text[len(text)-1]
+	if ch != '\n' && ch != '\r' {
+		line_count++
+	}
+	return line_count
 }
 
 func TextCountUtf8BytesFromStr(r []rune) int {
