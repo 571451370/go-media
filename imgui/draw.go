@@ -3441,3 +3441,35 @@ func (c *Context) RenderRectFilledRangeH(draw_list *DrawList, rect f64.Rectangle
 	}
 	draw_list.PathFillConvex(col)
 }
+
+func (d *DrawList) AddRectFilledMultiColor(a, c f64.Vec2, col_upr_left, col_upr_right, col_bot_right, col_bot_left color.RGBA) {
+	if col_upr_left.A == 0 && col_upr_right.A == 0 && col_bot_right.A == 0 && col_bot_left.A == 0 {
+		return
+	}
+
+	uv := d._Data.TexUvWhitePixel
+	d.PrimReserve(6, 4)
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 1))
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 2))
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 2))
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 3))
+	d.PrimWriteVtx(a, uv, col_upr_left)
+	d.PrimWriteVtx(f64.Vec2{c.X, a.Y}, uv, col_upr_right)
+	d.PrimWriteVtx(c, uv, col_bot_right)
+	d.PrimWriteVtx(f64.Vec2{a.X, c.Y}, uv, col_bot_left)
+}
+
+func (d *DrawList) PrimWriteIdx(idx DrawIdx) {
+	d.IdxBuffer[d._IdxWritePtr] = idx
+	d._IdxWritePtr++
+}
+
+func (d *DrawList) PrimWriteVtx(pos, uv f64.Vec2, col color.RGBA) {
+	d.VtxBuffer[d._VtxWritePtr].Pos = f32.Vec2{float32(pos.X), float32(pos.Y)}
+	d.VtxBuffer[d._VtxWritePtr].UV = f32.Vec2{float32(uv.X), float32(uv.Y)}
+	d.VtxBuffer[d._VtxWritePtr].Col = chroma.RGBA32(col)
+	d._VtxWritePtr++
+	d._VtxCurrentIdx++
+}

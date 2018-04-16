@@ -348,3 +348,51 @@ func F32_TO_INT8_UNBOUND(v float64) int {
 	}
 	return int(v*255 - 0.5)
 }
+
+func Rotate(v f64.Vec2, cos_a, sin_a float64) f64.Vec2 {
+	return f64.Vec2{v.X*cos_a - v.Y*sin_a, v.X*sin_a + v.Y*cos_a}
+}
+
+func TriangleBarycentricCoords(a, b, c, p f64.Vec2) (out_u, out_v, out_w float64) {
+	v0 := b.Sub(a)
+	v1 := c.Sub(a)
+	v2 := p.Sub(a)
+	denom := v0.X*v1.Y - v1.X*v0.Y
+	out_v = (v2.X*v1.Y - v1.X*v2.Y) / denom
+	out_w = (v0.X*v2.Y - v2.X*v0.Y) / denom
+	out_u = 1.0 - out_v - out_w
+	return
+}
+
+func TriangleClosestPoint(a, b, c, p f64.Vec2) f64.Vec2 {
+	proj_ab := LineClosestPoint(a, b, p)
+	proj_bc := LineClosestPoint(b, c, p)
+	proj_ca := LineClosestPoint(c, a, p)
+	dist2_ab := p.Sub(proj_ab).LenSquared()
+	dist2_bc := p.Sub(proj_bc).LenSquared()
+	dist2_ca := p.Sub(proj_ca).LenSquared()
+	m := math.Min(dist2_ab, math.Min(dist2_bc, dist2_ca))
+	if m == dist2_ab {
+		return proj_ab
+	}
+	if m == dist2_bc {
+		return proj_bc
+	}
+	return proj_ca
+}
+
+func LineClosestPoint(a, b, p f64.Vec2) f64.Vec2 {
+	ap := p.Sub(a)
+	ab_dir := b.Sub(a)
+	dot := ap.X*ab_dir.X + ap.Y*ab_dir.Y
+	if dot < 0.0 {
+		return a
+	}
+	ab_len_sqr := ab_dir.X*ab_dir.X + ab_dir.Y*ab_dir.Y
+	if dot > ab_len_sqr {
+		return b
+	}
+	v := ab_dir.Scale(dot / ab_len_sqr)
+	v = a.Add(v)
+	return v
+}

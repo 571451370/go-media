@@ -2093,3 +2093,9 @@ func (w *Window) GetIDFromRectangle(r_abs f64.Rectangle) ID {
 	}
 	return ID(h.Sum32())
 }
+
+func (c *Context) SetCursorScreenPos(screen_pos f64.Vec2) {
+	window := c.GetCurrentWindow()
+	window.DC.CursorPos = screen_pos
+	window.DC.CursorMaxPos = window.DC.CursorMaxPos.Max(window.DC.CursorPos)
+}
