@@ -663,3 +663,7 @@ func (f *Font) GetCharAdvance(c rune) float64 {
 	}
 	return f.FallbackAdvanceX
 }
+
+func (c *Context) GetFontTexUvWhitePixel() f64.Vec2 {
+	return c.DrawListSharedData.TexUvWhitePixel
+}

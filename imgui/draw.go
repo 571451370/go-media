@@ -3500,3 +3500,36 @@ func (c *Context) RenderArrowsForVerticalBar(draw_list *DrawList, pos, half_sz f
 	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + bar_w - half_sz.X - 1, pos.Y}, f64.Vec2{half_sz.X + 2, half_sz.Y + 1}, DirLeft, black)
 	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + bar_w - half_sz.X, pos.Y}, half_sz, DirLeft, white)
 }
+
+// Generic linear color gradient, write to RGB fields, leave A untouched.
+func (c *Context) ShadeVertsLinearColorGradientKeepAlpha(vtx []DrawVert, vert_start, vert_end int, gradient_p0, gradient_p1 f64.Vec2, col0, col1 color.RGBA) {
+	p0 := f32.Vec2{float32(gradient_p0.X), float32(gradient_p0.Y)}
+	p1 := f32.Vec2{float32(gradient_p1.X), float32(gradient_p1.Y)}
+	gradient_extent := p1.Sub(p0)
+	gradient_inv_length2 := 1.0 / gradient_extent.LenSquared()
+	for i := vert_start; i < vert_end; i++ {
+		vert := &vtx[i]
+		p := vert.Pos.Sub(p0)
+		d := p.Dot(gradient_extent)
+		t := f32.Clamp(d*gradient_inv_length2, 0.0, 1.0)
+		col := chroma.MixRGBA(col0, col1, float64(t))
+		col.A = uint8(vert.Col >> 24)
+		vert.Col = chroma.RGBA32(col)
+	}
+}
+
+func (d *DrawList) PrimVtx(pos, uv f64.Vec2, col color.RGBA) {
+	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
+	d.PrimWriteVtx(pos, uv, col)
+}
+
+func (d *DrawList) AddTriangle(a, b, c f64.Vec2, col color.RGBA, thickness float64) {
+	if col.A == 0 {
+		return
+	}
+
+	d.PathLineTo(a)
+	d.PathLineTo(b)
+	d.PathLineTo(c)
+	d.PathStrokeEx(col, true, thickness)
+}

@@ -382,10 +382,6 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	}
 
 	// Setup
-	components := 4
-	if flags&ColorEditFlagsNoAlpha != 0 {
-		components = 3
-	}
 	alpha_bar := flags&ColorEditFlagsAlphaBar != 0 && flags&ColorEditFlagsNoAlpha == 0
 	picker_pos := window.DC.CursorPos
 	square_sz := c.GetFrameHeight()
@@ -577,15 +573,64 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	}
 
 	var sv_cursor_pos f64.Vec2
-
+	white := color.RGBA{255, 255, 255, 255}
+	black := color.RGBA{0, 0, 0, 255}
+	black_trans := color.RGBA{0, 0, 0, 0}
 	// Render cursor/preview circle (clamp S/V within 0..1 range because floating points colors may lead HSV values to be out of range)
 	if flags&ColorEditFlagsPickerHueWheel != 0 {
 		// Render Hue Wheel
-	} else if flags&ColorEditFlagsPickerHueBar != 0 {
-		white := color.RGBA{255, 255, 255, 255}
-		black := color.RGBA{0, 0, 0, 255}
-		black_trans := color.RGBA{0, 0, 0, 0}
 
+		// Half a pixel arc length in radians (2pi cancels out).
+		aeps := 1.5 / wheel_r_outer
+		segment_per_arc := mathutil.Max(4, int(wheel_r_outer)/12)
+		for n := 0; n < 6; n++ {
+			a0 := float64(n)/6.0*2.0*math.Pi - aeps
+			a1 := float64(n+1.0)/6.0*2.0*math.Pi + aeps
+			vert_start_idx := len(draw_list.VtxBuffer)
+			draw_list.PathArcTo(wheel_center, (wheel_r_inner+wheel_r_outer)*0.5, a0, a1, segment_per_arc)
+			draw_list.PathStrokeEx(color.RGBA{255, 255, 255, 255}, false, wheel_thickness)
+			vert_end_idx := len(draw_list.VtxBuffer)
+
+			// Paint colors over existing vertices
+			gradient_p0 := f64.Vec2{wheel_center.X + math.Cos(a0)*wheel_r_inner, wheel_center.Y + math.Sin(a0)*wheel_r_inner}
+			gradient_p1 := f64.Vec2{wheel_center.X + math.Cos(a1)*wheel_r_inner, wheel_center.Y + math.Sin(a1)*wheel_r_inner}
+			c.ShadeVertsLinearColorGradientKeepAlpha(draw_list.VtxBuffer, vert_start_idx, vert_end_idx, gradient_p0, gradient_p1, hue_colors[n], hue_colors[n+1])
+		}
+
+		// Render Cursor + preview on Hue Wheel
+		cos_hue_angle := math.Cos(hsv.H * 2.0 * math.Pi)
+		sin_hue_angle := math.Sin(hsv.H * 2.0 * math.Pi)
+		hue_cursor_pos := f64.Vec2{
+			wheel_center.X + cos_hue_angle*(wheel_r_inner+wheel_r_outer)*0.5,
+			wheel_center.Y + sin_hue_angle*(wheel_r_inner+wheel_r_outer)*0.5,
+		}
+		hue_cursor_rad := wheel_thickness * 0.55
+		if value_changed_h {
+			hue_cursor_rad = wheel_thickness * 0.65
+		}
+		hue_cursor_segments := mathutil.Clamp(int(hue_cursor_rad/1.4), 9, 32)
+
+		draw_list.AddCircleFilledEx(hue_cursor_pos, hue_cursor_rad, hue_color32, hue_cursor_segments)
+		draw_list.AddCircleEx(hue_cursor_pos, hue_cursor_rad+1, color.RGBA{128, 128, 128, 255}, hue_cursor_segments, 1.0)
+		draw_list.AddCircleEx(hue_cursor_pos, hue_cursor_rad, color.RGBA{255, 255, 255, 255}, hue_cursor_segments, 1.0)
+
+		// Render SV triangle (rotated according to hue)
+		tra := wheel_center.Add(Rotate(triangle_pa, cos_hue_angle, sin_hue_angle))
+		trb := wheel_center.Add(Rotate(triangle_pb, cos_hue_angle, sin_hue_angle))
+		trc := wheel_center.Add(Rotate(triangle_pc, cos_hue_angle, sin_hue_angle))
+		uv_white := c.GetFontTexUvWhitePixel()
+		draw_list.PrimReserve(6, 6)
+		draw_list.PrimVtx(tra, uv_white, hue_color32)
+		draw_list.PrimVtx(trb, uv_white, hue_color32)
+		draw_list.PrimVtx(trc, uv_white, white)
+		draw_list.PrimVtx(tra, uv_white, black_trans)
+		draw_list.PrimVtx(trb, uv_white, black)
+		draw_list.PrimVtx(trc, uv_white, black_trans)
+		draw_list.AddTriangle(tra, trb, trc, color.RGBA{128, 128, 128, 255}, 1.5)
+		t0 := trc.Lerp(f64.Saturate(hsv.S), tra)
+		t1 := t0.Lerp(f64.Saturate(1-hsv.V), trb)
+		sv_cursor_pos = t1
+	} else if flags&ColorEditFlagsPickerHueBar != 0 {
 		// Render SV Square
 		draw_list.AddRectFilledMultiColor(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), white, hue_color32, hue_color32, white)
 		draw_list.AddRectFilledMultiColor(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), black_trans, black_trans, black, black)
@@ -618,11 +663,19 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	// Render alpha bar
 	if alpha_bar {
+		alpha := float64(col.A) / 255.0
+		bar1_bb := f64.Rect(bar1_pos_x, picker_pos.Y, bar1_pos_x+bars_width, picker_pos.Y+sv_picker_size)
+		c.RenderColorRectWithAlphaCheckerboard(bar1_bb.Min, bar1_bb.Max, color.RGBA{}, bar1_bb.Dx()/2.0, f64.Vec2{0.0, 0.0})
+		col32_trans_alpha := col32_no_alpha
+		col32_trans_alpha.A = 0
+		draw_list.AddRectFilledMultiColor(bar1_bb.Min, bar1_bb.Max, col32_no_alpha, col32_no_alpha, col32_trans_alpha, col32_trans_alpha)
+		bar1_line_y := float64(int(picker_pos.Y + (1.0-alpha)*sv_picker_size + 0.5))
+		c.RenderFrameBorder(bar1_bb.Min, bar1_bb.Max, 0.0)
+		c.RenderArrowsForVerticalBar(draw_list, f64.Vec2{bar1_pos_x - 1, bar1_line_y}, f64.Vec2{bars_triangles_half_sz + 1, bars_triangles_half_sz}, bars_width+2.0)
 	}
 
 	c.EndGroup()
 	c.PopID()
-	_, _ = components, bars_triangles_half_sz
 	return value_changed && backup_initial_col == *col
 }
 
