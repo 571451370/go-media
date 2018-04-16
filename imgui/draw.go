@@ -3473,3 +3473,30 @@ func (d *DrawList) PrimWriteVtx(pos, uv f64.Vec2, col color.RGBA) {
 	d._VtxWritePtr++
 	d._VtxCurrentIdx++
 }
+
+// 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
+func (c *Context) RenderArrowToList(draw_list *DrawList, pos, half_sz f64.Vec2, direction Dir, col color.RGBA) {
+	switch direction {
+	case DirLeft:
+		draw_list.AddTriangleFilled(f64.Vec2{pos.X + half_sz.X, pos.Y - half_sz.Y}, f64.Vec2{pos.X + half_sz.X, pos.Y + half_sz.Y}, pos, col)
+		return
+	case DirRight:
+		draw_list.AddTriangleFilled(f64.Vec2{pos.X - half_sz.X, pos.Y + half_sz.Y}, f64.Vec2{pos.X - half_sz.X, pos.Y - half_sz.Y}, pos, col)
+		return
+	case DirUp:
+		draw_list.AddTriangleFilled(f64.Vec2{pos.X + half_sz.X, pos.Y + half_sz.Y}, f64.Vec2{pos.X - half_sz.X, pos.Y + half_sz.Y}, pos, col)
+		return
+	case DirDown:
+		draw_list.AddTriangleFilled(f64.Vec2{pos.X - half_sz.X, pos.Y - half_sz.Y}, f64.Vec2{pos.X + half_sz.X, pos.Y - half_sz.Y}, pos, col)
+		return
+	}
+}
+
+func (c *Context) RenderArrowsForVerticalBar(draw_list *DrawList, pos, half_sz f64.Vec2, bar_w float64) {
+	black := color.RGBA{0, 0, 0, 255}
+	white := color.RGBA{255, 255, 255, 255}
+	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + half_sz.X + 1, pos.Y}, f64.Vec2{half_sz.X + 2, half_sz.Y + 1}, DirRight, black)
+	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + half_sz.X, pos.Y}, half_sz, DirRight, white)
+	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + bar_w - half_sz.X - 1, pos.Y}, f64.Vec2{half_sz.X + 2, half_sz.Y + 1}, DirLeft, black)
+	c.RenderArrowToList(draw_list, f64.Vec2{pos.X + bar_w - half_sz.X, pos.Y}, half_sz, DirLeft, white)
+}

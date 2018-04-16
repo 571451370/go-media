@@ -566,6 +566,15 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	hue_color32 := color.RGBA{255, 255, 255, 255}
 	col32_no_alpha := *col
 	col32_no_alpha.A = 255
+	hue_colors := [...]color.RGBA{
+		color.RGBA{255, 0, 0, 255},
+		color.RGBA{255, 255, 0, 255},
+		color.RGBA{0, 255, 0, 255},
+		color.RGBA{0, 255, 255, 255},
+		color.RGBA{0, 0, 255, 255},
+		color.RGBA{255, 0, 255, 255},
+		color.RGBA{255, 0, 0, 255},
+	}
 
 	var sv_cursor_pos f64.Vec2
 
@@ -573,8 +582,29 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	if flags&ColorEditFlagsPickerHueWheel != 0 {
 		// Render Hue Wheel
 	} else if flags&ColorEditFlagsPickerHueBar != 0 {
+		white := color.RGBA{255, 255, 255, 255}
+		black := color.RGBA{0, 0, 0, 255}
+		black_trans := color.RGBA{0, 0, 0, 0}
+
 		// Render SV Square
-		draw_list.AddRectFilledMultiColor(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), color.RGBA{255, 255, 255, 255}, hue_color32, hue_color32, color.RGBA{255, 255, 255, 255})
+		draw_list.AddRectFilledMultiColor(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), white, hue_color32, hue_color32, white)
+		draw_list.AddRectFilledMultiColor(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), black_trans, black_trans, black, black)
+		c.RenderFrameBorder(picker_pos, picker_pos.Add(f64.Vec2{sv_picker_size, sv_picker_size}), 0.0)
+		// Sneakily prevent the circle to stick out too much
+		sv_cursor_pos.X = f64.Clamp(float64(int(picker_pos.X+f64.Saturate(hsv.S)*sv_picker_size+0.5)), picker_pos.X+2, picker_pos.X+sv_picker_size-2)
+		sv_cursor_pos.Y = f64.Clamp(float64(int(picker_pos.Y+f64.Saturate(1-hsv.V)*sv_picker_size+0.5)), picker_pos.Y+2, picker_pos.Y+sv_picker_size-2)
+
+		// Render Hue Bar
+		for i := 0; i < 6; i++ {
+			draw_list.AddRectFilledMultiColor(
+				f64.Vec2{bar0_pos_x, picker_pos.Y + float64(i)*(sv_picker_size/6)},
+				f64.Vec2{bar0_pos_x + bars_width, picker_pos.Y + float64(i+1)*(sv_picker_size/6)},
+				hue_colors[i], hue_colors[i], hue_colors[i+1], hue_colors[i+1],
+			)
+		}
+		bar0_line_y := float64(int(picker_pos.Y + hsv.H*sv_picker_size + 0.5))
+		c.RenderFrameBorder(f64.Vec2{bar0_pos_x, picker_pos.Y}, f64.Vec2{bar0_pos_x + bars_width, picker_pos.Y + sv_picker_size}, 0.0)
+		c.RenderArrowsForVerticalBar(draw_list, f64.Vec2{bar0_pos_x - 1, bar0_line_y}, f64.Vec2{bars_triangles_half_sz + 1, bars_triangles_half_sz}, bars_width+2.0)
 	}
 
 	// Render cursor/preview circle (clamp S/V within 0..1 range because floating points colors may lead HSV values to be out of range)

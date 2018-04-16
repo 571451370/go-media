@@ -436,7 +436,7 @@ func (c *Context) PushStringID(str_id string) {
 
 func (c *Context) PushID(id ID) {
 	window := c.GetCurrentWindowRead()
-	window.IDStack = append(window.IDStack, id)
+	window.IDStack = append(window.IDStack, window.GetIDByInt(int(id)))
 }
 
 func (c *Context) PopID() {

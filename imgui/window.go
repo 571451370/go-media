@@ -298,12 +298,9 @@ const (
 )
 
 func (w *Window) GetID(str string) ID {
-	var seed [4]byte
-	seedId := w.IDStack[len(w.IDStack)-1]
-	binary.LittleEndian.PutUint32(seed[:], uint32(seedId))
-
+	seed := w.IDStack[len(w.IDStack)-1]
 	h := fnv.New32()
-	h.Write(seed[:])
+	binary.Write(h, binary.LittleEndian, uint32(seed))
 	h.Write([]byte(str))
 	id := ID(h.Sum32())
 	w.Ctx.KeepAliveID(id)
@@ -311,14 +308,10 @@ func (w *Window) GetID(str string) ID {
 }
 
 func (w *Window) GetIDByInt(n int) ID {
-	var seed, val [4]byte
-	seedId := w.IDStack[len(w.IDStack)-1]
-	binary.LittleEndian.PutUint32(seed[:], uint32(seedId))
-	binary.LittleEndian.PutUint32(val[:], uint32(n))
-
+	seed := w.IDStack[len(w.IDStack)-1]
 	h := fnv.New32()
-	h.Write(seed[:])
-	h.Write(val[:])
+	binary.Write(h, binary.LittleEndian, uint32(seed))
+	binary.Write(h, binary.LittleEndian, uint32(n))
 	id := ID(h.Sum32())
 	w.Ctx.KeepAliveID(id)
 	return id
@@ -2067,12 +2060,9 @@ func (c *Context) FindScreenRectForWindow(window *Window) f64.Rectangle {
 }
 
 func (w *Window) GetIDNoKeepAlive(str string) ID {
-	var buf [4]byte
 	seed := w.IDStack[len(w.IDStack)-1]
-	binary.LittleEndian.PutUint32(buf[:], uint32(seed))
-
 	h := fnv.New32()
-	h.Write(buf[:])
+	binary.Write(h, binary.LittleEndian, uint32(seed))
 	h.Write([]byte(str))
 	return ID(h.Sum32())
 }
@@ -2089,7 +2079,7 @@ func (w *Window) GetIDFromRectangle(r_abs f64.Rectangle) ID {
 	}
 	binary.Write(h, binary.LittleEndian, seed)
 	for i := range r_rel {
-		binary.Write(h, binary.LittleEndian, r_rel[i])
+		binary.Write(h, binary.LittleEndian, uint32(r_rel[i]))
 	}
 	return ID(h.Sum32())
 }
