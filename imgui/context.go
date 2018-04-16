@@ -422,13 +422,6 @@ func (c *Context) SetHoveredID(id ID) {
 	}
 }
 
-func (c *Context) LogFinish() {
-	if !c.LogEnabled {
-		return
-	}
-	c.LogEnabled = false
-}
-
 func (c *Context) PushStringID(str_id string) {
 	window := c.GetCurrentWindowRead()
 	window.IDStack = append(window.IDStack, window.GetID(str_id))
