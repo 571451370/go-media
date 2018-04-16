@@ -404,7 +404,7 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	c.SetHoveredID(0)
 	c.FocusableItemUnregister(window)
 
-	buf := DataTypeFormatString(data, decimal_precision)
+	buf := []byte(DataTypeFormatString(data, decimal_precision))
 	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), InputTextFlagsCharsDecimal|InputTextFlagsAutoSelectAll, nil)
 	// First frame we started displaying the InputText widget
 	if c.ScalarAsInputTextId == 0 {

@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"image/color"
 	"math"
 	"os"
 
@@ -120,7 +121,7 @@ type Context struct {
 	InputTextPasswordFont           Font
 	ScalarAsInputTextId             ID             // Temporary text input when CTRL+clicking on a slider, etc.
 	ColorEditOptions                ColorEditFlags // Store user options for color edit widgets
-	ColorPickerRef                  f64.Vec4
+	ColorPickerRef                  color.RGBA
 	DragCurrentValue                float64 // Currently dragged value, always float, not rounded by end-user precision settings
 	DragLastMouseDelta              f64.Vec2
 	DragSpeedDefaultRatio           float64 // If speed == 0.0f, uses (max-min) * DragSpeedDefaultRatio

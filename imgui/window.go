@@ -2076,3 +2076,20 @@ func (w *Window) GetIDNoKeepAlive(str string) ID {
 	h.Write([]byte(str))
 	return ID(h.Sum32())
 }
+
+// This is only used in rare/specific situations to manufacture an ID out of nowhere.
+func (w *Window) GetIDFromRectangle(r_abs f64.Rectangle) ID {
+	seed := w.IDStack[len(w.IDStack)-1]
+	h := fnv.New32()
+	r_rel := [4]int{
+		int(r_abs.Min.X - w.Pos.X),
+		int(r_abs.Min.Y - w.Pos.Y),
+		int(r_abs.Max.X - w.Pos.X),
+		int(r_abs.Max.Y - w.Pos.Y),
+	}
+	binary.Write(h, binary.LittleEndian, seed)
+	for i := range r_rel {
+		binary.Write(h, binary.LittleEndian, r_rel[i])
+	}
+	return ID(h.Sum32())
+}

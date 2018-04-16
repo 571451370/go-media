@@ -187,3 +187,19 @@ func (c *Context) BeginPopupWindow(str_id string, flags WindowFlags) bool {
 	}
 	return c.BeginPopupEx(c.CurrentWindow.GetID(str_id), flags|WindowFlagsAlwaysAutoResize|WindowFlagsNoTitleBar|WindowFlagsNoSavedSettings)
 }
+
+func (c *Context) OpenPopupOnItemClick(str_id string, mouse_button int) bool {
+	window := c.CurrentWindow
+	if c.IsMouseReleased(mouse_button) && c.IsItemHovered(HoveredFlagsAllowWhenBlockedByPopup) {
+		// If user hasn't passed an ID, we can use the LastItemID. Using LastItemID as a Popup ID won't conflict!
+		id := window.DC.LastItemId
+		if str_id != "" {
+			id = window.GetID(str_id)
+		}
+		// However, you cannot pass a NULL str_id if the last item has no identifier (e.g. a Text() item)
+		assert(id != 0)
+		c.OpenPopupEx(id)
+		return true
+	}
+	return false
+}

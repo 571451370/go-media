@@ -1,6 +1,7 @@
 package imgui
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strings"
@@ -371,20 +372,20 @@ func (c *Context) PopTextWrapPos() {
 	}
 }
 
-func (c *Context) InputText(label, buf string, flags InputTextFlags, callback TextEditCallback) bool {
+func (c *Context) InputText(label string, buf []byte, flags InputTextFlags, callback TextEditCallback) bool {
 	// call InputTextMultiline()
 	assert(flags&InputTextFlagsMultiline == 0)
 	return c.InputTextEx(label, buf, f64.Vec2{0, 0}, flags, callback)
 }
 
-func (c *Context) InputTextMultiline(label, buf string, size f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
+func (c *Context) InputTextMultiline(label string, buf []byte, size f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
 	return c.InputTextEx(label, buf, size, flags|InputTextFlagsMultiline, callback)
 }
 
 // Edit a string of text
 // NB: when active, hold on a privately held copy of the text (and apply back to 'buf'). So changing 'buf' while active has no effect.
 // FIXME: Rather messy function partly because we are doing UTF8 > u16 > UTF8 conversions on the go to more easily handle stb_textedit calls. Ideally we should stay in UTF-8 all the time. See https://github.com/nothings/stb/issues/188
-func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
+func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -483,7 +484,7 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 			// Take a copy of the initial buffer value (both in original UTF-8 format and converted to wchar)
 			// From the moment we focused we are ignoring the content of 'buf' (unless we are in read-only mode)
 			prev_len_w := edit_state.CurLenW
-			edit_state.Text = []rune(buf)
+			edit_state.Text = []rune(string(buf))
 			edit_state.InitialText = []byte(buf)
 			edit_state.CurLenW = len(edit_state.Text)
 			edit_state.CurLenA = len(buf)
@@ -740,7 +741,7 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 		if cancel_edit {
 			// Restore initial value
 			if is_editable {
-				buf = string(edit_state.InitialText)
+				buf = edit_state.InitialText
 				value_changed = true
 			}
 		}
@@ -823,8 +824,8 @@ func (c *Context) InputTextEx(label, buf string, size_arg f64.Vec2, flags InputT
 			}
 
 			// Copy back to user buffer
-			if is_editable && string(temp_text_buffer) != buf {
-				buf = string(temp_text_buffer)
+			if is_editable && bytes.Compare(temp_text_buffer, buf) != 0 {
+				copy(buf, temp_text_buffer)
 				value_changed = true
 			}
 		}

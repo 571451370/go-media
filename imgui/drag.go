@@ -8,6 +8,64 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
+// We don't use BeginDragDropTargetCustom() and duplicate its code because:
+// 1) we use LastItemRectHoveredRect which handles items that pushes a temporarily clip rectangle in their code. Calling BeginDragDropTargetCustom(LastItemRect) would not handle them.
+// 2) and it's faster. as this code may be very frequently called, we want to early out as fast as we can.
+// Also note how the HoveredWindow test is positioned differently in both functions (in both functions we optimize for the cheapest early out case)
+func (c *Context) BeginDragDropTarget() bool {
+	if !c.DragDropActive {
+		return false
+	}
+
+	window := c.CurrentWindow
+	if window.DC.LastItemStatusFlags&ItemStatusFlagsHoveredRect == 0 {
+		return false
+	}
+	if c.HoveredWindow == nil || window.RootWindow != c.HoveredWindow.RootWindow {
+		return false
+	}
+
+	display_rect := window.DC.LastItemRect
+	if window.DC.LastItemStatusFlags&ItemStatusFlagsHasDisplayRect != 0 {
+		display_rect = window.DC.LastItemDisplayRect
+	}
+	id := window.DC.LastItemId
+	if id == 0 {
+		id = window.GetIDFromRectangle(display_rect)
+	}
+	if c.DragDropPayload.SourceId == id {
+		return false
+	}
+
+	c.DragDropTargetRect = display_rect
+	c.DragDropTargetId = id
+	return true
+}
+
+func (c *Context) BeginDragDropTargetCustom(bb f64.Rectangle, id ID) bool {
+	if !c.DragDropActive {
+		return false
+	}
+
+	window := c.CurrentWindow
+	if c.HoveredWindow == nil || window.RootWindow != c.HoveredWindow.RootWindow {
+		return false
+	}
+	assert(id != 0)
+	if !c.IsMouseHoveringRect(bb.Min, bb.Max) || (id == c.DragDropPayload.SourceId) {
+		return false
+	}
+
+	c.DragDropTargetRect = bb
+	c.DragDropTargetId = id
+	return true
+}
+
+// We don't really use/need this now, but added it for the sake of consistency and because we might need it later.
+func (c *Context) EndDragDropTarget() {
+	assert(c.DragDropActive)
+}
+
 func (c *Context) BeginDragDropSource() bool {
 	return false
 }

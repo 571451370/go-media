@@ -210,7 +210,7 @@ func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr inte
 		c.PushItemWidth(math.Max(1.0, c.CalcItemWidth()-(button_sz.X+style.ItemInnerSpacing.X)*2))
 	}
 
-	buf := DataTypeFormatStringCustom(data, scalar_format)
+	buf := []byte(DataTypeFormatStringCustom(data, scalar_format))
 	value_changed := false
 	if (extra_flags & (InputTextFlagsCharsHexadecimal | InputTextFlagsCharsScientific)) == 0 {
 		extra_flags |= InputTextFlagsCharsDecimal

@@ -294,7 +294,7 @@ func DataTypeFormatString(data interface{}, decimal_precision int) string {
 
 // User can input math operators (e.g. +100) to edit a numerical values.
 // NB: This is _not_ a full expression evaluator. We should probably add one though..
-func DataTypeApplyOpFromText(buf, initial_value_buf string, data interface{}, scalar_format string) bool {
+func DataTypeApplyOpFromText(buf []byte, initial_value_buf string, data interface{}, scalar_format string) bool {
 	return false
 }
 
@@ -340,4 +340,11 @@ func GetMinimumStepAtDecimalPrecision(decimal_precision int) float64 {
 		return min_steps[decimal_precision]
 	}
 	return math.Pow(10, float64(-decimal_precision))
+}
+
+func F32_TO_INT8_UNBOUND(v float64) int {
+	if v >= 0 {
+		return int(v*255 + 0.5)
+	}
+	return int(v*255 - 0.5)
 }

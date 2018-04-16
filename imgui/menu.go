@@ -137,7 +137,7 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 		if !enabled {
 			select_flags |= SelectableFlagsDisabled
 		}
-		pressed = c.Selectable(label, menu_is_open, select_flags, f64.Vec2{w, 0})
+		pressed = c.SelectableEx(label, menu_is_open, select_flags, f64.Vec2{w, 0})
 		if !enabled {
 			c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
 		}
@@ -291,7 +291,7 @@ func (c *Context) MenuItemEx(label, shortcut string, selected, enabled bool) boo
 		w := label_size.X
 		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * 0.5))
 		c.PushStyleVar(StyleVarItemSpacing, style.ItemSpacing.Scale(2.0))
-		pressed = c.Selectable(label, false, flags, f64.Vec2{w, 0.0})
+		pressed = c.SelectableEx(label, false, flags, f64.Vec2{w, 0.0})
 		c.PopStyleVar()
 		// -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
 		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * (-1.0 + 0.5)))
@@ -303,7 +303,7 @@ func (c *Context) MenuItemEx(label, shortcut string, selected, enabled bool) boo
 		// Feedback for next frame
 		w := window.MenuColumns.DeclColumns(label_size.X, shortcut_size.X, float64(int(c.FontSize*1.20)))
 		extra_w := math.Max(0.0, c.GetContentRegionAvail().X-w)
-		pressed = c.Selectable(label, false, flags|SelectableFlagsDrawFillAvailWidth, f64.Vec2{w, 0.0})
+		pressed = c.SelectableEx(label, false, flags|SelectableFlagsDrawFillAvailWidth, f64.Vec2{w, 0.0})
 		if shortcut_size.X > 0.0 {
 			c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
 			c.RenderTextEx(pos.Add(f64.Vec2{window.MenuColumns.Pos[1] + extra_w, 0.0}), shortcut, false)

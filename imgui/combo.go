@@ -240,7 +240,7 @@ func (c *Context) ComboItemEx(label string, current_item *int, items_getter func
 		if !found {
 			item_text = "*Unknown item*"
 		}
-		if c.Selectable(item_text, item_selected, 0, f64.Vec2{0, 0}) {
+		if c.SelectableEx(item_text, item_selected, 0, f64.Vec2{0, 0}) {
 			value_changed = true
 			*current_item = i
 		}

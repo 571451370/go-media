@@ -21,8 +21,8 @@ const (
 	SelectableFlagsDrawFillAvailWidth SelectableFlags = 1 << 6
 )
 
-func (c *Context) Selectable(label string, selected bool, flags SelectableFlags, size_arg f64.Vec2) bool {
-	return c.SelectableEx(label, selected, flags, size_arg)
+func (c *Context) Selectable(label string) bool {
+	return c.SelectableEx(label, false, 0, f64.Vec2{0, 0})
 }
 
 // Tip: pass an empty label (e.g. "##dummy") then you can use the space to draw other text or image.
