@@ -112,6 +112,10 @@ func HSV2RGB(c HSV) color.RGBA {
 	return r
 }
 
+func VEC42HSV(c f64.Vec4) HSV {
+	return RGB2HSV(c.ToRGBA())
+}
+
 func RGB2HSV(c color.RGBA) HSV {
 	r := float64(c.R)
 	g := float64(c.G)
