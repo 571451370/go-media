@@ -190,7 +190,7 @@ func (c *Context) BeginPopupWindow(str_id string, flags WindowFlags) bool {
 
 func (c *Context) OpenPopupOnItemClick(str_id string, mouse_button int) bool {
 	window := c.CurrentWindow
-	if c.IsMouseReleased(mouse_button) && c.IsItemHovered(HoveredFlagsAllowWhenBlockedByPopup) {
+	if c.IsMouseReleased(mouse_button) && c.IsItemHoveredEx(HoveredFlagsAllowWhenBlockedByPopup) {
 		// If user hasn't passed an ID, we can use the LastItemID. Using LastItemID as a Popup ID won't conflict!
 		id := window.DC.LastItemId
 		if str_id != "" {

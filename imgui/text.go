@@ -1344,3 +1344,9 @@ func TextCountUtf8BytesFromStr(r []rune) int {
 	}
 	return n
 }
+
+func (c *Context) TextDisabled(format string, args ...interface{}) {
+	c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+	c.Text(format, args)
+	c.PopStyleColor()
+}

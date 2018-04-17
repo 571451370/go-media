@@ -719,7 +719,11 @@ func (c *Context) ItemHoverable(bb f64.Rectangle, id ID) bool {
 	return true
 }
 
-func (c *Context) IsItemHovered(flags HoveredFlags) bool {
+func (c *Context) IsItemHovered() bool {
+	return c.IsItemHoveredEx(0)
+}
+
+func (c *Context) IsItemHoveredEx(flags HoveredFlags) bool {
 	window := c.CurrentWindow
 	if c.NavDisableMouseHover && !c.NavDisableHighlight {
 		return c.IsItemFocused()
@@ -806,7 +810,7 @@ func (c *Context) IsItemFocused() bool {
 }
 
 func (c *Context) IsItemClicked(mouse_button int) bool {
-	return c.IsMouseClicked(mouse_button, false) && c.IsItemHovered(HoveredFlagsDefault)
+	return c.IsMouseClicked(mouse_button, false) && c.IsItemHoveredEx(HoveredFlagsDefault)
 }
 
 func (c *Context) IsAnyItemHovered() bool {
@@ -2088,4 +2092,14 @@ func (c *Context) SetCursorScreenPos(screen_pos f64.Vec2) {
 	window := c.GetCurrentWindow()
 	window.DC.CursorPos = screen_pos
 	window.DC.CursorMaxPos = window.DC.CursorMaxPos.Max(window.DC.CursorPos)
+}
+
+func (c *Context) GetWindowWidth() float64 {
+	window := c.CurrentWindow
+	return window.Size.X
+}
+
+func (c *Context) GetWindowHeight() float64 {
+	window := c.CurrentWindow
+	return window.Size.Y
 }

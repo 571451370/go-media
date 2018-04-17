@@ -837,6 +837,26 @@ func showUserGuide() {
 }
 
 func showExampleAppMainMenuBar() {
+	if im.BeginMainMenuBar() {
+		if im.BeginMenu("File") {
+			showExampleMenuFile()
+			im.EndMenu()
+		}
+		if im.BeginMenu("Edit") {
+			if im.MenuItemEx("Undo", "Ctrl+Z", false, true) {
+			}
+			if im.MenuItemEx("Redo", "Ctrl+Y", false, false) {
+			}
+			im.Separator()
+			if im.MenuItemEx("Cut", "Ctrl+X", false, true) {
+			}
+			if im.MenuItemEx("Copy", "Ctrl+C", false, true) {
+			}
+			if im.MenuItemEx("Paste", "Ctrl+V", false, true) {
+			}
+		}
+		im.EndMainMenuBar()
+	}
 }
 
 func showExampleAppConsole() {
@@ -933,6 +953,75 @@ func showExampleMenuFile() {
 }
 
 func showStyleEditor() {
+	style := im.GetStyle()
+
+	im.PushItemWidth(im.GetWindowWidth() * 0.50)
+
+	// Simplified Settings
+	if im.SliderFloatEx("FrameRounding", &style.FrameRounding, 0.0, 12.0, "%.0f", 1.0) {
+		// Make GrabRounding always the same as FrameRounding
+		style.GrabRounding = style.FrameRounding
+	}
+
+	window_border := style.WindowBorderSize > 0
+	if im.Checkbox("WindowBorder", &window_border) {
+		style.WindowBorderSize = 0
+		if window_border {
+			style.WindowBorderSize = 1
+		}
+	}
+	im.SameLine()
+
+	frame_border := style.FrameBorderSize > 0
+	if im.Checkbox("FrameBorder", &frame_border) {
+		style.FrameBorderSize = 0
+		if frame_border {
+			style.FrameBorderSize = 1
+		}
+	}
+	im.SameLine()
+
+	popup_border := style.PopupBorderSize > 0
+	if im.Checkbox("PopupBorder", &popup_border) {
+		style.PopupBorderSize = 0
+		if popup_border {
+			style.PopupBorderSize = 1
+		}
+	}
+
+	// Save/Revert button
+	if im.Button("Save Ref") {
+	}
+	im.SameLine()
+	if im.Button("Revert Ref") {
+	}
+	im.SameLine()
+	showHelpMarker("Save/Revert in local non-persistent storage. Default Colors definition are not affected. Use \"Export Colors\" below to save them somewhere.")
+
+	if im.TreeNode("Rendering") {
+		im.TreePop()
+	}
+
+	if im.TreeNode("Settings") {
+		im.TreePop()
+	}
+
+	if im.TreeNode("Colors") {
+		im.TreePop()
+	}
+
+	im.PopItemWidth()
+}
+
+func showHelpMarker(desc string) {
+	im.TextDisabled("(?)")
+	if im.IsItemHovered() {
+		im.BeginTooltip()
+		im.PushTextWrapPos(im.GetFontSize() * 35.0)
+		im.TextUnformatted(desc)
+		im.PopTextWrapPos()
+		im.EndTooltip()
+	}
 }
 
 func assert(x bool) {

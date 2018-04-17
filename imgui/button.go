@@ -212,7 +212,7 @@ func (c *Context) ButtonBehavior(bb f64.Rectangle, id ID, flags ButtonFlags) (ho
 
 	// Special mode for Drag and Drop where holding button pressed for a long time while dragging another item triggers the button
 	if flags&ButtonFlagsPressedOnDragDropHold != 0 && c.DragDropActive && c.DragDropSourceFlags&DragDropFlagsSourceNoHoldToOpenOthers == 0 {
-		if c.IsItemHovered(HoveredFlagsAllowWhenBlockedByActiveItem) {
+		if c.IsItemHoveredEx(HoveredFlagsAllowWhenBlockedByActiveItem) {
 			hovered = true
 			c.SetHoveredID(id)
 			// FIXME: Our formula for CalcTypematicPressedRepeatAmount() is fishy

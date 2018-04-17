@@ -341,3 +341,30 @@ func (c *Context) EndMenu() {
 	}
 	c.EndPopup()
 }
+
+func (c *Context) BeginMainMenuBar() bool {
+	c.SetNextWindowPos(f64.Vec2{0.0, 0.0}, 0, f64.Vec2{0, 0})
+	c.SetNextWindowSize(f64.Vec2{c.IO.DisplaySize.X, c.FontBaseSize + c.Style.FramePadding.Y*2.0}, 0)
+	c.PushStyleVar(StyleVarWindowRounding, 0.0)
+	c.PushStyleVar(StyleVarWindowMinSize, f64.Vec2{0, 0})
+	windowFlags := WindowFlagsNoTitleBar | WindowFlagsNoResize | WindowFlagsNoMove | WindowFlagsNoScrollbar | WindowFlagsNoSavedSettings | WindowFlagsMenuBar
+	if !c.BeginEx("##MainMenuBar", nil, windowFlags) || !c.BeginMenuBar() {
+		c.End()
+		c.PopStyleVarN(2)
+		return false
+	}
+	c.CurrentWindow.DC.MenuBarOffsetX += c.Style.DisplaySafeAreaPadding.X
+	return true
+}
+
+func (c *Context) EndMainMenuBar() {
+	c.EndMenuBar()
+
+	// When the user has left the menu layer (typically: closed menus through activation of an item), we restore focus to the previous window
+	if c.CurrentWindow == c.NavWindow && c.NavLayer == 0 {
+		c.FocusFrontMostActiveWindow(c.NavWindow)
+	}
+
+	c.End()
+	c.PopStyleVarN(2)
+}
