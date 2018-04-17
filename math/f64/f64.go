@@ -1268,7 +1268,7 @@ func (r Rectangle) Diagonal() float64 {
 	return math.Sqrt(x*x + y*y)
 }
 
-func (r Rectangle) XYWH() (x, y, w, h float64) {
+func (r Rectangle) PosSize() (x, y, w, h float64) {
 	return r.Min.X, r.Min.Y, r.Dx(), r.Dy()
 }
 
