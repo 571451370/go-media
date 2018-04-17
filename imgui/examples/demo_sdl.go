@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"os"
 	"runtime"
 	"strings"
@@ -999,6 +1000,17 @@ func showStyleEditor() {
 	showHelpMarker("Save/Revert in local non-persistent storage. Default Colors definition are not affected. Use \"Export Colors\" below to save them somewhere.")
 
 	if im.TreeNode("Rendering") {
+		im.Checkbox("Anti-aliased lines", &style.AntiAliasedLines)
+		im.SameLine()
+		showHelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.")
+		im.PushItemWidth(100)
+		im.DragFloatEx("Curve Tessellation Tolerance", &style.CurveTessellationTol, 0.02, 0.10, math.MaxFloat32, "", 2.0)
+		if style.CurveTessellationTol < 0.0 {
+			style.CurveTessellationTol = 0.10
+		}
+		// Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
+		im.DragFloatEx("Global Alpha", &style.Alpha, 0.005, 0.20, 1.0, "%.2f", 1.0)
+		im.PopItemWidth()
 		im.TreePop()
 	}
 

@@ -68,7 +68,6 @@ func (c *Context) EndMenuBar() {
 			c.NavMoveRequestCancel()
 		}
 	}
-
 	assert(window.Flags&WindowFlagsMenuBar != 0)
 	assert(window.DC.MenuBarAppending)
 	c.PopClipRect()
