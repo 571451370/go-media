@@ -72,8 +72,10 @@ type UI struct {
 	}
 
 	Widgets struct {
-		Clicked int
-		Check   bool
+		Clicked                        int
+		Check                          bool
+		AlignLabelWithCurrentXPosition bool
+		ClosableGroup                  bool
 	}
 
 	Colors struct {
@@ -266,7 +268,7 @@ func showSimpleWindow() {
 	if !ui.ShowSimpleWindow {
 		return
 	}
-	im.Text("Hello World!")
+	im.Text("Hello, world!")
 	im.SliderFloat("float", &ui.SliderValue, 0, 1)
 	im.Checkbox("Demo Window", &ui.ShowDemoWindow)
 	im.Checkbox("Another Window", &ui.ShowAnotherWindow)
@@ -722,7 +724,7 @@ func showDemoWindow() {
 	}
 
 	im.PushItemWidth(-140)
-	im.Text("dear imgui says hello (%s)", im.GetVersion())
+	im.Text("dear imgui says hello. (%s)", im.GetVersion())
 
 	// Menu
 	if im.BeginMenuBar() {
@@ -799,6 +801,60 @@ func showDemoWindow() {
 			}
 
 			im.Checkbox("checkbox", &ui.Widgets.Check)
+			im.TreePop()
+		}
+		if im.TreeNode("Trees") {
+			if im.TreeNode("Basic trees") {
+				for i := imgui.ID(0); i < 5; i++ {
+					if im.TreeNodeIDEx(i, 0, "Child %d", i) {
+						im.Text("blah blah")
+						im.SameLine()
+						if im.SmallButton("button") {
+						}
+						im.TreePop()
+					}
+				}
+				im.TreePop()
+			}
+
+			if im.TreeNode("Advanced, with Selectable nodes") {
+				showHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
+				im.Checkbox("Align label with current X position)", &ui.Widgets.AlignLabelWithCurrentXPosition)
+				im.Text("Hello!")
+				if ui.Widgets.AlignLabelWithCurrentXPosition {
+					im.UnindentEx(im.GetTreeNodeToLabelSpacing())
+				}
+				im.TreePop()
+			}
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Collapsing Headers") {
+			im.Checkbox("Enable extra group", &ui.Widgets.ClosableGroup)
+			if im.CollapsingHeader("Header") {
+				im.Text("IsItemHovered: %v", im.IsItemHovered())
+				for i := 0; i < 5; i++ {
+					im.Text("Some content %d", i)
+				}
+			}
+			if im.CollapsingHeaderOpen("Header with a close button", &ui.Widgets.ClosableGroup) {
+				im.Text("IsItemHovered: %v", im.IsItemHovered())
+				for i := 0; i < 5; i++ {
+					im.Text("More content %d", i)
+				}
+			}
+			im.TreePop()
+		}
+
+		if im.TreeNode("Bullets") {
+			im.BulletText("Bullet point 1")
+			im.BulletText("Bullet point 2\nOn multiple lines")
+			im.Bullet()
+			im.Text("Bullet point 3 (two calls)")
+			im.Bullet()
+			im.SmallButton("Button")
+			im.TreePop()
 		}
 	}
 	if im.CollapsingHeader("Layout") {

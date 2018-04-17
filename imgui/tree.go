@@ -91,8 +91,7 @@ func (c *Context) CollapsingHeaderOpenEx(label string, p_open *bool, flags TreeN
 		}
 		var last_item_backup ItemHoveredDataBackup
 		last_item_backup.Backup(c)
-		// TODO
-		if c.CloseButton(id+1, pos, button_sz) {
+		if c.CloseButton(window.GetIDByInt(int(id+1)), pos, button_sz) {
 			*p_open = false
 		}
 		last_item_backup.Restore(c)
@@ -108,13 +107,22 @@ func (c *Context) TreeNode(label string) bool {
 	return c.TreeNodeBehavior(window.GetID(label), 0, label)
 }
 
-func (c *Context) TreeNodeEx(str_id string, flags TreeNodeFlags, format string, args ...interface{}) bool {
+func (c *Context) TreeNodeStringIDEx(str_id string, flags TreeNodeFlags, format string, args ...interface{}) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
 	}
 	label := fmt.Sprintf(format, args...)
 	return c.TreeNodeBehavior(window.GetID(str_id), flags, label)
+}
+
+func (c *Context) TreeNodeIDEx(id ID, flags TreeNodeFlags, format string, args ...interface{}) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+	label := fmt.Sprintf(format, args...)
+	return c.TreeNodeBehavior(window.GetIDByInt(int(id)), flags, label)
 }
 
 func (c *Context) TreeNodeBehavior(id ID, flags TreeNodeFlags, label string) bool {
@@ -368,4 +376,8 @@ func (c *Context) TreePop() {
 	}
 	window.DC.TreeDepthMayJumpToParentOnPop &= (1 << uint(window.DC.TreeDepth)) - 1
 	c.PopID()
+}
+
+func (c *Context) GetTreeNodeToLabelSpacing() float64 {
+	return c.FontSize + (c.Style.FramePadding.X * 2.0)
 }

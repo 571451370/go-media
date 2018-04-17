@@ -723,6 +723,9 @@ func (c *Context) IsItemHovered() bool {
 	return c.IsItemHoveredEx(0)
 }
 
+// This is roughly matching the behavior of internal-facing ItemHoverable()
+// - we allow hovering to be true when ActiveId==window->MoveID, so that clicking on non-interactive items such as a Text() item still returns true with IsItemHovered()
+// - this should work even for non-interactive items that have no ID, so we cannot use LastItemId
 func (c *Context) IsItemHoveredEx(flags HoveredFlags) bool {
 	window := c.CurrentWindow
 	if c.NavDisableMouseHover && !c.NavDisableHighlight {
@@ -730,10 +733,18 @@ func (c *Context) IsItemHoveredEx(flags HoveredFlags) bool {
 	}
 
 	// Test for bounding box overlap, as updated as ItemAdd()
-	if window.DC.LastItemStatusFlags&ItemStatusFlagsHoveredRect != 0 {
+	if window.DC.LastItemStatusFlags&ItemStatusFlagsHoveredRect == 0 {
 		return false
 	}
+	// Flags not supported by this function
+	assert((flags & (HoveredFlagsRootWindow | HoveredFlagsChildWindows)) == 0)
 
+	// Test if we are hovering the right window (our window could be behind another window)
+	// [2017/10/16] Reverted commit 344d48be3 and testing RootWindow instead. I believe it is correct to NOT test for RootWindow but this leaves us unable to use IsItemHovered() after EndChild() itself.
+	// Until a solution is found I believe reverting to the test from 2017/09/27 is safe since this was the test that has been running for a long while.
+	//if (c.HoveredWindow != window) {
+	//    return false;
+	//}
 	if c.HoveredRootWindow != window.RootWindow && flags&HoveredFlagsAllowWhenOverlapped == 0 {
 		return false
 	}
