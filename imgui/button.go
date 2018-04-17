@@ -551,3 +551,31 @@ func (c *Context) BulletText(format string, args ...interface{}) {
 	c.RenderBullet(bb.Min.Add(f64.Vec2{style.FramePadding.X + c.FontSize*0.5, line_height * 0.5}))
 	c.RenderTextEx(bb.Min.Add(f64.Vec2{c.FontSize + style.FramePadding.X*2, text_base_offset_y}), text, false)
 }
+
+// Helper to display logging buttons
+func (c *Context) LogButtons() {
+	c.PushStringID("LogButtons")
+	log_to_tty := c.Button("Log To TTY")
+	c.SameLine()
+	log_to_file := c.Button("Log To File")
+	c.SameLine()
+	log_to_clipboard := c.Button("Log To Clipboard")
+	c.SameLine()
+	c.PushItemWidth(80.0)
+	c.PushAllowKeyboardFocus(false)
+	c.SliderIntEx("Depth", &c.LogAutoExpandMaxDepth, 0, 9, "")
+	c.PopAllowKeyboardFocus()
+	c.PopItemWidth()
+	c.PopID()
+
+	// Start logging at the end of the function so that the buttons don't appear in the log
+	if log_to_tty {
+		c.LogToTTYEx(c.LogAutoExpandMaxDepth)
+	}
+	if log_to_file {
+		c.LogToFile(c.LogAutoExpandMaxDepth, c.IO.LogFilename)
+	}
+	if log_to_clipboard {
+		c.LogToClipboardEx(c.LogAutoExpandMaxDepth)
+	}
+}

@@ -774,10 +774,15 @@ func showDemoWindow() {
 		im.Checkbox("No close", &ui.NoClose)
 		im.SameLineEx(150, -1)
 		im.Checkbox("No nav", &ui.NoNav)
+
 		if im.TreeNode("Style") {
+			showStyleEditor()
 			im.TreePop()
 		}
+
 		if im.TreeNode("Captured/Logging") {
+			im.TextWrapped("The logging API redirects all text output so you can easily capture the content of a window or a block. Tree nodes can be automatically expanded. You can also call ImGui::LogText() to output directly to the log without a visual output.")
+			im.LogButtons()
 			im.TreePop()
 		}
 	}
@@ -925,6 +930,9 @@ func showExampleMenuFile() {
 	}
 	im.MenuItemEx("Checked", "Checked", true, true)
 	im.MenuItemEx("Quit", "Alt+F4", false, true)
+}
+
+func showStyleEditor() {
 }
 
 func assert(x bool) {

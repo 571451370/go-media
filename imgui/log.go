@@ -51,6 +51,7 @@ func (c *Context) LogToClipboard() {
 	c.LogToClipboardEx(-1)
 }
 
+// Start logging ImGui output to clipboard
 func (c *Context) LogToClipboardEx(max_depth int) {
 	if c.LogEnabled {
 		return
@@ -85,9 +86,48 @@ func (c *Context) LogToTTYEx(max_depth int) {
 	}
 }
 
+// Start logging ImGui output to given file
+func (c *Context) LogToFile(max_depth int, filename string) {
+	if c.LogEnabled {
+		return
+	}
+
+	window := c.CurrentWindow
+	if filename == "" {
+		filename = c.IO.LogFilename
+	}
+	if filename == "" {
+		return
+	}
+
+	assert(c.LogFile == nil)
+	var err error
+	c.LogFile, err = os.OpenFile(filename, os.O_APPEND, 0644)
+	if err != nil {
+		// Consider this an error
+		assert(c.LogFile != nil)
+		return
+	}
+	c.LogEnabled = true
+	c.LogStartDepth = window.DC.TreeDepth
+	if max_depth >= 0 {
+		c.LogAutoExpandMaxDepth = max_depth
+	}
+}
+
 func (c *Context) LogFinish() {
 	if !c.LogEnabled {
 		return
+	}
+
+	c.LogText("\n")
+	if c.LogFile != nil {
+		c.LogFile.Close()
+		c.LogFile = nil
+	}
+	if len(c.LogClipboard) > 0 {
+		c.SetClipboardText(string(c.LogClipboard))
+		c.LogClipboard = c.LogClipboard[:0]
 	}
 	c.LogEnabled = false
 }
