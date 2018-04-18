@@ -693,13 +693,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		}
 		window.Pos = window.PosFloat.Floor()
 
-		// Default item width. Make it proportional to window size if window manually resizes
-		if window.Size.X > 0 && flags&WindowFlagsTooltip == 0 && flags&WindowFlagsAlwaysAutoResize == 0 {
-			window.ItemWidthDefault = float64(int(window.Size.X * 0.65))
-		} else {
-			window.ItemWidthDefault = float64(int(c.FontSize * 16))
-		}
-
 		// Prepare for focus requests
 		if window.FocusIdxAllRequestNext == math.MaxInt32 || window.FocusIdxAllCounter == -1 {
 			window.FocusIdxAllRequestCurrent = math.MaxInt32
@@ -738,6 +731,13 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		grip_draw_size := float64(int(math.Max(c.FontSize*1.35, window.WindowRounding+1.0+c.FontSize*0.2)))
 		if !window.Collapsed {
 			c.UpdateManualResize(window, size_auto_fit, &border_held, resize_grip_col[:resize_grip_count])
+		}
+
+		// Default item width. Make it proportional to window size if window manually resizes
+		if window.Size.X > 0 && flags&WindowFlagsTooltip == 0 && flags&WindowFlagsAlwaysAutoResize == 0 {
+			window.ItemWidthDefault = float64(int(window.Size.X * 0.65))
+		} else {
+			window.ItemWidthDefault = float64(int(c.FontSize * 16))
 		}
 
 		// DRAWING
@@ -3109,6 +3109,8 @@ func (c *Context) RenderText(pos f64.Vec2, text string) {
 	c.RenderTextEx(pos, text, true)
 }
 
+// Internal ImGui functions to render text
+// RenderText***() functions calls ImDrawList::AddText() calls ImBitmapFont::RenderText()
 func (c *Context) RenderTextEx(pos f64.Vec2, text string, hide_text_after_hash bool) {
 	window := c.CurrentWindow
 

@@ -2114,3 +2114,21 @@ func (c *Context) GetWindowHeight() float64 {
 	window := c.CurrentWindow
 	return window.Size.Y
 }
+
+// User generally sees positions in window coordinates. Internally we store CursorPos in absolute screen coordinates because it is more convenient.
+// Conversion happens as we pass the value to user, but it makes our naming convention confusing because GetCursorPos() == (DC.CursorPos - window.Pos). May want to rename 'DC.CursorPos'.
+func (c *Context) GetCursorPos() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.CursorPos.Sub(window.Pos).Add(window.Scroll)
+
+}
+
+func (c *Context) GetItemRectMin() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.LastItemRect.Min
+}
+
+func (c *Context) GetItemRectMax() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.LastItemRect.Max
+}

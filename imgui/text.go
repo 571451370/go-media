@@ -3,6 +3,7 @@ package imgui
 import (
 	"bytes"
 	"fmt"
+	"image/color"
 	"math"
 	"strings"
 	"unicode"
@@ -372,10 +373,9 @@ func (c *Context) PopTextWrapPos() {
 	}
 }
 
-func (c *Context) InputText(label string, buf []byte, flags InputTextFlags, callback TextEditCallback) bool {
+func (c *Context) InputText(label string, buf []byte) bool {
 	// call InputTextMultiline()
-	assert(flags&InputTextFlagsMultiline == 0)
-	return c.InputTextEx(label, buf, f64.Vec2{0, 0}, flags, callback)
+	return c.InputTextEx(label, buf, f64.Vec2{0, 0}, 0, nil)
 }
 
 func (c *Context) InputTextMultiline(label string, buf []byte, size f64.Vec2, flags InputTextFlags, callback TextEditCallback) bool {
@@ -1347,6 +1347,12 @@ func TextCountUtf8BytesFromStr(r []rune) int {
 
 func (c *Context) TextDisabled(format string, args ...interface{}) {
 	c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+	c.Text(format, args...)
+	c.PopStyleColor()
+}
+
+func (c *Context) TextColored(col color.RGBA, format string, args ...interface{}) {
+	c.PushStyleColorRGBA(ColText, col)
 	c.Text(format, args...)
 	c.PopStyleColor()
 }

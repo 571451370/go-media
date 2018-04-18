@@ -218,7 +218,7 @@ func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr inte
 	extra_flags |= InputTextFlagsAutoSelectAll
 
 	// PushId(label) + "" gives us the expected ID from outside point of view
-	if c.InputText("", buf, extra_flags, nil) {
+	if c.InputTextEx("", buf, f64.Vec2{0, 0}, extra_flags, nil) {
 		value_changed = DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, scalar_format)
 	}
 

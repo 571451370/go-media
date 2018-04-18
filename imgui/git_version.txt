@@ -1,5 +1,8 @@
-commit 83d97d4a9b8c4a7129bb6132500cb9f7442a373e
-Author: daniel-murray <daniel.account@gmail.com>
-Date:   Sat Apr 14 00:05:09 2018 +0200
+Author: omar <omarcornut@gmail.com>  2018-04-16 13:37:00
+Committer: omar <omarcornut@gmail.com>  2018-04-17 17:36:59
+Parent: 83d97d4a9b8c4a7129bb6132500cb9f7442a373e (Fix typos KeyDown => KeysDown)
+Branches: master, remotes/origin/master
+Follows: v1.60
+Precedes: 
 
-    Fix typos KeyDown => KeysDown
+    Fixed default proportional item width lagging by one frame on resize + miscellaneous minor tweaks.

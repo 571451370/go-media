@@ -239,7 +239,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 		copy(buf[:], str)
 
 		c.PushItemWidth(w_items_all)
-		if c.InputText("##Text", buf[:], InputTextFlagsCharsHexadecimal|InputTextFlagsCharsUppercase, nil) {
+		if c.InputTextEx("##Text", buf[:], f64.Vec2{0, 0}, InputTextFlagsCharsHexadecimal|InputTextFlagsCharsUppercase, nil) {
 			value_changed = true
 			p := buf[:]
 			for len(p) > 0 && p[0] == '#' && CharIsSpace(rune(p[0])) {

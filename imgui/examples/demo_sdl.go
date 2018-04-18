@@ -2,6 +2,8 @@
 package main
 
 import (
+	"fmt"
+	"image/color"
 	"log"
 	"math"
 	"os"
@@ -71,11 +73,17 @@ type UI struct {
 		ComboItems int
 	}
 
+	AppLog struct {
+		LastTime float64
+	}
+
 	Widgets struct {
 		Clicked                        int
 		Check                          bool
 		AlignLabelWithCurrentXPosition bool
 		ClosableGroup                  bool
+		WrapWidth                      float64
+		UTF8_Buf                       [32]byte
 	}
 
 	Colors struct {
@@ -856,6 +864,70 @@ func showDemoWindow() {
 			im.SmallButton("Button")
 			im.TreePop()
 		}
+
+		if im.TreeNode("Text") {
+			if im.TreeNode("Colored Text") {
+				// Using shortcut. You can use PushStyleColor()/PopStyleColor() for more flexibility.
+				im.TextColored(color.RGBA{255, 0, 255, 255}, "Pink")
+				im.TextColored(color.RGBA{255, 255, 0, 255}, "Yellow")
+				im.TextDisabled("Disabled")
+				im.SameLine()
+				showHelpMarker("The TextDisabled color is stored in ImGuiStyle.")
+				im.TreePop()
+			}
+			im.TreePop()
+		}
+
+		if im.TreeNode("Word Wrapping") {
+			// Using shortcut. You can use PushTextWrapPos()/PopTextWrapPos() for more flexibility.
+			im.TextWrapped("This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.")
+			im.Spacing()
+
+			im.SliderFloatEx("Wrap width", &ui.Widgets.WrapWidth, -20, 600, "%.0f", 1)
+
+			im.Text("Test paragraph 1:")
+			pos := im.GetCursorScreenPos()
+			im.GetWindowDrawList().AddRectFilled(
+				f64.Vec2{pos.X + ui.Widgets.WrapWidth, pos.Y},
+				f64.Vec2{pos.X + ui.Widgets.WrapWidth + 10, pos.Y + im.GetTextLineHeight()},
+				color.RGBA{255, 0, 255, 255},
+			)
+			im.PushTextWrapPos(im.GetCursorPos().X + ui.Widgets.WrapWidth)
+			im.Text("The lazy dog is a good dog. This paragraph is made to fit within %.0f pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.", ui.Widgets.WrapWidth)
+			im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
+			im.PopTextWrapPos()
+
+			im.Text("Test paragraph 2:")
+			pos = im.GetCursorScreenPos()
+			im.GetWindowDrawList().AddRectFilled(
+				f64.Vec2{pos.X + ui.Widgets.WrapWidth, pos.Y},
+				f64.Vec2{pos.X + ui.Widgets.WrapWidth + 10, pos.Y + im.GetTextLineHeight()},
+				color.RGBA{255, 0, 255, 255},
+			)
+			im.PushTextWrapPos(im.GetCursorPos().X + ui.Widgets.WrapWidth)
+			im.Text("aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh")
+			im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
+			im.PopTextWrapPos()
+
+			im.TreePop()
+		}
+		if im.TreeNode("UTF-8 Text") {
+			// UTF-8 test with Japanese characters
+			// (needs a suitable font, try Arial Unicode or M+ fonts http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index-en.html)
+			// - From C++11 you can use the u8"my text" syntax to encode literal strings as UTF-8
+			// - For earlier compiler, you may be able to encode your sources as UTF-8 (e.g. Visual Studio save your file as 'UTF-8 without signature')
+			// - HOWEVER, FOR THIS DEMO FILE, BECAUSE WE WANT TO SUPPORT COMPILER, WE ARE *NOT* INCLUDING RAW UTF-8 CHARACTERS IN THIS SOURCE FILE.
+			//   Instead we are encoding a few string with hexadecimal constants. Don't do this in your application!
+			// Note that characters values are preserved even by InputText() if the font cannot be displayed, so you can safely copy & paste garbled characters into another application.
+			im.TextWrapped("CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Font->LoadFromFileTTF() manually to load extra character ranges.")
+			im.Text("Hiragana: \xe3\x81\x8b\xe3\x81\x8d\xe3\x81\x8f\xe3\x81\x91\xe3\x81\x93 (kakikukeko)")
+			im.Text("Kanjis: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e (nihongo)")
+			if ui.Widgets.UTF8_Buf == [32]byte{} {
+				copy(ui.Widgets.UTF8_Buf[:], "\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e") // "nihongo"
+			}
+			im.InputText("UTF-8 input", ui.Widgets.UTF8_Buf[:])
+			im.TreePop()
+		}
 	}
 	if im.CollapsingHeader("Layout") {
 	}
@@ -919,7 +991,9 @@ func showExampleAppMainMenuBar() {
 func showExampleAppConsole() {
 }
 
+// Demonstrate creating a simple log window with basic filtering.
 func showExampleAppLog() {
+	// Demo: add random items (unless Ctrl is held)
 }
 
 func showExampleAppLayout() {
@@ -940,7 +1014,28 @@ func showExampleAppConstrainedResize() {
 func showExampleAppFixedOverlay() {
 }
 
+// Demonstrate using "##" and "###" in identifiers to manipulate ID generation.
+// This apply to regular items as well. Read FAQ section "How can I have multiple widgets with the same label? Can I have widget without a label? (Yes). A primer on the purpose of labels/IDs." for details.
 func showExampleAppWindowTitles() {
+	// By default, Windows are uniquely identified by their title.
+	// You can use the "##" and "###" markers to manipulate the display/ID.
+	// Using "##" to display same title but have unique identifier.
+	im.SetNextWindowPos(f64.Vec2{100, 100}, imgui.CondFirstUseEver, f64.Vec2{0, 0})
+	im.Begin("Same title as another window##1")
+	im.Text("This is window 1.\nMy title is the same as window 2, but my identifier is unique.")
+	im.End()
+
+	im.SetNextWindowPos(f64.Vec2{100, 200}, imgui.CondFirstUseEver, f64.Vec2{0, 0})
+	im.Begin("Same title as another window##2")
+	im.Text("This is window 2.\nMy title is the same as window 1, but my identifier is unique.")
+	im.End()
+
+	// Using "###" to display a changing title but keep a static identifier "AnimatedTitle"
+	buf := fmt.Sprintf("Animated title %c %d###AnimatedTitle", "|/-\\"[int(im.GetTime()/0.25)&3], im.GetFrameCount())
+	im.SetNextWindowPos(f64.Vec2{100, 300}, imgui.CondFirstUseEver, f64.Vec2{0, 0})
+	im.Begin(buf)
+	im.Text("This window has a changing title.")
+	im.End()
 }
 
 func showExampleAppCustomRendering() {
