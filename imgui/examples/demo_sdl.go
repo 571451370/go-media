@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/imgui"
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/sdl"
@@ -65,6 +66,8 @@ type UI struct {
 	NoCollapse  bool
 	NoNav       bool
 	NoClose     bool
+
+	ClearColor color.RGBA
 
 	MenuOptions struct {
 		Enabled    bool
@@ -200,6 +203,8 @@ func initIM() {
 	ui.ShowDemoWindow = true
 	ui.MenuOptions.Enabled = true
 	ui.MenuOptions.Float = 0.5
+
+	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
 }
 
 func evKey(key int, down bool) {
@@ -261,8 +266,8 @@ func render() {
 	showAnotherWindow()
 	showDemoWindow()
 
+	clearColor := chroma.RGBA2VEC4(ui.ClearColor)
 	// Rendering
-	clearColor := f64.Vec4{0.45, 0.55, 0.60, 1.00}
 	io := im.GetIO()
 	gl.Viewport(0, 0, int32(io.DisplaySize.X), int32(io.DisplaySize.Y))
 	gl.ClearColor(float32(clearColor.X), float32(clearColor.Y), float32(clearColor.Z), float32(clearColor.W))
@@ -278,6 +283,8 @@ func showSimpleWindow() {
 	}
 	im.Text("Hello, world!")
 	im.SliderFloat("float", &ui.SliderValue, 0, 1)
+
+	im.ColorEdit3("clear color", &ui.ClearColor)
 	im.Checkbox("Demo Window", &ui.ShowDemoWindow)
 	im.Checkbox("Another Window", &ui.ShowAnotherWindow)
 	if im.Button("Button") {
@@ -932,12 +939,33 @@ func showDemoWindow() {
 	if im.CollapsingHeader("Layout") {
 	}
 	if im.CollapsingHeader("Popups & Modal windows") {
+		if im.TreeNode("Popups") {
+			im.TreePop()
+		}
+		if im.TreeNode("Context menus") {
+			im.TreePop()
+		}
+		if im.TreeNode("Modals") {
+			im.TreePop()
+		}
+		if im.TreeNode("Menus inside a regular window") {
+			im.TreePop()
+		}
 	}
 	if im.CollapsingHeader("Columns") {
 	}
 	if im.CollapsingHeader("Filtering") {
 	}
 	if im.CollapsingHeader("Inputs, Navigation & Focus") {
+		io := im.GetIO()
+
+		im.Text("WantCaptureMouse: %v", io.WantCaptureMouse)
+		im.Text("WantCaptureKeyboard: %v", io.WantCaptureKeyboard)
+		im.Text("WantTextInput: %v", io.WantTextInput)
+		im.Text("WantSetMousePos: %v", io.WantSetMousePos)
+		im.Text("NavActive: %v, NavVisible: %v", io.NavActive, io.NavVisible)
+
+		im.Checkbox("io.MouseDrawCursor", &io.MouseDrawCursor)
 	}
 
 	im.End()
