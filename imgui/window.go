@@ -155,13 +155,13 @@ type DrawContext struct {
 	LastItemRect                  f64.Rectangle // Interaction rect
 	LastItemDisplayRect           f64.Rectangle // End-user display rect (only valid if LastItemStatusFlags & ImGuiItemStatusFlags_HasDisplayRect)
 	NavHideHighlightOneFrame      bool
-	NavHasScroll                  bool // Set when scrolling can be used (ScrollMax > 0.0f)
-	NavLayerCurrent               int  // Current layer, 0..31 (we currently only use 0..1)
-	NavLayerCurrentMask           int  // = (1 << NavLayerCurrent) used by ItemAdd prior to clipping.
-	NavLayerActiveMask            int  // Which layer have been written to (result from previous frame)
-	NavLayerActiveMaskNext        int  // Which layer have been written to (buffer for current frame)
-	MenuBarAppending              bool // FIXME: Remove this
-	MenuBarOffsetX                float64
+	NavHasScroll                  bool     // Set when scrolling can be used (ScrollMax > 0.0f)
+	NavLayerCurrent               int      // Current layer, 0..31 (we currently only use 0..1)
+	NavLayerCurrentMask           int      // = (1 << NavLayerCurrent) used by ItemAdd prior to clipping.
+	NavLayerActiveMask            int      // Which layer have been written to (result from previous frame)
+	NavLayerActiveMaskNext        int      // Which layer have been written to (buffer for current frame)
+	MenuBarAppending              bool     // FIXME: Remove this
+	MenuBarOffset                 f64.Vec2 // MenuBarOffset.x is sort of equivalent of a per-layer CursorPos.x, saved/restored as we switch to the menu bar. The only situation when MenuBarOffset.y is > 0 if when (SafeAreaPadding.y > FramePadding.y), often used on TVs.
 	ChildWindows                  []*Window
 	StateStorage                  map[ID]interface{}
 	LayoutType                    LayoutType
@@ -233,21 +233,22 @@ type PopupRef struct {
 }
 
 type NextWindowData struct {
-	PosCond            Cond
-	SizeCond           Cond
-	ContentSizeCond    Cond
-	CollapsedCond      Cond
-	SizeConstraintCond Cond
-	FocusCond          Cond
-	BgAlphaCond        Cond
-	PosVal             f64.Vec2
-	PosPivotVal        f64.Vec2
-	SizeVal            f64.Vec2
-	ContentSizeVal     f64.Vec2
-	CollapsedVal       bool
-	SizeConstraintRect f64.Rectangle // Valid if 'SetNextWindowSizeConstraint' is true
-	SizeCallback       func(*SizeCallbackData)
-	BgAlphaVal         float64
+	PosCond             Cond
+	SizeCond            Cond
+	ContentSizeCond     Cond
+	CollapsedCond       Cond
+	SizeConstraintCond  Cond
+	FocusCond           Cond
+	BgAlphaCond         Cond
+	PosVal              f64.Vec2
+	PosPivotVal         f64.Vec2
+	SizeVal             f64.Vec2
+	ContentSizeVal      f64.Vec2
+	CollapsedVal        bool
+	SizeConstraintRect  f64.Rectangle // Valid if 'SetNextWindowSizeConstraint' is true
+	SizeCallback        func(*SizeCallbackData)
+	BgAlphaVal          float64
+	MenuBarOffsetMinVal f64.Vec2 // This is not exposed publicly, so we don't clear it.
 }
 
 type DragDropFlags int
@@ -1621,7 +1622,7 @@ func (w *Window) TitleBarHeight() float64 {
 
 func (w *Window) MenuBarHeight() float64 {
 	if w.Flags&WindowFlagsMenuBar != 0 {
-		return w.CalcFontSize() + w.Ctx.Style.FramePadding.Y*2.0
+		return w.DC.MenuBarOffset.Y + w.CalcFontSize() + w.Ctx.Style.FramePadding.Y*2.0
 	}
 	return 0
 }
@@ -1659,8 +1660,8 @@ func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Ve
 	} else {
 		// When the window cannot fit all contents (either because of constraints, either because screen is too small): we are growing the size on the other axis to compensate for expected scrollbar. FIXME: Might turn bigger than DisplaySize-WindowPadding.
 		size_auto_fit = f64.Vec2{
-			f64.Clamp(size_contents.X, style.WindowMinSize.X, math.Max(style.WindowMinSize.X, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.X)),
-			f64.Clamp(size_contents.Y, style.WindowMinSize.Y, math.Max(style.WindowMinSize.Y, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.Y)),
+			f64.Clamp(size_contents.X, style.WindowMinSize.X, math.Max(style.WindowMinSize.X, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.X*2)),
+			f64.Clamp(size_contents.Y, style.WindowMinSize.Y, math.Max(style.WindowMinSize.Y, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.Y*2)),
 		}
 
 		size_auto_fit_after_constraint := c.CalcSizeAfterConstraint(window, size_auto_fit)
@@ -1715,8 +1716,7 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
 	r_screen := c.FindScreenRectForWindow(window)
 	if window.Flags&WindowFlagsChildMenu != 0 {
-		// Child menus typically request _any_ position within the parent menu item, and then our FindBestPopupWindowPos() function will move the new menu outside the parent bounds.
-		// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
+		// Child menus typically request _any_ position within the parent menu item, and then our FindBestWindowPosForPopup() function will move the new menu outside the parent bounds.			// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
 		assert(c.CurrentWindow == window)
 		parent_menu := c.CurrentWindowStack[len(c.CurrentWindowStack)-2]
 		// We want some overlap to convey the relative depth of each menu (currently the amount of overlap is hard-coded to style.ItemSpacing.x).
@@ -1996,6 +1996,25 @@ func (c *Context) SetNextWindowPos(pos f64.Vec2, cond Cond, pivot f64.Vec2) {
 	}
 }
 
+func (n *NextWindowData) Init() {
+	n.PosCond = 0
+	n.SizeCond = 0
+	n.ContentSizeCond = 0
+	n.CollapsedCond = 0
+	n.SizeConstraintCond = 0
+	n.FocusCond = 0
+	n.BgAlphaCond = 0
+	n.PosVal = f64.Vec2{0, 0}
+	n.PosPivotVal = f64.Vec2{0, 0}
+	n.SizeVal = f64.Vec2{0, 0}
+	n.ContentSizeVal = f64.Vec2{0, 0}
+	n.CollapsedVal = false
+	n.SizeConstraintRect = f64.Rectangle{}
+	n.SizeCallback = nil
+	n.BgAlphaVal = math.MaxFloat32
+	n.MenuBarOffsetMinVal = f64.Vec2{0, 0}
+}
+
 func (n *NextWindowData) Clear() {
 	n.PosCond = 0
 	n.SizeCond = 0
@@ -2061,17 +2080,15 @@ func (c *Context) Dummy(size f64.Vec2) {
 
 func (c *Context) FindScreenRectForWindow(window *Window) f64.Rectangle {
 	padding := c.Style.DisplaySafeAreaPadding
-	expand := f64.Vec2{0, 0}
 	r_screen := c.GetViewportRect()
-	if window.Size.X-r_screen.Dx() > padding.X*2 {
+	expand := f64.Vec2{0, 0}
+	if r_screen.Dx() > padding.X*2 {
 		expand.X = -padding.X
 	}
-	if window.Size.Y-r_screen.Dy() > padding.Y*2 {
+	if r_screen.Dy() > padding.Y*2 {
 		expand.Y = -padding.Y
 	}
-
-	r_screen = r_screen.Expand2(expand)
-	return r_screen
+	return r_screen.Expand2(expand)
 }
 
 func (w *Window) GetIDNoKeepAlive(str string) ID {

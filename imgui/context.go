@@ -281,6 +281,8 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.OsImePosRequest = f64.Vec2{-1.0, -1.0}
 	c.OsImePosSet = f64.Vec2{-1.0, -1.0}
 
+	c.NextWindowData.Init()
+
 	c.SettingsWindows = make(map[string]*WindowSettings)
 	c.SettingsHandlers = make(map[string]*SettingsHandler)
 	c.SettingsLoaded = false

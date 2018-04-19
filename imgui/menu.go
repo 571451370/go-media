@@ -21,8 +21,8 @@ func (c *Context) BeginMenuBar() bool {
 	c.BeginGroup()
 	c.PushStringID("##menubar")
 
-	// We don't clip with regular window clipping rectangle as it is already set to the area below. However we clip with window full rect.
-	// We remove 1 worth of rounding to Max.x to that text in long menus don't tend to display over the lower-right rounded area, which looks particularly glitchy.
+	// We don't clip with current window clipping rectangle as it is already set to the area below. However we clip with window full rect.
+	// We remove 1 worth of rounding to Max.x to that text in long menus and small windows don't tend to display over the lower-right rounded area, which looks particularly glitchy.
 	bar_rect := window.MenuBarRect()
 	clip_rect := f64.Rect(
 		math.Floor(bar_rect.Min.X+0.5),
@@ -33,7 +33,7 @@ func (c *Context) BeginMenuBar() bool {
 	clip_rect = clip_rect.Intersect(window.WindowRectClipped)
 	c.PushClipRect(clip_rect.Min, clip_rect.Max, false)
 
-	window.DC.CursorPos = f64.Vec2{bar_rect.Min.X + window.DC.MenuBarOffsetX, bar_rect.Min.Y}
+	window.DC.CursorPos = f64.Vec2{bar_rect.Min.X + window.DC.MenuBarOffset.X, bar_rect.Min.Y + window.DC.MenuBarOffset.Y}
 	window.DC.LayoutType = LayoutTypeHorizontal
 	window.DC.NavLayerCurrent++
 	window.DC.NavLayerCurrentMask <<= 1
@@ -72,7 +72,8 @@ func (c *Context) EndMenuBar() {
 	assert(window.DC.MenuBarAppending)
 	c.PopClipRect()
 	c.PopID()
-	window.DC.MenuBarOffsetX = window.DC.CursorPos.X - window.MenuBarRect().Min.X
+	// Save horizontal position so next append can reuse it. This is kinda equivalent to a per-layer CursorPos.
+	window.DC.MenuBarOffset.X = window.DC.CursorPos.X - window.MenuBarRect().Min.X
 	window.DC.GroupStack[len(window.DC.GroupStack)-1].AdvanceCursor = false
 	c.EndGroup()
 	window.DC.LayoutType = LayoutTypeVertical
@@ -104,13 +105,13 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 		c.NavWindow = window
 	}
 
-	// The reference position stored in popup_pos will be used by Begin() to find a suitable position for the child menu (using FindBestPopupWindowPos).
+	// The reference position stored in popup_pos will be used by Begin() to find a suitable position for the child menu (using FindBestWindowPosForPopup).
 	var popup_pos f64.Vec2
 	pos := window.DC.CursorPos
 	if window.DC.LayoutType == LayoutTypeHorizontal {
 		// Menu inside an horizontal menu bar
 		// Selectable extend their highlight by half ItemSpacing in each direction.
-		// For ChildMenu, the popup position will be overwritten by the call to FindBestPopupWindowPos() in Begin()
+		// For ChildMenu, the popup position will be overwritten by the call to FindBestWindowPosForPopup() in Begin()
 		popup_pos = f64.Vec2{pos.X - window.WindowPadding.X, pos.Y - style.FramePadding.Y + window.MenuBarHeight()}
 		window.DC.CursorPos.X += float64(int(style.ItemSpacing.X * 0.5))
 		c.PushStyleVar(StyleVarItemSpacing, style.ItemSpacing.Scale(2.0))
@@ -341,18 +342,21 @@ func (c *Context) EndMenu() {
 	c.EndPopup()
 }
 
+// For the main menu bar, which cannot be moved, we honor g.Style.DisplaySafeAreaPadding to ensure text can be visible on a TV set.
 func (c *Context) BeginMainMenuBar() bool {
+	c.NextWindowData.MenuBarOffsetMinVal = f64.Vec2{c.Style.DisplaySafeAreaPadding.X, math.Max(c.Style.DisplaySafeAreaPadding.Y-c.Style.FramePadding.Y, 0.0)}
 	c.SetNextWindowPos(f64.Vec2{0.0, 0.0}, 0, f64.Vec2{0, 0})
-	c.SetNextWindowSize(f64.Vec2{c.IO.DisplaySize.X, c.FontBaseSize + c.Style.FramePadding.Y*2.0}, 0)
+	c.SetNextWindowSize(f64.Vec2{c.IO.DisplaySize.X, c.NextWindowData.MenuBarOffsetMinVal.Y + c.FontBaseSize + c.Style.FramePadding.Y}, 0)
 	c.PushStyleVar(StyleVarWindowRounding, 0.0)
 	c.PushStyleVar(StyleVarWindowMinSize, f64.Vec2{0, 0})
 	windowFlags := WindowFlagsNoTitleBar | WindowFlagsNoResize | WindowFlagsNoMove | WindowFlagsNoScrollbar | WindowFlagsNoSavedSettings | WindowFlagsMenuBar
-	if !c.BeginEx("##MainMenuBar", nil, windowFlags) || !c.BeginMenuBar() {
+	is_open := c.BeginEx("##MainMenuBar", nil, windowFlags) && c.BeginMenuBar()
+	c.NextWindowData.MenuBarOffsetMinVal = f64.Vec2{0.0, 0.0}
+	if !is_open {
 		c.End()
 		c.PopStyleVarN(2)
 		return false
 	}
-	c.CurrentWindow.DC.MenuBarOffsetX += c.Style.DisplaySafeAreaPadding.X
 	return true
 }
 

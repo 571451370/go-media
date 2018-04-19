@@ -1,8 +1,6 @@
-Author: omar <omarcornut@gmail.com>  2018-04-16 13:37:00
-Committer: omar <omarcornut@gmail.com>  2018-04-17 17:36:59
-Parent: 83d97d4a9b8c4a7129bb6132500cb9f7442a373e (Fix typos KeyDown => KeysDown)
-Branches: master, remotes/origin/master
-Follows: v1.60
-Precedes: 
+commit bcac02809f46e9bd4ba190f87481f5896dbb45a3
+Author: omar <omarcornut@gmail.com>
+Date:   Wed Apr 18 21:55:12 2018 +0200
 
-    Fixed default proportional item width lagging by one frame on resize + miscellaneous minor tweaks.
+    Examples: Allegro 5: Renamed bindings from imgui_impl_a5.cpp to imgui_impl_allegro5.cpp.
+

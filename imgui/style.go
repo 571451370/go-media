@@ -93,7 +93,7 @@ type Style struct {
 	GrabRounding           float64  // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
 	ButtonTextAlign        f64.Vec2 // Alignment of button text when button is larger than text. Defaults to (0.5,0.5f) for horizontally+vertically centered.
 	DisplayWindowPadding   f64.Vec2 // Window positions are clamped to be visible within the display area by at least this amount. Only covers regular windows.
-	DisplaySafeAreaPadding f64.Vec2 // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
+	DisplaySafeAreaPadding f64.Vec2 // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
 	MouseCursorScale       float64  // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
 	AntiAliasedLines       bool     // Enable anti-aliasing on lines/borders. Disable if you are really tight on CPU/GPU.
 	AntiAliasedFill        bool     // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)
@@ -221,7 +221,7 @@ func (s *Style) Init() {
 	s.GrabRounding = 0.0                      // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
 	s.ButtonTextAlign = f64.Vec2{0.5, 0.5}    // Alignment of button text when button is larger than text.
 	s.DisplayWindowPadding = f64.Vec2{22, 22} // Window positions are clamped to be visible within the display area by at least this amount. Only covers regular windows.
-	s.DisplaySafeAreaPadding = f64.Vec2{4, 4} // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
+	s.DisplaySafeAreaPadding = f64.Vec2{3, 3} // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
 	s.MouseCursorScale = 1.0                  // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
 	s.AntiAliasedLines = true                 // Enable anti-aliasing on lines/borders. Disable if you are really short on CPU/GPU.
 	s.AntiAliasedFill = true                  // Enable anti-aliasing on filled shapes (rounded rectangles, circles, etc.)

@@ -517,6 +517,9 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			}
 		}
 
+		window.DC.MenuBarOffset.X = math.Max(math.Max(window.WindowPadding.X, style.ItemSpacing.X), c.NextWindowData.MenuBarOffsetMinVal.X)
+		window.DC.MenuBarOffset.Y = c.NextWindowData.MenuBarOffsetMinVal.Y
+
 		// Collapse window by double-clicking on title bar
 		// At this point we don't have a clipping rectangle setup yet, so we can use the title bar area for hit detection and drawing
 		if flags&WindowFlagsNoTitleBar == 0 && flags&WindowFlagsNoCollapse == 0 {
@@ -680,7 +683,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		}
 
 		// Clamp position so it stays visible
-		if flags&WindowFlagsChildWindow == 0 && flags&WindowFlagsTooltip == 0 {
+		if flags&WindowFlagsChildWindow == 0 {
 			// Ignore zero-sized display explicitly to avoid losing positions if a window manager reports zero-sized window when initializing or minimizing.
 			if !window_pos_set_by_api && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0 && c.IO.DisplaySize.X > 0 && c.IO.DisplaySize.Y > 0 {
 				padding := style.DisplayWindowPadding.Max(style.DisplaySafeAreaPadding)
@@ -960,7 +963,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		window.DC.NavLayerActiveMask = window.DC.NavLayerActiveMaskNext
 		window.DC.NavLayerActiveMaskNext = 0x00
 		window.DC.MenuBarAppending = false
-		window.DC.MenuBarOffsetX = math.Max(window.WindowPadding.X, style.ItemSpacing.X)
 		window.DC.LogLinePosY = window.DC.CursorPos.Y - 9999
 		window.DC.ChildWindows = window.DC.ChildWindows[:0]
 		window.DC.LayoutType = LayoutTypeVertical
