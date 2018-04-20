@@ -1,6 +1,6 @@
-commit bcac02809f46e9bd4ba190f87481f5896dbb45a3
+commit f93dce95138277e2ca45d4af1b5473770ab24768
 Author: omar <omarcornut@gmail.com>
-Date:   Wed Apr 18 21:55:12 2018 +0200
+Date:   Thu Apr 19 16:21:32 2018 +0200
 
-    Examples: Allegro 5: Renamed bindings from imgui_impl_a5.cpp to imgui_impl_allegro5.cpp.
+    InputText: Tweak to make the if statement more readable + update Changelog (#1747)
 

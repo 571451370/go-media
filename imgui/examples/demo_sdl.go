@@ -101,6 +101,14 @@ type UI struct {
 		ClosableGroup                  bool
 		WrapWidth                      float64
 		UTF8_Buf                       [32]byte
+		Layout                         struct {
+			Line              int
+			DisableMouseWheel bool
+			DisableMenu       bool
+			WidgetsWidth      struct {
+				F float64
+			}
+		}
 	}
 
 	Colors struct {
@@ -950,8 +958,33 @@ func showDemoWindow() {
 			im.TreePop()
 		}
 	}
+
 	if im.CollapsingHeader("Layout") {
+		if im.TreeNode("Child regions") {
+			im.Checkbox("Disable Mouse Wheel", &ui.Widgets.Layout.DisableMouseWheel)
+			im.Checkbox("Disable Menu", &ui.Widgets.Layout.DisableMenu)
+			im.Button("Goto")
+			im.SameLine()
+			im.PushItemWidth(100)
+			im.InputIntEx("##Line", &ui.Widgets.Layout.Line, 0, 0, imgui.InputTextFlagsEnterReturnsTrue)
+			im.PopItemWidth()
+
+			// Child 1: no border, enable horizontal scrollbar
+			{
+
+			}
+
+			// Child 2: rounded border
+			{
+			}
+			im.TreePop()
+		}
+
+		if im.TreeNode("Widgets Width") {
+			im.TreePop()
+		}
 	}
+
 	if im.CollapsingHeader("Popups & Modal windows") {
 		if im.TreeNode("Popups") {
 			im.TreePop()
