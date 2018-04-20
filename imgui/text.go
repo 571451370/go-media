@@ -573,7 +573,15 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 		if io.InputCharacters[0] != 0 {
 			// Process text input (before we check for Return because using some IME will effectively send a Return?)
 			// We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
-			if !(io.KeyCtrl && !io.KeyAlt) && is_editable && !user_nav_input_start {
+			ignore_inputs := (io.KeyCtrl && !io.KeyAlt) || (io.OptMacOSXBehaviors && io.KeySuper)
+			if !ignore_inputs && is_editable && !user_nav_input_start {
+				for n := 0; n < len(io.InputCharacters); n++ {
+					// Insert character if they pass filtering
+					ch := io.InputCharacters[n]
+					if c.InputTextFilterCharacter(&ch, flags, callback) {
+						edit_state.OnKeyPressed(int(ch))
+					}
+				}
 			}
 			// Consume characters
 			for i := range c.IO.InputCharacters {

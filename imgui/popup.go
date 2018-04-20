@@ -203,3 +203,20 @@ func (c *Context) OpenPopupOnItemClick(str_id string, mouse_button int) bool {
 	}
 	return false
 }
+
+func (c *Context) BeginPopupContextWindow() bool {
+	return c.BeginPopupContextWindowEx("", 1, true)
+}
+
+func (c *Context) BeginPopupContextWindowEx(str_id string, mouse_button int, also_over_items bool) bool {
+	if str_id == "" {
+		str_id = "window_context"
+	}
+	id := c.CurrentWindow.GetID(str_id)
+	if c.IsMouseReleased(mouse_button) && c.IsWindowHovered(HoveredFlagsAllowWhenBlockedByPopup) {
+		if also_over_items || !c.IsAnyItemHovered() {
+			c.OpenPopupEx(id)
+		}
+	}
+	return c.BeginPopupEx(id, WindowFlagsAlwaysAutoResize|WindowFlagsNoTitleBar|WindowFlagsNoSavedSettings)
+}

@@ -1588,6 +1588,17 @@ func (c *Context) SetWindowPos(window *Window, pos f64.Vec2, cond Cond) {
 	window.DC.CursorMaxPos = window.DC.CursorMaxPos.Add(window.Pos.Sub(old_pos))
 }
 
+func (c *Context) SetCurrentWindowSize(size f64.Vec2, cond Cond) {
+	c.SetWindowSize(c.CurrentWindow, size, cond)
+}
+
+func (c *Context) SetWindowSizeByName(name string, size f64.Vec2, cond Cond) {
+	window := c.FindWindowByName(name)
+	if window != nil {
+		c.SetWindowSize(window, size, cond)
+	}
+}
+
 func (c *Context) SetWindowSize(window *Window, size f64.Vec2, cond Cond) {
 	// Test condition (NB: bit 0 is always true) and clear flags for next time
 	if cond != 0 && window.SetWindowSizeAllowFlags&cond == 0 {
@@ -2148,4 +2159,51 @@ func (c *Context) GetItemRectMin() f64.Vec2 {
 func (c *Context) GetItemRectMax() f64.Vec2 {
 	window := c.GetCurrentWindowRead()
 	return window.DC.LastItemRect.Max
+}
+
+func (c *Context) SetNextWindowBgAlpha(alpha float64) {
+	// Using a Cond member for consistency (may transition all of them to single flag set for fast Clear() op)
+	c.NextWindowData.BgAlphaVal = alpha
+	c.NextWindowData.BgAlphaCond = CondAlways
+}
+
+func (c *Context) IsWindowHovered(flags HoveredFlags) bool {
+	// Flags not supported by this function
+	assert(flags&HoveredFlagsAllowWhenOverlapped == 0)
+	if flags&HoveredFlagsAnyWindow != 0 {
+		if c.HoveredWindow == nil {
+			return false
+		}
+	} else {
+		switch flags & (HoveredFlagsRootWindow | HoveredFlagsChildWindows) {
+		case HoveredFlagsRootWindow | HoveredFlagsChildWindows:
+			if c.HoveredRootWindow != c.CurrentWindow.RootWindow {
+				return false
+			}
+		case HoveredFlagsRootWindow:
+			if c.HoveredWindow != c.CurrentWindow.RootWindow {
+				return false
+			}
+		case HoveredFlagsChildWindows:
+			if c.HoveredWindow == nil || !c.IsWindowChildOf(c.HoveredWindow, c.CurrentWindow) {
+				return false
+			}
+		default:
+			if c.HoveredWindow != c.CurrentWindow {
+				return false
+			}
+		}
+	}
+
+	if !c.IsWindowContentHoverable(c.HoveredRootWindow, flags) {
+		return false
+	}
+
+	if flags&HoveredFlagsAllowWhenBlockedByActiveItem == 0 {
+		if c.ActiveId != 0 && !c.ActiveIdAllowOverlap && c.ActiveId != c.HoveredWindow.MoveId {
+			return false
+		}
+	}
+
+	return true
 }

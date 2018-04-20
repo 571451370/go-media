@@ -69,6 +69,20 @@ type UI struct {
 
 	ClearColor color.RGBA
 
+	AppAutoResize struct {
+		Lines int
+	}
+
+	AppConstrainedResize struct {
+		AutoResize   bool
+		Type         int
+		DisplayLines int
+	}
+
+	AppFixedOverlay struct {
+		Corner int
+	}
+
 	MenuOptions struct {
 		Enabled    bool
 		Float      float64
@@ -1033,13 +1047,135 @@ func showExampleAppPropertyEditor() {
 func showExampleAppLongText() {
 }
 
+// Demonstrate creating a window which gets auto-resized according to its content.
 func showExampleAppAutoResize() {
+	if !im.BeginEx("Example: Auto-resizing window", &ui.ShowAppAutoResize, imgui.WindowFlagsAlwaysAutoResize) {
+		im.End()
+		return
+	}
+
+	im.Text("Window will resize every-frame to the size of its content.\nNote that you probably don't want to query the window size to\noutput your content because that would create a feedback loop.")
+	im.SliderIntEx("Number of lines", &ui.AppAutoResize.Lines, 1, 20, "")
+	for i := 0; i < ui.AppAutoResize.Lines; i++ {
+		// Pad with space to extend size horizontally
+		im.Text("%*sThis is line %d", i*4, "", i)
+	}
+	im.End()
 }
 
+// Demonstrate creating a window with custom resize constraints.
 func showExampleAppConstrainedResize() {
+	Square := func(data *imgui.SizeCallbackData) {
+		data.DesiredSize = f64.Vec2{math.Max(data.DesiredSize.X, data.DesiredSize.Y), math.Max(data.DesiredSize.X, data.DesiredSize.Y)}
+	}
+
+	Step := func(data *imgui.SizeCallbackData) {
+		step := 10.0
+		data.DesiredSize = f64.Vec2{float64(int(data.DesiredSize.X/step+0.5)) * step, float64(int(data.DesiredSize.Y/step+0.5)) * step}
+	}
+
+	switch ui.AppConstrainedResize.Type {
+	case 0:
+		// Vertical only
+		im.SetNextWindowSizeConstraints(f64.Vec2{-1, 0}, f64.Vec2{-1, math.MaxFloat32}, nil)
+	case 1:
+		// Horizontal only
+		im.SetNextWindowSizeConstraints(f64.Vec2{0, -1}, f64.Vec2{math.MaxFloat32, -1}, nil)
+	case 2:
+		// Width > 100, Height > 100
+		im.SetNextWindowSizeConstraints(f64.Vec2{100, 100}, f64.Vec2{math.MaxFloat32, math.MaxFloat32}, nil)
+	case 3:
+		// Width 400-500
+		im.SetNextWindowSizeConstraints(f64.Vec2{400, -1}, f64.Vec2{500, -1}, nil)
+	case 4:
+		// Height 400-500
+		im.SetNextWindowSizeConstraints(f64.Vec2{-1, 400}, f64.Vec2{-1, 500}, nil)
+	case 5:
+		// Always Square
+		im.SetNextWindowSizeConstraints(f64.Vec2{0, 0}, f64.Vec2{math.MaxFloat32, math.MaxFloat32}, Square)
+	case 6:
+		// Fixed Step
+		im.SetNextWindowSizeConstraints(f64.Vec2{0, 0}, f64.Vec2{math.MaxFloat32, math.MaxFloat32}, Step)
+	}
+
+	var flags imgui.WindowFlags
+	if ui.AppConstrainedResize.AutoResize {
+		flags = imgui.WindowFlagsAlwaysAutoResize
+	}
+	if im.BeginEx("Example: Constrained Resize", &ui.ShowAppAutoResize, flags) {
+		desc := []string{
+			"Resize vertical only",
+			"Resize horizontal only",
+			"Width > 100, Height > 100",
+			"Width 400-500",
+			"Height 400-500",
+			"Custom: Always Square",
+			"Custom: Fixed Steps (100)",
+		}
+		if im.Button("200x200") {
+			im.SetCurrentWindowSize(f64.Vec2{200, 200}, 0)
+		}
+		im.SameLine()
+		if im.Button("500x500") {
+			im.SetCurrentWindowSize(f64.Vec2{500, 500}, 0)
+		}
+		im.SameLine()
+		if im.Button("800x500") {
+			im.SetCurrentWindowSize(f64.Vec2{800, 200}, 0)
+		}
+		im.PushItemWidth(200)
+		im.ComboString("Constraint", &ui.AppConstrainedResize.Type, desc)
+		im.DragIntEx("Lines", &ui.AppConstrainedResize.DisplayLines, 0.2, 1, 100, "")
+		im.PopItemWidth()
+		im.Checkbox("Auto-resize", &ui.AppConstrainedResize.AutoResize)
+		for i := 0; i < ui.AppConstrainedResize.DisplayLines; i++ {
+			im.Text("%*sHello, sailor! Making this line long enough for the example.", i*4, "")
+		}
+	}
+	im.End()
 }
 
+// Demonstrate creating a simple static window with no decoration + a context-menu to choose which corner of the screen to use.
 func showExampleAppFixedOverlay() {
+	const DISTANCE = 10.0
+	window_pos := f64.Vec2{DISTANCE, DISTANCE}
+	window_pos_pivot := f64.Vec2{0, 0}
+	if ui.AppFixedOverlay.Corner&1 != 0 {
+		window_pos.X = im.GetIO().DisplaySize.Y - DISTANCE
+		window_pos_pivot.X = 1
+	}
+	if ui.AppFixedOverlay.Corner&2 != 0 {
+		window_pos.Y = im.GetIO().DisplaySize.Y - DISTANCE
+		window_pos_pivot.Y = 1
+	}
+	im.SetNextWindowPos(window_pos, imgui.CondAlways, window_pos_pivot)
+	// Transparent background
+	im.SetNextWindowBgAlpha(0.3)
+	window_flags := imgui.WindowFlagsNoTitleBar | imgui.WindowFlagsNoResize | imgui.WindowFlagsAlwaysAutoResize | imgui.WindowFlagsNoMove | imgui.WindowFlagsNoSavedSettings | imgui.WindowFlagsNoFocusOnAppearing | imgui.WindowFlagsNoNav
+	if im.BeginEx("Example: Fixed Overlay", &ui.ShowAppFixedOverlay, window_flags) {
+		im.Text("Simple overlay\nin the corner of the screen.\n(right-click to change position)")
+		im.Separator()
+		im.Text("Mouse Position: (%.1f,%.1f)", im.GetIO().MousePos.X, im.GetIO().MousePos.Y)
+		if im.BeginPopupContextWindow() {
+			if im.MenuItemEx("Top-left", "", ui.AppFixedOverlay.Corner == 0, true) {
+				ui.AppFixedOverlay.Corner = 0
+			}
+			if im.MenuItemEx("Top-right", "", ui.AppFixedOverlay.Corner == 1, true) {
+				ui.AppFixedOverlay.Corner = 1
+			}
+			if im.MenuItemEx("Bottom-left", "", ui.AppFixedOverlay.Corner == 2, true) {
+				ui.AppFixedOverlay.Corner = 2
+			}
+			if im.MenuItemEx("Bottom-right", "", ui.AppFixedOverlay.Corner == 3, true) {
+				ui.AppFixedOverlay.Corner = 3
+			}
+			if im.MenuItem("Close") {
+				ui.ShowAppFixedOverlay = false
+			}
+			im.EndPopup()
+		}
+		im.End()
+	}
 }
 
 // Demonstrate using "##" and "###" in identifiers to manipulate ID generation.
