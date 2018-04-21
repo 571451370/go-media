@@ -999,8 +999,70 @@ func showDemoWindow() {
 		}
 	}
 	if im.CollapsingHeader("Columns") {
+		im.PushStringID("Columns")
+
+		// Basic columns
+		if im.TreeNode("Basic") {
+			im.Text("Without border:")
+			im.Columns(3, "mycolumns3", false) // 3-ways, no border
+			im.Separator()
+			for n := 0; n < 14; n++ {
+				label := fmt.Sprintf("Item %d", n)
+				if im.Selectable(label) {
+				}
+				im.NextColumn()
+			}
+			im.Columns(1, "", true)
+			im.Separator()
+
+			im.Text("With border:")
+			im.Columns(4, "mycolumns", true) // 4-ways, with border
+			im.Separator()
+
+			im.Text("ID")
+			im.NextColumn()
+			im.Text("Name")
+			im.NextColumn()
+			im.Text("Path")
+			im.NextColumn()
+			im.Text("Hovered")
+			im.NextColumn()
+			im.Separator()
+
+			names := []string{"One", "Two", "Three"}
+			paths := []string{"/path/one", "/path/two", "/path/three"}
+			selected := -1
+			for i := range names {
+				label := fmt.Sprintf("%04d", i)
+				if im.SelectableEx(label, selected == i, imgui.SelectableFlagsSpanAllColumns, f64.Vec2{0, 0}) {
+					selected = i
+				}
+				hovered := im.IsItemHovered()
+				im.NextColumn()
+				im.Text(names[i])
+				im.NextColumn()
+				im.Text(paths[i])
+				im.NextColumn()
+				im.Text("%v", hovered)
+				im.NextColumn()
+			}
+			im.Columns(1, "", true)
+			im.Separator()
+			im.TreePop()
+		}
 	}
+
 	if im.CollapsingHeader("Filtering") {
+		im.Text("Filter usage:\n" +
+			"  \"\"         display all lines\n" +
+			"  \"xxx\"      display lines containing \"xxx\"\n" +
+			"  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n" +
+			"  \"-xxx\"     hide lines containing \"xxx\"",
+		)
+		lines := []string{"aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp", "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"}
+		for i := range lines {
+			im.BulletText(lines[i])
+		}
 	}
 	if im.CollapsingHeader("Inputs, Navigation & Focus") {
 		io := im.GetIO()

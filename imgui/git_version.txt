@@ -1,6 +1,6 @@
-commit f93dce95138277e2ca45d4af1b5473770ab24768
+commit 037d5a7e98537b9eb14ca1bbd8a8f8ddd2c9dd62
 Author: omar <omarcornut@gmail.com>
-Date:   Thu Apr 19 16:21:32 2018 +0200
+Date:   Fri Apr 20 16:03:21 2018 +0200
 
-    InputText: Tweak to make the if statement more readable + update Changelog (#1747)
+    Columns: Fixed a bug introduced in 1.51 where columns would affect the contents size of their container, often creating feedback loops when ImGuiWindowFlags_AlwaysAutoResize was used. (#1760)
 
