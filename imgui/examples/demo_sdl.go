@@ -287,7 +287,6 @@ func render() {
 	showSimpleWindow()
 	showAnotherWindow()
 	showDemoWindow()
-
 	clearColor := chroma.RGBA2VEC4(ui.ClearColor)
 	// Rendering
 	io := im.GetIO()
@@ -1058,6 +1057,7 @@ func showExampleAppMainMenuBar() {
 			}
 			if im.MenuItemEx("Paste", "Ctrl+V", false, true) {
 			}
+			im.EndMenu()
 		}
 		im.EndMainMenuBar()
 	}

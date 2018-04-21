@@ -156,7 +156,7 @@ func (c *Context) EndColumns() {
 	window.DC.CursorPos.Y = columns.CellMaxY
 	if columns.Flags&ColumnsFlagsGrowParentContentsSize == 0 {
 		// Restore cursor max pos, as columns don't grow parent
-		window.DC.CursorMaxPos.X = math.Max(columns.StartMaxPosX, columns.MaxX)
+		window.DC.CursorMaxPos.X = columns.StartMaxPosX
 	}
 
 	// Draw columns borders and handle resize

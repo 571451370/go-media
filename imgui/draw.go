@@ -509,7 +509,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			window.WindowBorderSize = style.WindowBorderSize
 		}
 		window.WindowPadding = style.WindowPadding
-
 		if flags&WindowFlagsChildWindow != 0 && flags&(WindowFlagsAlwaysUseWindowPadding|WindowFlagsPopup) == 0 && window.WindowBorderSize == 0 {
 			window.WindowPadding = f64.Vec2{0, 0}
 			if flags&WindowFlagsMenuBar != 0 {
@@ -570,12 +569,12 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		if flags&WindowFlagsAlwaysAutoResize != 0 && !window.Collapsed {
 			// Using SetNextWindowSize() overrides ImGuiWindowFlags_AlwaysAutoResize, so it can be used on tooltips/popups, etc.
 			if !window_size_x_set_by_api {
+				window.SizeFull.X = size_auto_fit.X
 				size_full_modified.X = size_auto_fit.X
-				window.SizeFull.X = size_full_modified.X
 			}
 			if !window_size_y_set_by_api {
+				window.SizeFull.Y = size_auto_fit.Y
 				size_full_modified.Y = size_auto_fit.Y
-				window.SizeFull.Y = size_full_modified.Y
 			}
 		} else if window.AutoFitFramesX > 0 || window.AutoFitFramesY > 0 {
 			// Auto-fit only grows during the first few frames
@@ -951,6 +950,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			window.DC.IndentX + window.DC.ColumnsOffsetX,
 			window.TitleBarHeight() + window.MenuBarHeight() + window.WindowPadding.Y - window.Scroll.Y,
 		})
+
 		window.DC.CursorPos = window.DC.CursorStartPos
 		window.DC.CursorPosPrevLine = window.DC.CursorPos
 		window.DC.CursorMaxPos = window.DC.CursorStartPos

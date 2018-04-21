@@ -1322,12 +1322,13 @@ func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags)
 	window.Flags = flags
 	c.WindowsById[name] = window
 
+	// Use SetWindowPos() or SetNextWindowPos() with the appropriate condition flag to change the initial position of a window.
+	window.Pos = f64.Vec2{60, 60}
+	window.PosFloat = window.Pos
+
 	// User can disable loading and saving of settings. Tooltip and child windows also don't store settings.
 	if flags&WindowFlagsNoSavedSettings == 0 {
 		// Retrieve settings from .ini file
-		// Use SetWindowPos() or SetNextWindowPos() with the appropriate condition flag to change the initial position of a window.
-		window.Pos = f64.Vec2{60, 60}
-		window.PosFloat = window.Pos
 
 		settings := c.FindWindowSettings(window.Name)
 		if settings != nil {
@@ -1672,7 +1673,7 @@ func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Ve
 		// When the window cannot fit all contents (either because of constraints, either because screen is too small): we are growing the size on the other axis to compensate for expected scrollbar. FIXME: Might turn bigger than DisplaySize-WindowPadding.
 		size_auto_fit = f64.Vec2{
 			f64.Clamp(size_contents.X, style.WindowMinSize.X, math.Max(style.WindowMinSize.X, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.X*2)),
-			f64.Clamp(size_contents.Y, style.WindowMinSize.Y, math.Max(style.WindowMinSize.Y, c.IO.DisplaySize.X-c.Style.DisplaySafeAreaPadding.Y*2)),
+			f64.Clamp(size_contents.Y, style.WindowMinSize.Y, math.Max(style.WindowMinSize.Y, c.IO.DisplaySize.Y-c.Style.DisplaySafeAreaPadding.Y*2)),
 		}
 
 		size_auto_fit_after_constraint := c.CalcSizeAfterConstraint(window, size_auto_fit)
@@ -1727,7 +1728,7 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
 	r_screen := c.FindScreenRectForWindow(window)
 	if window.Flags&WindowFlagsChildMenu != 0 {
-		// Child menus typically request _any_ position within the parent menu item, and then our FindBestWindowPosForPopup() function will move the new menu outside the parent bounds.			// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
+		// Child menus typically request _any_ position within the parent menu item, and then our FindBestWindowPosForPopup() function will move the new menu outside the parent bounds.				// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
 		assert(c.CurrentWindow == window)
 		parent_menu := c.CurrentWindowStack[len(c.CurrentWindowStack)-2]
 		// We want some overlap to convey the relative depth of each menu (currently the amount of overlap is hard-coded to style.ItemSpacing.x).

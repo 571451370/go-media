@@ -43,9 +43,6 @@ const (
 	ColResizeGrip
 	ColResizeGripHovered
 	ColResizeGripActive
-	ColCloseButton
-	ColCloseButtonHovered
-	ColCloseButtonActive
 	ColPlotLines
 	ColPlotLinesHovered
 	ColPlotHistogram
@@ -171,9 +168,6 @@ func (c *Context) StyleColorsDark(style *Style) {
 	colors[ColResizeGrip] = f64.Vec4{0.26, 0.59, 0.98, 0.25}
 	colors[ColResizeGripHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.67}
 	colors[ColResizeGripActive] = f64.Vec4{0.26, 0.59, 0.98, 0.95}
-	colors[ColCloseButton] = f64.Vec4{0.41, 0.41, 0.41, 0.50}
-	colors[ColCloseButtonHovered] = f64.Vec4{0.98, 0.39, 0.36, 1.00}
-	colors[ColCloseButtonActive] = f64.Vec4{0.98, 0.39, 0.36, 1.00}
 	colors[ColPlotLines] = f64.Vec4{0.61, 0.61, 0.61, 1.00}
 	colors[ColPlotLinesHovered] = f64.Vec4{1.00, 0.43, 0.35, 1.00}
 	colors[ColPlotHistogram] = f64.Vec4{0.90, 0.70, 0.00, 1.00}
@@ -407,12 +401,6 @@ func (c *Context) GetStyleColorName(idx Col) string {
 		return "ResizeGripHovered"
 	case ColResizeGripActive:
 		return "ResizeGripActive"
-	case ColCloseButton:
-		return "CloseButton"
-	case ColCloseButtonHovered:
-		return "CloseButtonHovered"
-	case ColCloseButtonActive:
-		return "CloseButtonActive"
 	case ColPlotLines:
 		return "PlotLines"
 	case ColPlotLinesHovered:
