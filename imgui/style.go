@@ -129,6 +129,109 @@ const (
 	StyleVarCOUNT
 )
 
+func (c *Context) StyleColorsClassic(style *Style) {
+	if style == nil {
+		style = c.GetStyle()
+	}
+	colors := style.Colors[:]
+
+	colors[ColText] = f64.Vec4{0.90, 0.90, 0.90, 1.00}
+	colors[ColTextDisabled] = f64.Vec4{0.60, 0.60, 0.60, 1.00}
+	colors[ColWindowBg] = f64.Vec4{0.00, 0.00, 0.00, 0.70}
+	colors[ColChildBg] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
+	colors[ColPopupBg] = f64.Vec4{0.11, 0.11, 0.14, 0.92}
+	colors[ColBorder] = f64.Vec4{0.50, 0.50, 0.50, 0.50}
+	colors[ColBorderShadow] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
+	colors[ColFrameBg] = f64.Vec4{0.43, 0.43, 0.43, 0.39}
+	colors[ColFrameBgHovered] = f64.Vec4{0.47, 0.47, 0.69, 0.40}
+	colors[ColFrameBgActive] = f64.Vec4{0.42, 0.41, 0.64, 0.69}
+	colors[ColTitleBg] = f64.Vec4{0.27, 0.27, 0.54, 0.83}
+	colors[ColTitleBgActive] = f64.Vec4{0.32, 0.32, 0.63, 0.87}
+	colors[ColTitleBgCollapsed] = f64.Vec4{0.40, 0.40, 0.80, 0.20}
+	colors[ColMenuBarBg] = f64.Vec4{0.40, 0.40, 0.55, 0.80}
+	colors[ColScrollbarBg] = f64.Vec4{0.20, 0.25, 0.30, 0.60}
+	colors[ColScrollbarGrab] = f64.Vec4{0.40, 0.40, 0.80, 0.30}
+	colors[ColScrollbarGrabHovered] = f64.Vec4{0.40, 0.40, 0.80, 0.40}
+	colors[ColScrollbarGrabActive] = f64.Vec4{0.41, 0.39, 0.80, 0.60}
+	colors[ColCheckMark] = f64.Vec4{0.90, 0.90, 0.90, 0.50}
+	colors[ColSliderGrab] = f64.Vec4{1.00, 1.00, 1.00, 0.30}
+	colors[ColSliderGrabActive] = f64.Vec4{0.41, 0.39, 0.80, 0.60}
+	colors[ColButton] = f64.Vec4{0.35, 0.40, 0.61, 0.62}
+	colors[ColButtonHovered] = f64.Vec4{0.40, 0.48, 0.71, 0.79}
+	colors[ColButtonActive] = f64.Vec4{0.46, 0.54, 0.80, 1.00}
+	colors[ColHeader] = f64.Vec4{0.40, 0.40, 0.90, 0.45}
+	colors[ColHeaderHovered] = f64.Vec4{0.45, 0.45, 0.90, 0.80}
+	colors[ColHeaderActive] = f64.Vec4{0.53, 0.53, 0.87, 0.80}
+	colors[ColSeparator] = f64.Vec4{0.50, 0.50, 0.50, 1.00}
+	colors[ColSeparatorHovered] = f64.Vec4{0.60, 0.60, 0.70, 1.00}
+	colors[ColSeparatorActive] = f64.Vec4{0.70, 0.70, 0.90, 1.00}
+	colors[ColResizeGrip] = f64.Vec4{1.00, 1.00, 1.00, 0.16}
+	colors[ColResizeGripHovered] = f64.Vec4{0.78, 0.82, 1.00, 0.60}
+	colors[ColResizeGripActive] = f64.Vec4{0.78, 0.82, 1.00, 0.90}
+	colors[ColPlotLines] = f64.Vec4{1.00, 1.00, 1.00, 1.00}
+	colors[ColPlotLinesHovered] = f64.Vec4{0.90, 0.70, 0.00, 1.00}
+	colors[ColPlotHistogram] = f64.Vec4{0.90, 0.70, 0.00, 1.00}
+	colors[ColPlotHistogramHovered] = f64.Vec4{1.00, 0.60, 0.00, 1.00}
+	colors[ColTextSelectedBg] = f64.Vec4{0.00, 0.00, 1.00, 0.35}
+	colors[ColModalWindowDarkening] = f64.Vec4{0.20, 0.20, 0.20, 0.35}
+	colors[ColDragDropTarget] = f64.Vec4{1.00, 1.00, 0.00, 0.90}
+	colors[ColNavHighlight] = colors[ColHeaderHovered]
+	colors[ColNavWindowingHighlight] = f64.Vec4{1.00, 1.00, 1.00, 0.70}
+}
+
+// Those light colors are better suited with a thicker font than the default one + FrameBorder
+func (c *Context) StyleColorsLight(style *Style) {
+	if style == nil {
+		style = c.GetStyle()
+	}
+	colors := style.Colors[:]
+
+	colors[ColText] = f64.Vec4{0.00, 0.00, 0.00, 1.00}
+	colors[ColTextDisabled] = f64.Vec4{0.60, 0.60, 0.60, 1.00}
+	//colors[ColTextHovered]          = f64.Vec4{1.00, 1.00, 1.00, 1.00}
+	//colors[ColTextActive]           = f64.Vec4{1.00, 1.00, 0.00, 1.00}
+	colors[ColWindowBg] = f64.Vec4{0.94, 0.94, 0.94, 1.00}
+	colors[ColChildBg] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
+	colors[ColPopupBg] = f64.Vec4{1.00, 1.00, 1.00, 0.98}
+	colors[ColBorder] = f64.Vec4{0.00, 0.00, 0.00, 0.30}
+	colors[ColBorderShadow] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
+	colors[ColFrameBg] = f64.Vec4{1.00, 1.00, 1.00, 1.00}
+	colors[ColFrameBgHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.40}
+	colors[ColFrameBgActive] = f64.Vec4{0.26, 0.59, 0.98, 0.67}
+	colors[ColTitleBg] = f64.Vec4{0.96, 0.96, 0.96, 1.00}
+	colors[ColTitleBgActive] = f64.Vec4{0.82, 0.82, 0.82, 1.00}
+	colors[ColTitleBgCollapsed] = f64.Vec4{1.00, 1.00, 1.00, 0.51}
+	colors[ColMenuBarBg] = f64.Vec4{0.86, 0.86, 0.86, 1.00}
+	colors[ColScrollbarBg] = f64.Vec4{0.98, 0.98, 0.98, 0.53}
+	colors[ColScrollbarGrab] = f64.Vec4{0.69, 0.69, 0.69, 0.80}
+	colors[ColScrollbarGrabHovered] = f64.Vec4{0.49, 0.49, 0.49, 0.80}
+	colors[ColScrollbarGrabActive] = f64.Vec4{0.49, 0.49, 0.49, 1.00}
+	colors[ColCheckMark] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColSliderGrab] = f64.Vec4{0.26, 0.59, 0.98, 0.78}
+	colors[ColSliderGrabActive] = f64.Vec4{0.46, 0.54, 0.80, 0.60}
+	colors[ColButton] = f64.Vec4{0.26, 0.59, 0.98, 0.40}
+	colors[ColButtonHovered] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColButtonActive] = f64.Vec4{0.06, 0.53, 0.98, 1.00}
+	colors[ColHeader] = f64.Vec4{0.26, 0.59, 0.98, 0.31}
+	colors[ColHeaderHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.80}
+	colors[ColHeaderActive] = f64.Vec4{0.26, 0.59, 0.98, 1.00}
+	colors[ColSeparator] = f64.Vec4{0.39, 0.39, 0.39, 1.00}
+	colors[ColSeparatorHovered] = f64.Vec4{0.14, 0.44, 0.80, 0.78}
+	colors[ColSeparatorActive] = f64.Vec4{0.14, 0.44, 0.80, 1.00}
+	colors[ColResizeGrip] = f64.Vec4{0.80, 0.80, 0.80, 0.56}
+	colors[ColResizeGripHovered] = f64.Vec4{0.26, 0.59, 0.98, 0.67}
+	colors[ColResizeGripActive] = f64.Vec4{0.26, 0.59, 0.98, 0.95}
+	colors[ColPlotLines] = f64.Vec4{0.39, 0.39, 0.39, 1.00}
+	colors[ColPlotLinesHovered] = f64.Vec4{1.00, 0.43, 0.35, 1.00}
+	colors[ColPlotHistogram] = f64.Vec4{0.90, 0.70, 0.00, 1.00}
+	colors[ColPlotHistogramHovered] = f64.Vec4{1.00, 0.45, 0.00, 1.00}
+	colors[ColTextSelectedBg] = f64.Vec4{0.26, 0.59, 0.98, 0.35}
+	colors[ColModalWindowDarkening] = f64.Vec4{0.20, 0.20, 0.20, 0.35}
+	colors[ColDragDropTarget] = f64.Vec4{0.26, 0.59, 0.98, 0.95}
+	colors[ColNavHighlight] = colors[ColHeaderHovered]
+	colors[ColNavWindowingHighlight] = f64.Vec4{0.70, 0.70, 0.70, 0.70}
+}
+
 func (c *Context) StyleColorsDark(style *Style) {
 	if style == nil {
 		style = c.GetStyle()
