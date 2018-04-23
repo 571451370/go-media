@@ -550,13 +550,13 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 		if is_multiline {
 			mouse_y = io.MousePos.Y - draw_window.DC.CursorPos.Y - style.FramePadding.Y
 		}
-		// OS X style: Double click selects by word instead of selecting whole text
-		osx_double_click_selects_words := io.OptMacOSXBehaviors
-		if select_all || (hovered && !osx_double_click_selects_words && io.MouseDoubleClicked[0]) {
+
+		is_osx := io.OptMacOSXBehaviors
+		if select_all || (hovered && !is_osx && io.MouseDoubleClicked[0]) {
 			edit_state.SelectAll()
 			edit_state.SelectedAllMouseLock = true
-		} else if hovered && osx_double_click_selects_words && io.MouseDoubleClicked[0] {
-			// Select a word only, OS X style (by simulating keystrokes)
+		} else if hovered && is_osx && io.MouseDoubleClicked[0] {
+			// Double-click select a word only, OS X style (by simulating keystrokes)
 			edit_state.OnKeyPressed(stbte.K_WORDLEFT)
 			edit_state.OnKeyPressed(stbte.K_WORDRIGHT | stbte.K_SHIFT)
 		} else if io.MouseClicked[0] && !edit_state.SelectedAllMouseLock {
@@ -573,7 +573,7 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 		if io.InputCharacters[0] != 0 {
 			// Process text input (before we check for Return because using some IME will effectively send a Return?)
 			// We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
-			ignore_inputs := (io.KeyCtrl && !io.KeyAlt) || (io.OptMacOSXBehaviors && io.KeySuper)
+			ignore_inputs := (io.KeyCtrl && !io.KeyAlt) || (is_osx && io.KeySuper)
 			if !ignore_inputs && is_editable && !user_nav_input_start {
 				for n := 0; n < len(io.InputCharacters); n++ {
 					// Insert character if they pass filtering
@@ -597,24 +597,28 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 		if io.KeyShift {
 			k_mask = stbte.K_SHIFT
 		}
+		is_osx := io.OptMacOSXBehaviors
 		// OS X style: Shortcuts using Cmd/Super instead of Ctrl
-		is_shortcut_key_only := io.KeyCtrl && !io.KeySuper && !io.KeyAlt && !io.KeyShift
-		if io.OptMacOSXBehaviors {
-			is_shortcut_key_only = io.KeySuper && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift
+		is_shortcut_key := io.KeyCtrl && !io.KeySuper && !io.KeyAlt && !io.KeyShift
+		if is_osx {
+			is_shortcut_key = io.KeySuper && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift
 		}
-		// OS X style: Line/Text Start and End using Cmd+Arrows instead of Home/End
+		is_osx_shift_shortcut := is_osx && io.KeySuper && io.KeyShift && !io.KeyCtrl && !io.KeyAlt
+		// OS X style: Text editing cursor movement using Alt instead of Ctrl
 		is_wordmove_key_down := io.KeyCtrl
-		if io.OptMacOSXBehaviors {
+		if is_osx {
 			is_wordmove_key_down = io.KeyAlt
 		}
 		// OS X style: Line/Text Start and End using Cmd+Arrows instead of Home/End
-		is_startend_key_down := io.OptMacOSXBehaviors && io.KeySuper && !io.KeyCtrl && !io.KeyAlt
+		is_startend_key_down := is_osx && io.KeySuper && !io.KeyCtrl && !io.KeyAlt
 		is_ctrl_key_only := io.KeyCtrl && !io.KeyShift && !io.KeyAlt && !io.KeySuper
 		is_shift_key_only := io.KeyShift && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper
 
-		is_cut := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyX)) || (is_shift_key_only && c.IsKeyPressedMap(KeyDelete))) && is_editable && !is_password && (!is_multiline || edit_state.HasSelection())
-		is_copy := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyC)) || (is_ctrl_key_only && c.IsKeyPressedMap(KeyInsert))) && !is_password && (!is_multiline || edit_state.HasSelection())
-		is_paste := ((is_shortcut_key_only && c.IsKeyPressedMap(KeyV)) || (is_shift_key_only && c.IsKeyPressedMap(KeyInsert))) && is_editable
+		is_cut := ((is_shortcut_key && c.IsKeyPressedMap(KeyX)) || (is_shift_key_only && c.IsKeyPressedMap(KeyDelete))) && is_editable && !is_password && (!is_multiline || edit_state.HasSelection())
+		is_copy := ((is_shortcut_key && c.IsKeyPressedMap(KeyC)) || (is_ctrl_key_only && c.IsKeyPressedMap(KeyInsert))) && !is_password && (!is_multiline || edit_state.HasSelection())
+		is_paste := ((is_shortcut_key && c.IsKeyPressedMap(KeyV)) || (is_shift_key_only && c.IsKeyPressedMap(KeyInsert))) && is_editable
+		is_undo := ((is_shortcut_key && c.IsKeyPressedMap(KeyZ)) && is_editable && is_undoable)
+		is_redo := ((is_shortcut_key && c.IsKeyPressedMap(KeyY)) || (is_osx_shift_shortcut && c.IsKeyPressedMap(KeyZ))) && is_editable && is_undoable
 
 		if c.IsKeyPressedMap(KeyLeftArrow) {
 			switch {
@@ -672,7 +676,7 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 			if !edit_state.HasSelection() {
 				if is_wordmove_key_down {
 					edit_state.OnKeyPressed(stbte.K_WORDLEFT | stbte.K_SHIFT)
-				} else if io.OptMacOSXBehaviors && io.KeySuper && !io.KeyAlt && !io.KeyCtrl {
+				} else if is_osx && io.KeySuper && !io.KeyAlt && !io.KeyCtrl {
 					edit_state.OnKeyPressed(stbte.K_LINESTART | stbte.K_SHIFT)
 				}
 			}
@@ -694,13 +698,14 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 			}
 		} else if c.IsKeyPressedMap(KeyEscape) {
 			clear_active_id, cancel_edit = true, true
-		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyZ) && is_editable && is_undoable {
-			edit_state.OnKeyPressed(stbte.K_UNDO)
+		} else if is_undo || is_redo {
+			if is_undo {
+				edit_state.OnKeyPressed(stbte.K_UNDO)
+			} else {
+				edit_state.OnKeyPressed(stbte.K_REDO)
+			}
 			edit_state.ClearSelection()
-		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyY) && is_editable && is_undoable {
-			edit_state.OnKeyPressed(stbte.K_REDO)
-			edit_state.ClearSelection()
-		} else if is_shortcut_key_only && c.IsKeyPressedMap(KeyA) {
+		} else if is_shortcut_key && c.IsKeyPressedMap(KeyA) {
 			edit_state.SelectAll()
 			edit_state.CursorFollow = true
 		} else if is_cut || is_copy {
@@ -723,7 +728,6 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 				edit_state.StbState.Cut(edit_state)
 			}
 		} else if is_paste {
-			// Paste
 			clipboard := c.GetClipboardText()
 
 			// Filter pasted buffer

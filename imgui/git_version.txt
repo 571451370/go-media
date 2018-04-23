@@ -1,6 +1,5 @@
-commit 037d5a7e98537b9eb14ca1bbd8a8f8ddd2c9dd62
+commit 22773e03a28340011234ae3ebb3fb03bca3cf186
 Author: omar <omarcornut@gmail.com>
-Date:   Fri Apr 20 16:03:21 2018 +0200
+Date:   Mon Apr 23 11:15:13 2018 +0200
 
-    Columns: Fixed a bug introduced in 1.51 where columns would affect the contents size of their container, often creating feedback loops when ImGuiWindowFlags_AlwaysAutoResize was used. (#1760)
-
+    InputText: On Mac OS X, support Cmd+Shift+Z for Redo. Cmd+Y is also supported as major apps seems to default to support both. (#1765)
