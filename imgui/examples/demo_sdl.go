@@ -116,6 +116,10 @@ type UI struct {
 		OutputDest         int
 		AlphaFlags         int
 	}
+
+	MetricsWindow struct {
+		ShowClipRects bool
+	}
 }
 
 var (
@@ -225,6 +229,8 @@ func initIM() {
 	ui.ShowDemoWindow = true
 	ui.MenuOptions.Enabled = true
 	ui.MenuOptions.Float = 0.5
+
+	ui.MetricsWindow.ShowClipRects = true
 
 	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
 }
@@ -721,6 +727,10 @@ func showDemoWindow() {
 	}
 	if ui.ShowAppCustomRendering {
 		showExampleAppCustomRendering()
+	}
+
+	if ui.ShowAppMetrics {
+		showMetricsWindow()
 	}
 	if ui.ShowAppAbout {
 		showAppAbout()
@@ -1444,6 +1454,85 @@ func showHelpMarker(desc string) {
 		im.PopTextWrapPos()
 		im.EndTooltip()
 	}
+}
+
+func showMetricsWindow() {
+	p_open := &ui.ShowAppMetrics
+	if im.BeginEx("ImGui Metrics", p_open, 0) {
+		im.Text("Dear ImGui %s", im.GetVersion())
+		im.Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0/im.GetIO().Framerate, im.GetIO().Framerate)
+		im.Text("%d vertices, %d indices (%d triangles)", im.GetIO().MetricsRenderVertices, im.GetIO().MetricsRenderIndices, im.GetIO().MetricsRenderIndices/3)
+		show_clip_rects := &ui.MetricsWindow.ShowClipRects
+		im.Checkbox("Show clipping rectangles when hovering draw commands", show_clip_rects)
+		im.Separator()
+
+		// Access private state, we are going to display the draw lists from last frame
+		if im.TreeNodeStringIDEx("DrawList", 0, "Active DrawLists (%d)", len(im.DrawDataBuilder.Layers[0])) {
+			for i := range im.DrawDataBuilder.Layers[0] {
+				_ = im.DrawDataBuilder.Layers[0][i]
+			}
+			im.TreePop()
+		}
+		if im.TreeNodeStringIDEx("Popups", 0, "Open Popups Stack (%d)", len(im.OpenPopupStack)) {
+			for i := range im.OpenPopupStack {
+				window := im.OpenPopupStack[i].Window
+				window_name := "NULL"
+				child_window := ""
+				child_menu := ""
+				if window != nil {
+					window_name = window.Name
+					if window.Flags&imgui.WindowFlagsChildWindow != 0 {
+						child_window = " ChildWindow"
+					}
+					if window.Flags&imgui.WindowFlagsChildMenu != 0 {
+						child_menu = " ChildMenu"
+					}
+				}
+
+				im.BulletText("PopupID: %08x, Window: '%s'%s%s", im.OpenPopupStack[i].PopupId, window_name, child_window, child_menu)
+			}
+			im.TreePop()
+		}
+		if im.TreeNode("Internal state") {
+			input_source_names := []string{"None", "Mouse", "Nav", "NavKeyboard", "NavGamepad"}
+			assert(len(input_source_names) == int(imgui.InputSourceCOUNT))
+			if im.HoveredWindow != nil {
+				im.Text("HoveredWindow: '%s'", im.HoveredWindow.Name)
+			} else {
+				im.Text("HoveredWindow: '%s'", "NULL")
+			}
+			if im.HoveredRootWindow != nil {
+				im.Text("HoveredRootWindow: '%s'", im.HoveredRootWindow.Name)
+			} else {
+				im.Text("HoveredRootWindow: '%s'", "NULL")
+			}
+			// Data is "in-flight" so depending on when the Metrics window is called we may see current frame information or not
+			im.Text("ActiveId: 0x%08X/0x%08X (%.2f sec), ActiveIdSource: %s", im.ActiveId, im.ActiveIdPreviousFrame, im.ActiveIdTimer, input_source_names[im.ActiveIdSource])
+			if im.MovingWindow != nil {
+				im.Text("ActiveIdWindow: '%s'", im.ActiveIdWindow.Name)
+			} else {
+				im.Text("ActiveIdWindow: '%s'", "NULL")
+			}
+			if im.MovingWindow != nil {
+				im.Text("MovingWindow: '%s'", im.MovingWindow.Name)
+			} else {
+				im.Text("MovingWindow: '%s'", "NULL")
+			}
+			if im.NavWindow != nil {
+				im.Text("NavWindow: '%s'", im.NavWindow.Name)
+			} else {
+				im.Text("NavWindow: '%s'", "NULL")
+			}
+			im.Text("NavId: 0x%08X, NavLayer: %d", im.NavId, im.NavLayer)
+			im.Text("NavInputSource: %s", input_source_names[im.NavInputSource])
+			im.Text("NavActive: %v, NavVisible: %v", im.IO.NavActive, im.IO.NavVisible)
+			im.Text("NavActivateId: 0x%08X, NavInputId: 0x%08X", im.NavActivateId, im.NavInputId)
+			im.Text("NavDisableHighlight: %v, NavDisableMouseHover: %v", im.NavDisableHighlight, im.NavDisableMouseHover)
+			im.Text("DragDrop: %v, SourceId = 0x%08X", im.DragDropActive, im.DragDropPayload.SourceId)
+			im.TreePop()
+		}
+	}
+	im.End()
 }
 
 func assert(x bool) {
