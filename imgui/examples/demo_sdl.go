@@ -640,7 +640,7 @@ func renderDrawData(draw_data *imgui.DrawData) {
 				)
 				gl.DrawElements(gl.TRIANGLES, int32(pcmd.ElemCount), gl.UNSIGNED_INT, unsafe.Pointer(uintptr(idx_buffer_offset)))
 			}
-			idx_buffer_offset += pcmd.ElemCount
+			idx_buffer_offset += pcmd.ElemCount * 4
 		}
 	}
 
@@ -1236,7 +1236,7 @@ func showExampleAppFixedOverlay() {
 	window_pos := f64.Vec2{DISTANCE, DISTANCE}
 	window_pos_pivot := f64.Vec2{0, 0}
 	if ui.AppFixedOverlay.Corner&1 != 0 {
-		window_pos.X = im.GetIO().DisplaySize.Y - DISTANCE
+		window_pos.X = im.GetIO().DisplaySize.X - DISTANCE
 		window_pos_pivot.X = 1
 	}
 	if ui.AppFixedOverlay.Corner&2 != 0 {

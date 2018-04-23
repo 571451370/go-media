@@ -865,7 +865,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 
 			// Render resize grips (after their input handling so we don't have a frame of latency)
 			if flags&WindowFlagsNoResize == 0 {
-				for resize_grip_n := range resize_grip_def {
+				for resize_grip_n := 0; resize_grip_n < resize_grip_count; resize_grip_n++ {
 					grip := resize_grip_def[resize_grip_n]
 					corner := window.Pos.Lerp2(grip.CornerPos, window.Pos.Add(window.Size))
 
@@ -1154,6 +1154,9 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 }
 
 func (c *Context) Render() {
+	// Forgot to call ImGui::NewFrame()
+	assert(c.Initialized)
+
 	if c.FrameCountEnded != c.FrameCount {
 		c.EndFrame()
 	}
@@ -1171,7 +1174,7 @@ func (c *Context) Render() {
 	}
 
 	for _, window := range c.Windows {
-		if window.Active && window.HiddenFrames <= 0 && window.Flags&WindowFlagsChildWindow == 0 && window != window_to_render_front_most {
+		if window.Active && window.HiddenFrames == 0 && window.Flags&WindowFlagsChildWindow == 0 && window != window_to_render_front_most {
 			c.AddWindowToDrawDataSelectLayer(window)
 		}
 	}
@@ -1956,7 +1959,7 @@ func (d *DrawList) UpdateTextureID() {
 	if length := len(d.CmdBuffer); length > 0 {
 		curr_cmd = &d.CmdBuffer[length-1]
 	}
-	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.TextureId == curr_texture_id) || curr_cmd.UserCallback != nil {
+	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.TextureId != curr_texture_id) || curr_cmd.UserCallback != nil {
 		d.AddDrawCmd()
 		return
 	}
@@ -2241,7 +2244,7 @@ func (d *DrawList) UpdateClipRect() {
 	if length := len(d.CmdBuffer); length > 0 {
 		curr_cmd = &d.CmdBuffer[length-1]
 	}
-	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.ClipRect == curr_clip_rect) || curr_cmd.UserCallback != nil {
+	if curr_cmd == nil || (curr_cmd.ElemCount != 0 && curr_cmd.ClipRect != curr_clip_rect) || curr_cmd.UserCallback != nil {
 		d.AddDrawCmd()
 		return
 	}
@@ -2285,6 +2288,7 @@ func (d *DrawList) AddDrawCmd() {
 	var draw_cmd DrawCmd
 	draw_cmd.ClipRect = d.GetCurrentClipRect()
 	draw_cmd.TextureId = d.GetCurrentTextureId()
+	assert(draw_cmd.ClipRect.X <= draw_cmd.ClipRect.Z && draw_cmd.ClipRect.Y <= draw_cmd.ClipRect.W)
 	d.CmdBuffer = append(d.CmdBuffer, draw_cmd)
 }
 
@@ -2619,8 +2623,16 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 		}
 
 		if resize_grip_n == 0 || held || hovered {
-			cornerTarget := resize_rect.Size()
-			cornerTarget = cornerTarget.Scale2(grip.CornerPos)
+			var col color.RGBA
+			switch {
+			case held:
+				col = c.GetColorFromStyle(ColResizeGripActive)
+			case hovered:
+				col = c.GetColorFromStyle(ColResizeGripHovered)
+			default:
+				col = c.GetColorFromStyle(ColResizeGrip)
+			}
+			resize_grip_col[resize_grip_n] = col
 		}
 	}
 
