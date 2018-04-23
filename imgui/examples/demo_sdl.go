@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"math/rand"
 	"os"
 	"runtime"
 	"strings"
@@ -92,6 +93,7 @@ type UI struct {
 
 	AppLog struct {
 		LastTime float64
+		Log      ExampleAppLog
 	}
 
 	Widgets struct {
@@ -1202,6 +1204,16 @@ func showExampleAppConsole() {
 // Demonstrate creating a simple log window with basic filtering.
 func showExampleAppLog() {
 	// Demo: add random items (unless Ctrl is held)
+	p_open := &ui.ShowAppLog
+	log := &ui.AppLog.Log
+	last_time := ui.AppLog.LastTime
+	time := im.GetTime()
+	if time-last_time >= 0.20 && !im.GetIO().KeyCtrl {
+		random_words := []string{"system", "info", "warning", "error", "fatal", "notice", "log"}
+		log.AddLog("[%s] Hello, time is %.1f, frame count is %d\n", random_words[rand.Intn(len(random_words))], time, im.GetFrameCount())
+		last_time = time
+	}
+	log.Draw("Example: Log", p_open)
 }
 
 func showExampleAppLayout() {
@@ -1600,4 +1612,47 @@ func assert(x bool) {
 	if !x {
 		panic("assert failed")
 	}
+}
+
+// Usage:
+//  static ExampleAppLog my_log;
+//  my_log.AddLog("Hello %d world\n", 123);
+//  my_log.Draw("title");
+type ExampleAppLog struct {
+	Buf            []rune
+	Filter         imgui.TextFilter
+	Lines          []string
+	ScrollToBottom bool
+}
+
+func (c *ExampleAppLog) AddLog(format string, args ...interface{}) {
+}
+
+func (c *ExampleAppLog) Clear() {
+}
+
+func (c *ExampleAppLog) Draw(title string, p_open *bool) {
+	im.SetNextWindowSize(f64.Vec2{500, 400}, imgui.CondFirstUseEver)
+	im.BeginEx(title, p_open, 0)
+	if im.Button("Clear") {
+		c.Clear()
+	}
+	im.SameLine()
+	copy := im.Button("Copy")
+	im.SameLine()
+	im.Separator()
+	im.BeginChildEx("scrolling", f64.Vec2{0, 0}, false, imgui.WindowFlagsHorizontalScrollbar)
+	if copy {
+		im.LogToClipboard()
+	}
+	if c.Filter.IsActive() {
+	} else {
+	}
+
+	if c.ScrollToBottom {
+		im.SetScrollHereEx(1.0)
+	}
+	c.ScrollToBottom = false
+	im.EndChild()
+	im.End()
 }
