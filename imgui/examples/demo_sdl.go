@@ -1316,6 +1316,10 @@ func showExampleAppConstrainedResize() {
 // Demonstrate creating a simple static window with no decoration + a context-menu to choose which corner of the screen to use.
 func showExampleAppFixedOverlay() {
 	const DISTANCE = 10.0
+
+	corner := &ui.AppFixedOverlay.Corner
+	p_open := &ui.ShowAppFixedOverlay
+
 	window_pos := f64.Vec2{DISTANCE, DISTANCE}
 	window_pos_pivot := f64.Vec2{0, 0}
 	if ui.AppFixedOverlay.Corner&1 != 0 {
@@ -1326,29 +1330,41 @@ func showExampleAppFixedOverlay() {
 		window_pos.Y = im.GetIO().DisplaySize.Y - DISTANCE
 		window_pos_pivot.Y = 1
 	}
-	im.SetNextWindowPos(window_pos, imgui.CondAlways, window_pos_pivot)
+	if *corner != -1 {
+		im.SetNextWindowPos(window_pos, imgui.CondAlways, window_pos_pivot)
+	}
 	// Transparent background
 	im.SetNextWindowBgAlpha(0.3)
 	window_flags := imgui.WindowFlagsNoTitleBar | imgui.WindowFlagsNoResize | imgui.WindowFlagsAlwaysAutoResize | imgui.WindowFlagsNoMove | imgui.WindowFlagsNoSavedSettings | imgui.WindowFlagsNoFocusOnAppearing | imgui.WindowFlagsNoNav
-	if im.BeginEx("Example: Fixed Overlay", &ui.ShowAppFixedOverlay, window_flags) {
+	if *corner != -1 {
+		window_flags |= imgui.WindowFlagsNoMove
+	}
+	if im.BeginEx("Example: Fixed Overlay", p_open, window_flags) {
 		im.Text("Simple overlay\nin the corner of the screen.\n(right-click to change position)")
 		im.Separator()
-		im.Text("Mouse Position: (%.1f,%.1f)", im.GetIO().MousePos.X, im.GetIO().MousePos.Y)
+		if im.IsMousePosValid(nil) {
+			im.Text("Mouse Position: (%.1f,%.1f)", im.GetIO().MousePos.X, im.GetIO().MousePos.Y)
+		} else {
+			im.Text("Mouse Position: <invalid>")
+		}
 		if im.BeginPopupContextWindow() {
-			if im.MenuItemEx("Top-left", "", ui.AppFixedOverlay.Corner == 0, true) {
-				ui.AppFixedOverlay.Corner = 0
+			if im.MenuItemEx("Custom", "", *corner == -1, true) {
+				*corner = -1
 			}
-			if im.MenuItemEx("Top-right", "", ui.AppFixedOverlay.Corner == 1, true) {
-				ui.AppFixedOverlay.Corner = 1
+			if im.MenuItemEx("Top-left", "", *corner == 0, true) {
+				*corner = 0
 			}
-			if im.MenuItemEx("Bottom-left", "", ui.AppFixedOverlay.Corner == 2, true) {
-				ui.AppFixedOverlay.Corner = 2
+			if im.MenuItemEx("Top-right", "", *corner == 1, true) {
+				*corner = 1
 			}
-			if im.MenuItemEx("Bottom-right", "", ui.AppFixedOverlay.Corner == 3, true) {
-				ui.AppFixedOverlay.Corner = 3
+			if im.MenuItemEx("Bottom-left", "", *corner == 2, true) {
+				*corner = 2
+			}
+			if im.MenuItemEx("Bottom-right", "", *corner == 3, true) {
+				*corner = 3
 			}
 			if im.MenuItem("Close") {
-				ui.ShowAppFixedOverlay = false
+				*p_open = false
 			}
 			im.EndPopup()
 		}
