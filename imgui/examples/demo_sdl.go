@@ -84,6 +84,10 @@ type UI struct {
 		Corner int
 	}
 
+	AppLayout struct {
+		Selected int
+	}
+
 	MenuOptions struct {
 		Enabled    bool
 		Float      float64
@@ -1216,7 +1220,52 @@ func showExampleAppLog() {
 	log.Draw("Example: Log", p_open)
 }
 
+// Demonstrate create a window with multiple child windows.
 func showExampleAppLayout() {
+	p_open := &ui.ShowAppLayout
+	im.SetNextWindowSize(f64.Vec2{500, 440}, imgui.CondFirstUseEver)
+	if im.BeginEx("Example: Layout", p_open, imgui.WindowFlagsMenuBar) {
+		if im.BeginMenuBar() {
+			if im.BeginMenu("File") {
+				if im.MenuItem("Close") {
+					*p_open = false
+				}
+				im.EndMenu()
+			}
+			im.EndMenuBar()
+		}
+
+		// left
+		selected := &ui.AppLayout.Selected
+		im.BeginChildEx("left pane", f64.Vec2{150, 0}, true, 0)
+		for i := 0; i < 100; i++ {
+			label := fmt.Sprintf("MyObject %v", i)
+			if im.SelectableEx(label, *selected == i, 0, f64.Vec2{}) {
+				*selected = i
+			}
+		}
+		im.EndChild()
+		im.SameLine()
+
+		// right
+		im.BeginGroup()
+
+		// Leave room for 1 line below us
+		im.BeginChildEx("item view", f64.Vec2{0, -im.GetFrameHeightWithSpacing()}, true, 0)
+		im.Text("MyObject: %d", *selected)
+		im.Separator()
+		im.TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ")
+		im.EndChild()
+
+		if im.Button("Revert") {
+		}
+		im.SameLine()
+		if im.Button("Save") {
+		}
+
+		im.EndGroup()
+	}
+	im.End()
 }
 
 func showExampleAppPropertyEditor() {

@@ -1,7 +1,6 @@
-commit dc03c931641221b4a5d25983625807b21041ba24
+commit 46698c96c58b3878d4f4e63e08c2ec606a069b2e
 Author: omar <omarcornut@gmail.com>
-Date:   Mon Apr 23 21:38:53 2018 +0200
+Date:   Tue Apr 24 16:48:26 2018 +0200
 
-    Internals: Removed misleading ImRect::FixInverted + fix minor formatting in Readme.
-    Demo: Fixed Overlay: Added a context menu item to enable freely moving the window.
+    Removed presumably obsolete MovingWindow tests which prevent move/merge logic in viewport branch from working in all situations (e.g. docking away when ActiveId is the ID of a tab)
 

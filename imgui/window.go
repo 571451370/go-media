@@ -1416,9 +1416,9 @@ func (c *Context) PopItemFlag() {
 }
 
 func (c *Context) UpdateMovingWindow() {
-	if c.MovingWindow != nil && c.MovingWindow.MoveId == c.ActiveId && c.ActiveIdSource == InputSourceMouse {
+	if c.MovingWindow != nil {
 		// We actually want to move the root window. g.MovingWindow == window we clicked on (could be a child window).
-		// We track it to preserve Focus and so that ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
+		// We track it to preserve Focus and so that generally ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
 		c.KeepAliveID(c.ActiveId)
 		moving_window := c.MovingWindow.RootWindow
 		if c.IO.MouseDown[0] {
@@ -1440,7 +1440,6 @@ func (c *Context) UpdateMovingWindow() {
 				c.ClearActiveID()
 			}
 		}
-		c.MovingWindow = nil
 	}
 }
 
