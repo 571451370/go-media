@@ -351,9 +351,10 @@ func (c *Context) NavUpdate() {
 
 	// Apply application mouse position movement, after we had a chance to process move request result.
 	if c.NavMousePosDirty && c.NavIdIsAlive {
-		// Set mouse position given our knowledge of the nav widget position from last frame
+		// Set mouse position given our knowledge of the navigated item position from last frame
 		if c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos != 0 && c.IO.BackendFlags&BackendFlagsHasSetMousePos != 0 {
-			c.IO.MousePos = c.NavCalcPreferredMousePos()
+			assert(!c.NavDisableHighlight && c.NavDisableMouseHover)
+			c.IO.MousePos = c.NavCalcPreferredRefPos()
 			c.IO.MousePosPrev = c.IO.MousePos
 			c.IO.WantSetMousePos = true
 		}
@@ -886,24 +887,22 @@ func (c *Context) NavInitWindow(window *Window, force_reinit bool) {
 	}
 }
 
-func (c *Context) NavCalcPreferredMousePos() f64.Vec2 {
-	window := c.NavWindow
-	if window == nil {
-		return c.IO.MousePos
+func (c *Context) NavCalcPreferredRefPos() f64.Vec2 {
+	if c.NavDisableHighlight || !c.NavDisableMouseHover || c.NavWindow == nil {
+		return c.IO.MousePos.Floor()
 	}
-	rect_rel := window.NavRectRel[c.NavLayer]
-	pos := f64.Vec2{
+
+	// When navigation is active and mouse is disabled, decide on an arbitrary position around the bottom left of the currently navigated item
+	rect_rel := c.NavWindow.NavRectRel[c.NavLayer]
+	pos := c.NavWindow.Pos.Add(f64.Vec2{
 		rect_rel.Min.X + math.Min(c.Style.FramePadding.X*4, rect_rel.Dx()),
 		rect_rel.Max.Y - math.Min(c.Style.FramePadding.Y, rect_rel.Dy()),
-	}
+	})
 	visible_rect := c.GetViewportRect()
 
 	// ImFloor() is important because non-integer mouse position application in back-end might be lossy and result in undesirable non-zero delta.
-	pos.X = f64.Clamp(pos.X, visible_rect.Min.X, visible_rect.Max.X)
-	pos.Y = f64.Clamp(pos.Y, visible_rect.Min.Y, visible_rect.Max.Y)
-
-	pos.X = math.Floor(pos.X)
-	pos.Y = math.Floor(pos.Y)
+	pos = pos.Clamp2(visible_rect.Min, visible_rect.Max)
+	pos = pos.Floor()
 	return pos
 }
 
@@ -1017,7 +1016,7 @@ func (c *Context) NavUpdateWindowing() {
 		if move_delta.X != 0.0 || move_delta.Y != 0.0 {
 			const NAV_MOVE_SPEED = 800.0
 			move_speed := math.Floor(NAV_MOVE_SPEED * c.IO.DeltaTime * math.Min(c.IO.DisplayFramebufferScale.X, c.IO.DisplayFramebufferScale.Y))
-			c.NavWindowingTarget.PosFloat = c.NavWindowingTarget.PosFloat.Add(move_delta.Scale(move_speed))
+			c.NavWindowingTarget.Pos = c.NavWindowingTarget.Pos.Add(move_delta.Scale(move_speed))
 			c.NavDisableMouseHover = true
 			c.MarkIniSettingsDirtyForWindow(c.NavWindowingTarget)
 		}

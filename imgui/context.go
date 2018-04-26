@@ -117,20 +117,20 @@ type Context struct {
 	DragDropPayloadBufLocal         [8]uint8
 
 	// Widget state
-	InputTextState                  TextEditState
-	InputTextPasswordFont           Font
-	ScalarAsInputTextId             ID             // Temporary text input when CTRL+clicking on a slider, etc.
-	ColorEditOptions                ColorEditFlags // Store user options for color edit widgets
-	ColorPickerRef                  color.RGBA
-	DragCurrentValue                float64 // Currently dragged value, always float, not rounded by end-user precision settings
-	DragLastMouseDelta              f64.Vec2
-	DragSpeedDefaultRatio           float64 // If speed == 0.0f, uses (max-min) * DragSpeedDefaultRatio
-	DragSpeedScaleSlow              float64
-	DragSpeedScaleFast              float64
-	ScrollbarClickDeltaToGrabCenter f64.Vec2 // Distance between mouse and center of grab box, normalized in parent space. Use storage?
-	TooltipOverrideCount            int
-	PrivateClipboard                string   // If no custom clipboard handler is defined
-	OsImePosRequest, OsImePosSet    f64.Vec2 // Cursor position request & last passed to the OS Input Method Editor
+	InputTextState                     TextEditState
+	InputTextPasswordFont              Font
+	ScalarAsInputTextId                ID             // Temporary text input when CTRL+clicking on a slider, etc.
+	ColorEditOptions                   ColorEditFlags // Store user options for color edit widgets
+	ColorPickerRef                     color.RGBA
+	DragCurrentValue                   float64 // Currently dragged value, always float, not rounded by end-user precision settings
+	DragLastMouseDelta                 f64.Vec2
+	DragSpeedDefaultRatio              float64 // If speed == 0.0f, uses (max-min) * DragSpeedDefaultRatio
+	DragSpeedScaleSlow                 float64
+	DragSpeedScaleFast                 float64
+	ScrollbarClickDeltaToGrabCenter    f64.Vec2 // Distance between mouse and center of grab box, normalized in parent space. Use storage?
+	TooltipOverrideCount               int
+	PrivateClipboard                   string   // If no custom clipboard handler is defined
+	PlatformImePos, PlatformImeLastPos f64.Vec2 // Cursor position request & last passed to the OS Input Method Editor
 
 	// Settings
 	SettingsLoaded     bool
@@ -146,13 +146,12 @@ type Context struct {
 	LogAutoExpandMaxDepth int
 
 	// Misc
-	FramerateSecPerFrame         [120]float64 // calculate estimate of framerate for user
+	FramerateSecPerFrame         [120]float64 // Calculate estimate of framerate for user over the last 2 seconds.
 	FramerateSecPerFrameIdx      int
 	FramerateSecPerFrameAccum    float64
-	WantCaptureMouseNextFrame    int // explicit capture via CaptureInputs() sets those flags
+	WantCaptureMouseNextFrame    int // Explicit capture via CaptureKeyboardFromApp()/CaptureMouseFromApp() sets those flags
 	WantCaptureKeyboardNextFrame int
 	WantTextInputNextFrame       int
-	TempBuffer                   [1024*3 + 1]uint8 // temporary text buffer
 }
 
 type ConfigFlags int
@@ -278,8 +277,8 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 	c.DragSpeedScaleFast = 10.0
 	c.ScrollbarClickDeltaToGrabCenter = f64.Vec2{0.0, 0.0}
 	c.TooltipOverrideCount = 0
-	c.OsImePosRequest = f64.Vec2{-1.0, -1.0}
-	c.OsImePosSet = f64.Vec2{-1.0, -1.0}
+	c.PlatformImePos = f64.Vec2{-1.0, -1.0}
+	c.PlatformImeLastPos = f64.Vec2{-1.0, -1.0}
 
 	c.NextWindowData.Init()
 
@@ -442,7 +441,7 @@ func (c *Context) PopID() {
 type BackendFlags int
 
 const (
-	BackendFlagsHasGamepad      BackendFlags = 1 << 0 // Back-end has a connected gamepad.
-	BackendFlagsHasMouseCursors BackendFlags = 1 << 1 // Back-end can honor GetMouseCursor() values and change the OS cursor shape.
-	BackendFlagsHasSetMousePos  BackendFlags = 1 << 2 // Back-end can honor io.WantSetMousePos and reposition the mouse (only used if ImGuiConfigFlags_NavEnableSetMousePos is set).
+	BackendFlagsHasGamepad      BackendFlags = 1 << 0 // Back-end supports and has a connected gamepad.
+	BackendFlagsHasMouseCursors BackendFlags = 1 << 1 // Back-end supports reading GetMouseCursor() to change the OS cursor shape.
+	BackendFlagsHasSetMousePos  BackendFlags = 1 << 2 // Back-end supports io.WantSetMousePos requests to reposition the OS mouse position (only used if ImGuiConfigFlags_NavEnableSetMousePos is set).
 )

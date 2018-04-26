@@ -167,7 +167,7 @@ func (c *Context) BeginComboEx(label, preview_value string, flags ComboFlags) bo
 		if flags&ComboFlagsPopupAlignLeft != 0 {
 			popup_window.AutoPosLastDirection = DirLeft
 		}
-		r_outer := c.FindScreenRectForWindow(popup_window)
+		r_outer := c.FindAllowedExtentRectForWindow(popup_window)
 		pos := c.FindBestWindowPosForPopupEx(frame_bb.BL(), size_expected, &popup_window.AutoPosLastDirection, r_outer, frame_bb, PopupPositionPolicyComboBox)
 		c.SetNextWindowPos(pos, 0, f64.Vec2{0, 0})
 	}

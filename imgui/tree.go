@@ -318,7 +318,7 @@ func (c *Context) TreeNodeBehaviorIsOpen(id ID, flags TreeNodeFlags) bool {
 		return true
 	}
 
-	// We only write to the tree storage if the user clicks (or explicitely use SetNextTreeNode*** functions)
+	// We only write to the tree storage if the user clicks (or explicitly use SetNextTreeNode*** functions)
 	window := c.CurrentWindow
 	var is_open bool
 	if c.NextTreeNodeOpenCond != 0 {

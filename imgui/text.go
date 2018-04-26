@@ -1044,7 +1044,7 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 
 		// Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
 		if is_editable {
-			c.OsImePosRequest = f64.Vec2{cursor_screen_pos.X - 1, cursor_screen_pos.Y - c.FontSize}
+			c.PlatformImePos = f64.Vec2{cursor_screen_pos.X - 1, cursor_screen_pos.Y - c.FontSize}
 		}
 	} else {
 		// Render text only

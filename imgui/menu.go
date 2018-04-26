@@ -234,8 +234,9 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 	}
 
 	if menu_is_open {
+		// Sub-menus are ChildWindow so that mouse can be hovering across them (otherwise top-most popup menu would steal focus and not allow hovering on parent menu)
 		c.SetNextWindowPos(popup_pos, CondAlways, f64.Vec2{0, 0})
-		flags := WindowFlagsAlwaysAutoResize | WindowFlagsNoTitleBar | WindowFlagsNoSavedSettings
+		flags := WindowFlagsAlwaysAutoResize | WindowFlagsNoMove | WindowFlagsNoTitleBar | WindowFlagsNoSavedSettings
 		if window.Flags&(WindowFlagsPopup|WindowFlagsChildMenu) != 0 {
 			flags |= WindowFlagsChildMenu | WindowFlagsChildWindow
 		} else {

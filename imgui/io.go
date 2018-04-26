@@ -60,8 +60,8 @@ type IO struct {
 
 	MousePos        f64.Vec2               // Mouse position, in pixels. Set to ImVec2(-FLT_MAX,-FLT_MAX) if mouse is unavailable (on another screen, etc.)
 	MouseDown       [5]bool                // Mouse buttons: left, right, middle + extras. ImGui itself mostly only uses left button (BeginPopupContext** are using right button). Others buttons allows us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
-	MouseWheel      float64                // Mouse wheel: 1 unit scrolls about 5 lines text.
-	MouseWheelH     float64                // Mouse wheel (Horizontal). Most users don't have a mouse with an horizontal wheel, may not be filled by all back-ends.
+	MouseWheel      float64                // Mouse wheel Vertical: 1 unit scrolls about 5 lines text.
+	MouseWheelH     float64                // Mouse wheel Horizontal. Most users don't have a mouse with an horizontal wheel, may not be filled by all back-ends.
 	MouseDrawCursor bool                   // Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor).
 	KeyCtrl         bool                   // Keyboard modifier pressed: Control
 	KeyShift        bool                   // Keyboard modifier pressed: Shift

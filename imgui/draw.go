@@ -98,7 +98,7 @@ const (
 
 func (c *Context) NewFrame() {
 	// Check user data
-	// (We pass an error message in the assert expression as a trick to get it visible to programmers who are not using a debugger, as most assert handlers display their argument)
+	// (We pass an error message in the assert expression to make it visible to programmers who are not using a debugger, as most assert handlers display their argument)
 	assert(c.Initialized)
 	assert(c.IO.DeltaTime >= 0.0)
 	assert(c.IO.DisplaySize.X >= 0.0 && c.IO.DisplaySize.Y >= 0.0)
@@ -198,7 +198,7 @@ func (c *Context) NewFrame() {
 	c.NavUpdate()
 
 	// Update mouse input state
-	c.NewFrameUpdateMouseInputs()
+	c.UpdateMouseInputs()
 
 	// Calculate frame-rate for the user, as a purely luxurious feature
 	c.FramerateSecPerFrameAccum += c.IO.DeltaTime - c.FramerateSecPerFrame[c.FramerateSecPerFrameIdx]
@@ -211,7 +211,7 @@ func (c *Context) NewFrame() {
 	}
 
 	// Handle user moving window with mouse (at the beginning of the frame to avoid input lag or sheering)
-	c.NewFrameUpdateMovingWindow()
+	c.UpdateMovingWindow()
 	c.NewFrameUpdateHoveredWindowAndCaptureFlags()
 
 	if c.GetFrontMostPopupModal() != nil {
@@ -224,7 +224,7 @@ func (c *Context) NewFrame() {
 	c.WantCaptureMouseNextFrame = -1
 	c.WantCaptureKeyboardNextFrame = -1
 	c.WantTextInputNextFrame = -1
-	c.OsImePosRequest = f64.Vec2{1, 1} // OS Input Method Editor showing on top-left of our window by default
+	c.PlatformImePos = f64.Vec2{1, 1} // OS Input Method Editor showing on top-left of our window by default
 
 	// Mouse wheel scrolling, scale
 	if c.HoveredWindow != nil && !c.HoveredWindow.Collapsed && (c.IO.MouseWheel != 0 || c.IO.MouseWheelH != 0) {
@@ -252,7 +252,6 @@ func (c *Context) NewFrame() {
 					window.Size.Y * (1.0 - scale) * (c.IO.MousePos.Y - window.Pos.Y) / window.Size.Y,
 				}
 				window.Pos = window.Pos.Add(offset)
-				window.PosFloat = window.PosFloat.Add(offset)
 				window.Size = window.Size.Scale(scale)
 				window.SizeFull = window.SizeFull.Scale(scale)
 			} else if !c.IO.KeyCtrl && scroll_allowed {
@@ -419,14 +418,12 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		} else {
 			c.SetWindowPos(window, c.NextWindowData.PosVal, c.NextWindowData.PosCond)
 		}
-		c.NextWindowData.PosCond = 0
 	}
 
 	if c.NextWindowData.SizeCond != 0 {
 		window_size_x_set_by_api = (window.SetWindowSizeAllowFlags&c.NextWindowData.SizeCond) != 0 && (c.NextWindowData.SizeVal.X > 0.0)
 		window_size_y_set_by_api = (window.SetWindowSizeAllowFlags&c.NextWindowData.SizeCond) != 0 && (c.NextWindowData.SizeVal.Y > 0.0)
 		c.SetWindowSize(window, c.NextWindowData.SizeVal, c.NextWindowData.SizeCond)
-		c.NextWindowData.SizeCond = 0
 	}
 
 	if c.NextWindowData.ContentSizeCond != 0 {
@@ -435,21 +432,18 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		if window.SizeContentsExplicit.Y != 0.0 {
 			window.SizeContentsExplicit.Y += window.TitleBarHeight() + window.MenuBarHeight()
 		}
-		c.NextWindowData.ContentSizeCond = 0
 	} else if first_begin_of_the_frame {
 		window.SizeContentsExplicit = f64.Vec2{0, 0}
 	}
 
 	if c.NextWindowData.CollapsedCond != 0 {
 		c.SetWindowCollapsed(window, c.NextWindowData.CollapsedVal, c.NextWindowData.CollapsedCond)
-		c.NextWindowData.CollapsedCond = 0
-
 	}
 
 	if c.NextWindowData.FocusCond != 0 {
 		c.SetWindowFocus()
-		c.NextWindowData.FocusCond = 0
 	}
+	c.FocusWindow(window)
 
 	if window.Appearing {
 		c.SetWindowConditionAllowFlags(window, CondAppearing, false)
@@ -492,7 +486,37 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		window.LastFrameActive = current_frame
 		window.IDStack = window.IDStack[:1]
 
-		// Lock window rounding, border size and rounding so that altering the border sizes for children doesn't have side-effects.
+		// UPDATE CONTENTS SIZE, UPDATE HIDDEN STATUS
+
+		// Update contents size from last frame for auto-fitting (or use explicit size)
+		window.SizeContents = c.CalcSizeContents(window)
+		if window.HiddenFrames > 0 {
+			window.HiddenFrames--
+		}
+
+		// Hide new windows for one frame until they calculate their size
+		if window_just_created && (!window_size_x_set_by_api || !window_size_y_set_by_api) {
+			window.HiddenFrames = 1
+		}
+
+		// Hide popup/tooltip window when re-opening while we measure size (because we recycle the windows)
+		// We reset Size/SizeContents for reappearing popups/tooltips early in this function, so further code won't be tempted to use the old size.
+		if window_just_activated_by_user && (flags&(WindowFlagsPopup|WindowFlagsTooltip)) != 0 {
+			window.HiddenFrames = 1
+			if flags&WindowFlagsAlwaysAutoResize != 0 {
+				if !window_size_x_set_by_api {
+					window.Size.X, window.SizeFull.X = 0, 0
+				}
+				if !window_size_y_set_by_api {
+					window.Size.Y, window.SizeFull.Y = 0, 0
+				}
+				window.SizeContents = f64.Vec2{0, 0}
+			}
+		}
+
+		c.SetCurrentWindow(window)
+
+		// Lock border size and padding for the frame (so that altering them doesn't cause inconsistencies)
 		if flags&WindowFlagsChildWindow != 0 {
 			window.WindowRounding = style.ChildRounding
 		} else if flags&WindowFlagsPopup != 0 && flags&WindowFlagsModal == 0 {
@@ -534,34 +558,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		window.CollapseToggleWanted = false
 
 		// SIZE
-
-		// Update contents size from last frame for auto-fitting (unless explicitly specified)
-		window.SizeContents = c.CalcSizeContents(window)
-
-		// Hide popup/tooltip window when re-opening while we measure size (because we recycle the windows)
-		if window.HiddenFrames > 0 {
-			window.HiddenFrames--
-		}
-
-		if window_just_activated_by_user && flags&(WindowFlagsPopup|WindowFlagsTooltip) != 0 {
-			window.HiddenFrames = 1
-			if flags&WindowFlagsAlwaysAutoResize != 0 {
-				if !window_size_x_set_by_api {
-					window.Size.X = 0
-					window.SizeFull.X = 0
-				}
-				if !window_size_y_set_by_api {
-					window.Size.Y = 0
-					window.SizeFull.Y = 0
-				}
-				window.SizeContents = f64.Vec2{0, 0}
-			}
-		}
-
-		// Hide new windows for one frame until they calculate their size
-		if window_just_created && (!window_size_x_set_by_api || !window_size_y_set_by_api) {
-			window.HiddenFrames = 1
-		}
 
 		// Calculate auto-fit size, handle automatic resize
 		size_auto_fit := c.CalcSizeAutoFit(window, window.SizeContents)
@@ -651,8 +647,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 		if window_just_activated_by_user {
 			window.AutoPosLastDirection = DirNone
 			if flags&WindowFlagsPopup != 0 && !window_pos_set_by_api {
-				window.PosFloat = c.CurrentPopupStack[len(c.CurrentPopupStack)-1].OpenPopupPos
-				window.Pos = window.PosFloat
+				window.Pos = c.CurrentPopupStack[len(c.CurrentPopupStack)-1].OpenPopupPos
 			}
 		}
 
@@ -661,8 +656,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			window.BeginOrderWithinParent = len(parent_window.DC.ChildWindows)
 			parent_window.DC.ChildWindows = append(parent_window.DC.ChildWindows, window)
 			if flags&WindowFlagsPopup == 0 && !window_pos_set_by_api && !window_is_child_tooltip {
-				window.PosFloat = parent_window.DC.CursorPos
-				window.Pos = window.PosFloat
+				window.Pos = parent_window.DC.CursorPos
 			}
 		}
 
@@ -674,11 +668,11 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			windowPos = windowPos.Max(style.DisplaySafeAreaPadding)
 			c.SetWindowPos(window, windowPos, 0)
 		} else if flags&WindowFlagsChildMenu != 0 {
-			window.PosFloat = c.FindBestWindowPosForPopup(window)
+			window.Pos = c.FindBestWindowPosForPopup(window)
 		} else if flags&WindowFlagsPopup != 0 && !window_pos_set_by_api && window_just_appearing_after_hidden_for_resize {
-			window.PosFloat = c.FindBestWindowPosForPopup(window)
+			window.Pos = c.FindBestWindowPosForPopup(window)
 		} else if flags&WindowFlagsTooltip != 0 && !window_pos_set_by_api && !window_is_child_tooltip {
-			window.PosFloat = c.FindBestWindowPosForPopup(window)
+			window.Pos = c.FindBestWindowPosForPopup(window)
 		}
 
 		// Clamp position so it stays visible
@@ -686,14 +680,22 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 			// Ignore zero-sized display explicitly to avoid losing positions if a window manager reports zero-sized window when initializing or minimizing.
 			if !window_pos_set_by_api && window.AutoFitFramesX <= 0 && window.AutoFitFramesY <= 0 && c.IO.DisplaySize.X > 0 && c.IO.DisplaySize.Y > 0 {
 				padding := style.DisplayWindowPadding.Max(style.DisplaySafeAreaPadding)
-				posFloat := window.PosFloat.Add(window.Size)
-				posFloat = posFloat.Max(padding)
-				posFloat = posFloat.Sub(window.Size)
-				posFloat = posFloat.Min(c.IO.DisplaySize.Sub(padding))
-				window.PosFloat = posFloat
+				pos := window.Pos.Add(window.Size)
+				pos = pos.Max(padding)
+				pos = pos.Sub(window.Size)
+				pos = pos.Min(c.IO.DisplaySize.Sub(padding))
+				window.Pos = pos
 			}
 		}
-		window.Pos = window.PosFloat.Floor()
+
+		// Lock window rounding for the frame (so that altering them doesn't cause inconsistencies)
+		if flags&WindowFlagsChildWindow != 0 {
+			window.WindowRounding = style.ChildRounding
+		} else if flags&WindowFlagsPopup != 0 && flags&WindowFlagsModal == 0 {
+			window.WindowRounding = style.PopupRounding
+		} else {
+			window.WindowRounding = style.WindowRounding
+		}
 
 		// Prepare for focus requests
 		if window.FocusIdxAllRequestNext == math.MaxInt32 || window.FocusIdxAllCounter == -1 {
@@ -1022,7 +1024,6 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 				by = window.Pos.Add(by)
 				bb := f64.Rectangle{bx, by}
 
-				// To allow navigation
 				c.ItemAdd(bb, id)
 
 				_, _, pressed := c.ButtonBehavior(bb, id, 0)
@@ -1123,7 +1124,7 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	}
 
 	window.BeginCount++
-	c.NextWindowData.SizeConstraintCond = 0
+	c.NextWindowData.Clear()
 
 	// Child window can be out of sight and have "negative" clip windows.
 	// Mark them as collapsed so commands are skipped earlier (we can't manually collapse because they have no title bar).
@@ -1247,9 +1248,9 @@ func (c *Context) EndFrame() {
 	}
 
 	// Notify OS when our Input Method Editor cursor has moved (e.g. CJK inputs using Microsoft IME)
-	if c.IO.ImeSetInputScreenPosFn != nil && c.OsImePosRequest.DistanceSquared(c.OsImePosSet) > 0.0001 {
-		c.IO.ImeSetInputScreenPosFn(int(c.OsImePosRequest.X), int(c.OsImePosRequest.Y))
-		c.OsImePosSet = c.OsImePosRequest
+	if c.IO.ImeSetInputScreenPosFn != nil && c.PlatformImeLastPos.DistanceSquared(c.PlatformImePos) > 0.0001 {
+		c.IO.ImeSetInputScreenPosFn(int(c.PlatformImePos.X), int(c.PlatformImePos.Y))
+		c.PlatformImeLastPos = c.PlatformImePos
 	}
 
 	// Hide implicit "Debug" window if it hasn't been used
@@ -2544,7 +2545,7 @@ func (c *Context) AddWindowToDrawData(out_render_list *[]*DrawList, window *Wind
 	}
 }
 
-func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list *DrawList) {
+func (c *Context) AddDrawListToDrawData(out_list *[]*DrawList, draw_list *DrawList) {
 	if len(draw_list.CmdBuffer) == 0 {
 		return
 	}
@@ -2564,7 +2565,7 @@ func (c *Context) AddDrawListToDrawData(out_render_list *[]*DrawList, draw_list 
 	assert(len(draw_list.IdxBuffer) == 0 || draw_list._IdxWritePtr == len(draw_list.IdxBuffer))
 	assert(draw_list._VtxCurrentIdx == len(draw_list.VtxBuffer))
 
-	*out_render_list = append(*out_render_list, draw_list)
+	*out_list = append(*out_list, draw_list)
 }
 
 // Handle resize for: Resize Grips, Borders, Gamepad
@@ -2703,7 +2704,6 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 	}
 	if pos_target.X != math.MaxFloat32 {
 		window.Pos = pos_target.Floor()
-		window.PosFloat = window.Pos
 		c.MarkIniSettingsDirtyForWindow(window)
 	}
 	window.Size = window.SizeFull
@@ -3243,7 +3243,7 @@ func (d *DrawChannel) Init() {
 	d.IdxBuffer = d.IdxBuffer[:0]
 }
 
-func (c *Context) NewFrameUpdateMouseInputs() {
+func (c *Context) UpdateMouseInputs() {
 	// If mouse just appeared or disappeared (usually denoted by -FLT_MAX component, but in reality we test for -256000.0f) we cancel out movement in MouseDelta
 	if c.IsMousePosValid(&c.IO.MousePos) && c.IsMousePosValid(&c.IO.MousePosPrev) {
 		c.IO.MouseDelta = c.IO.MousePos.Sub(c.IO.MousePosPrev)
@@ -3294,36 +3294,6 @@ func (c *Context) NewFrameUpdateMouseInputs() {
 		if c.IO.MouseClicked[i] {
 			c.NavDisableMouseHover = false
 		}
-	}
-}
-
-func (c *Context) NewFrameUpdateMovingWindow() {
-	if c.MovingWindow != nil && c.MovingWindow.MoveId == c.ActiveId && c.ActiveIdSource == InputSourceMouse {
-		// We actually want to move the root window. g.MovingWindow == window we clicked on (could be a child window).
-		// We track it to preserve Focus and so that ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
-		c.KeepAliveID(c.ActiveId)
-		assert(c.MovingWindow != nil && c.MovingWindow.RootWindow != nil)
-		moving_window := c.MovingWindow.RootWindow
-		if c.IO.MouseDown[0] {
-			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
-			if moving_window.PosFloat.X != pos.X || moving_window.PosFloat.Y != pos.Y {
-				c.MarkIniSettingsDirtyForWindow(moving_window)
-				moving_window.PosFloat = pos
-			}
-			c.FocusWindow(c.MovingWindow)
-		} else {
-			c.ClearActiveID()
-			c.MovingWindow = nil
-		}
-	} else {
-		// When clicking/dragging from a window that has the _NoMove flag, we still set the ActiveId in order to prevent hovering others.
-		if c.ActiveIdWindow != nil && c.ActiveIdWindow.MoveId == c.ActiveId {
-			c.KeepAliveID(c.ActiveId)
-			if !c.IO.MouseDown[0] {
-				c.ClearActiveID()
-			}
-		}
-		c.MovingWindow = nil
 	}
 }
 

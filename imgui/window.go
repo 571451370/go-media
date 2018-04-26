@@ -63,9 +63,8 @@ type WindowSettings struct {
 type Window struct {
 	Ctx                            *Context
 	Name                           string
-	ID                             ID          // == ImHash(Name)
-	Flags                          WindowFlags // See enum ImGuiWindowFlags_
-	PosFloat                       f64.Vec2
+	ID                             ID            // == ImHash(Name)
+	Flags                          WindowFlags   // See enum ImGuiWindowFlags_
 	Pos                            f64.Vec2      // Position rounded-up to nearest pixel
 	Size                           f64.Vec2      // Current size (==SizeFull or collapsed title bar size)
 	SizeFull                       f64.Vec2      // Size when non collapsed
@@ -81,8 +80,8 @@ type Window struct {
 	Scroll                         f64.Vec2
 	ScrollTarget                   f64.Vec2 // target scroll position. stored as cursor position with scrolling canceled out, so the highest point is always 0.0f. (FLT_MAX for no change)
 	ScrollTargetCenterRatio        f64.Vec2 // 0.0f = scroll so that target position is at top, 0.5f = scroll so that target position is centered
-	ScrollbarX, ScrollbarY         bool
 	ScrollbarSizes                 f64.Vec2
+	ScrollbarX, ScrollbarY         bool
 	Active                         bool // Set to true on Begin(), unless Collapsed
 	WasActive                      bool
 	WriteAccessed                  bool // Set to true when any widget access the current window
@@ -100,9 +99,9 @@ type Window struct {
 	AutoFitChildAxises             int
 	AutoPosLastDirection           Dir
 	HiddenFrames                   int
-	SetWindowPosAllowFlags         Cond          // store condition flags for next SetWindowPos() call.
-	SetWindowSizeAllowFlags        Cond          // store condition flags for next SetWindowSize() call.
-	SetWindowCollapsedAllowFlags   Cond          // store condition flags for next SetWindowCollapsed() call.
+	SetWindowPosAllowFlags         Cond          // store acceptable condition flags for SetNextWindowPos() use.
+	SetWindowSizeAllowFlags        Cond          // store acceptable condition flags for SetNextWindowSize() use.
+	SetWindowCollapsedAllowFlags   Cond          // store acceptable condition flags for SetNextWindowCollapsed() use.
 	SetWindowPosVal                f64.Vec2      // store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
 	SetWindowPosPivot              f64.Vec2      // store window pivot for positioning. ImVec2(0,0) when positioning from top-left corner; ImVec2(0.5f,0.5f) for centering; ImVec2(1,1) for bottom right.
 	DC                             DrawContext   // Temporary per-window data, reset at the beginning of the frame
@@ -115,7 +114,7 @@ type Window struct {
 	MenuColumns                    MenuColumns // Simplified columns storage for menu items
 	StateStorage                   map[ID]interface{}
 	ColumnsStorage                 []ColumnsSet
-	FontWindowScale                float64   // Scale multiplier per-window
+	FontWindowScale                float64   // User scale multiplier per-window
 	DrawList                       *DrawList // == &DrawListInst (for backward compatibility reason with code using imgui_internal.h we keep this a pointer)
 	DrawListInst                   DrawList
 	ParentWindow                   *Window // If we are a child _or_ popup window, this is pointing to our parent. Otherwise NULL.
@@ -245,7 +244,7 @@ type NextWindowData struct {
 	SizeVal             f64.Vec2
 	ContentSizeVal      f64.Vec2
 	CollapsedVal        bool
-	SizeConstraintRect  f64.Rectangle // Valid if 'SetNextWindowSizeConstraint' is true
+	SizeConstraintRect  f64.Rectangle
 	SizeCallback        func(*SizeCallbackData)
 	BgAlphaVal          float64
 	MenuBarOffsetMinVal f64.Vec2 // This is not exposed publicly, so we don't clear it.
@@ -1221,7 +1220,6 @@ func (w *Window) Init(ctx *Context, name string) {
 	w.Name = name
 	w.IDStack = append(w.IDStack, id)
 	w.Flags = 0
-	w.PosFloat = f64.Vec2{0, 0}
 	w.Pos = f64.Vec2{0, 0}
 	w.Size = f64.Vec2{0, 0}
 	w.SizeFull = f64.Vec2{0, 0}
@@ -1235,9 +1233,8 @@ func (w *Window) Init(ctx *Context, name string) {
 	w.Scroll = f64.Vec2{0, 0}
 	w.ScrollTarget = f64.Vec2{math.MaxFloat32, math.MaxFloat32}
 	w.ScrollTargetCenterRatio = f64.Vec2{0.5, 0.5}
-	w.ScrollbarX = false
-	w.ScrollbarY = false
 	w.ScrollbarSizes = f64.Vec2{0.0, 0.0}
+	w.ScrollbarX, w.ScrollbarY = false, false
 	w.Active = false
 	w.WasActive = false
 	w.WriteAccessed = false
@@ -1299,7 +1296,6 @@ func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags)
 
 	// Use SetWindowPos() or SetNextWindowPos() with the appropriate condition flag to change the initial position of a window.
 	window.Pos = f64.Vec2{60, 60}
-	window.PosFloat = window.Pos
 
 	// User can disable loading and saving of settings. Tooltip and child windows also don't store settings.
 	if flags&WindowFlagsNoSavedSettings == 0 {
@@ -1308,8 +1304,7 @@ func (c *Context) CreateNewWindow(name string, size f64.Vec2, flags WindowFlags)
 		settings := c.FindWindowSettings(window.Name)
 		if settings != nil {
 			c.SetWindowConditionAllowFlags(window, CondFirstUseEver, false)
-			window.PosFloat = settings.Pos
-			window.Pos = window.PosFloat.Floor()
+			window.Pos = settings.Pos.Floor()
 			window.Collapsed = settings.Collapsed
 			if settings.Size.LenSquared() > 0.00001 {
 				size = settings.Size
@@ -1421,11 +1416,11 @@ func (c *Context) UpdateMovingWindow() {
 		// We track it to preserve Focus and so that generally ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
 		c.KeepAliveID(c.ActiveId)
 		moving_window := c.MovingWindow.RootWindow
-		if c.IO.MouseDown[0] {
+		if c.IO.MouseDown[0] && c.IsMousePosValid(&c.IO.MousePos) {
 			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
-			if moving_window.PosFloat.X != pos.X || moving_window.PosFloat.Y != pos.Y {
+			if moving_window.Pos.X != pos.X || moving_window.Pos.Y != pos.Y {
 				c.MarkIniSettingsDirtyForWindow(moving_window)
-				moving_window.PosFloat = pos
+				c.SetWindowPos(moving_window, pos, CondAlways)
 			}
 			c.FocusWindow(c.MovingWindow)
 		} else {
@@ -1555,7 +1550,6 @@ func (c *Context) SetWindowPos(window *Window, pos f64.Vec2, cond Cond) {
 
 	// Set
 	old_pos := window.Pos
-	window.PosFloat = pos
 	window.Pos = pos.Floor()
 	// As we happen to move the window while it is being appended to (which is a bad idea - will smear) let's at least offset the cursor
 	window.DC.CursorPos = window.DC.CursorPos.Add(window.Pos.Sub(old_pos))
@@ -1638,11 +1632,10 @@ func (w *Window) TitleBarRect() f64.Rectangle {
 func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Vec2 {
 	var size_auto_fit f64.Vec2
 	style := &c.Style
-	flags := window.Flags
 
-	if flags&WindowFlagsTooltip != 0 {
+	if window.Flags&WindowFlagsTooltip != 0 {
 		// Tooltip always resize. We keep the spacing symmetric on both axises for aesthetic purpose.
-		size_auto_fit = size_contents
+		return size_contents
 	} else {
 		// When the window cannot fit all contents (either because of constraints, either because screen is too small): we are growing the size on the other axis to compensate for expected scrollbar. FIXME: Might turn bigger than DisplaySize-WindowPadding.
 		size_auto_fit = f64.Vec2{
@@ -1651,14 +1644,14 @@ func (c *Context) CalcSizeAutoFit(window *Window, size_contents f64.Vec2) f64.Ve
 		}
 
 		size_auto_fit_after_constraint := c.CalcSizeAfterConstraint(window, size_auto_fit)
-		if size_auto_fit_after_constraint.X < size_contents.X && flags&WindowFlagsNoScrollbar == 0 && flags&WindowFlagsHorizontalScrollbar != 0 {
+		if size_auto_fit_after_constraint.X < size_contents.X && window.Flags&WindowFlagsNoScrollbar == 0 && window.Flags&WindowFlagsHorizontalScrollbar != 0 {
 			size_auto_fit.Y += style.ScrollbarSize
 		}
-		if size_auto_fit_after_constraint.Y < size_contents.Y && flags&WindowFlagsNoScrollbar == 0 {
+		if size_auto_fit_after_constraint.Y < size_contents.Y && window.Flags&WindowFlagsNoScrollbar == 0 {
 			size_auto_fit.X += style.ScrollbarSize
 		}
+		return size_auto_fit
 	}
-	return size_auto_fit
 }
 
 func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64.Vec2 {
@@ -1700,45 +1693,43 @@ func (c *Context) CalcSizeAfterConstraint(window *Window, new_size f64.Vec2) f64
 }
 
 func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
-	r_screen := c.FindScreenRectForWindow(window)
+	r_outer := c.FindAllowedExtentRectForWindow(window)
 	if window.Flags&WindowFlagsChildMenu != 0 {
-		// Child menus typically request _any_ position within the parent menu item, and then our FindBestWindowPosForPopup() function will move the new menu outside the parent bounds.				// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
+		// Child menus typically request _any_ position within the parent menu item, and then our FindBestWindowPosForPopup() function will move the new menu outside the parent bounds.
+		// This is how we end up with child menus appearing (most-commonly) on the right of the parent menu.
 		assert(c.CurrentWindow == window)
-		parent_menu := c.CurrentWindowStack[len(c.CurrentWindowStack)-2]
+		parent_window := c.CurrentWindowStack[len(c.CurrentWindowStack)-2]
 		// We want some overlap to convey the relative depth of each menu (currently the amount of overlap is hard-coded to style.ItemSpacing.x).
 		horizontal_overlap := c.Style.ItemSpacing.X
 
 		var r_avoid f64.Rectangle
-		if parent_menu.DC.MenuBarAppending {
+		if parent_window.DC.MenuBarAppending {
 			r_avoid = f64.Rect(
 				-math.MaxFloat32,
-				parent_menu.Pos.Y+parent_menu.TitleBarHeight(),
+				parent_window.Pos.Y+parent_window.TitleBarHeight(),
 				math.MaxFloat32,
-				parent_menu.Pos.Y+parent_menu.TitleBarHeight()+parent_menu.MenuBarHeight(),
+				parent_window.Pos.Y+parent_window.TitleBarHeight()+parent_window.MenuBarHeight(),
 			)
 		} else {
 			r_avoid = f64.Rect(
-				parent_menu.Pos.X+horizontal_overlap,
+				parent_window.Pos.X+horizontal_overlap,
 				-math.MaxFloat32,
-				parent_menu.Pos.X+parent_menu.Size.X-horizontal_overlap-parent_menu.ScrollbarSizes.X,
+				parent_window.Pos.X+parent_window.Size.X-horizontal_overlap-parent_window.ScrollbarSizes.X,
 				math.MaxFloat32,
 			)
 		}
-		return c.FindBestWindowPosForPopupEx(window.PosFloat, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+		return c.FindBestWindowPosForPopupEx(window.Pos, window.Size, &window.AutoPosLastDirection, r_outer, r_avoid, PopupPositionPolicyDefault)
 	}
 
 	if window.Flags&WindowFlagsPopup != 0 {
-		r_avoid := f64.Rect(window.PosFloat.X-1, window.PosFloat.Y-1, window.PosFloat.X+1, window.PosFloat.Y+1)
-		return c.FindBestWindowPosForPopupEx(window.PosFloat, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+		r_avoid := f64.Rect(window.Pos.X-1, window.Pos.Y-1, window.Pos.X+1, window.Pos.Y+1)
+		return c.FindBestWindowPosForPopupEx(window.Pos, window.Size, &window.AutoPosLastDirection, r_outer, r_avoid, PopupPositionPolicyDefault)
 	}
 
 	if window.Flags&WindowFlagsTooltip != 0 {
 		// Position tooltip (always follows mouse)
 		sc := c.Style.MouseCursorScale
-		ref_pos := c.IO.MousePos
-		if !c.NavDisableHighlight && c.NavDisableMouseHover {
-			ref_pos = c.NavCalcPreferredMousePos()
-		}
+		ref_pos := c.NavCalcPreferredRefPos()
 		var r_avoid f64.Rectangle
 		if !c.NavDisableHighlight && c.NavDisableMouseHover && c.IO.ConfigFlags&ConfigFlagsNavEnableSetMousePos == 0 {
 			r_avoid = f64.Rect(ref_pos.X-16, ref_pos.Y-8, ref_pos.X+16, ref_pos.Y+8)
@@ -1746,7 +1737,7 @@ func (c *Context) FindBestWindowPosForPopup(window *Window) f64.Vec2 {
 			// FIXME: Hard-coded based on mouse cursor shape expectation. Exact dimension not very important.
 			r_avoid = f64.Rect(ref_pos.X-16, ref_pos.Y-8, ref_pos.X+24*sc, ref_pos.Y+24*sc)
 		}
-		pos := c.FindBestWindowPosForPopupEx(ref_pos, window.Size, &window.AutoPosLastDirection, r_screen, r_avoid, PopupPositionPolicyDefault)
+		pos := c.FindBestWindowPosForPopupEx(ref_pos, window.Size, &window.AutoPosLastDirection, r_outer, r_avoid, PopupPositionPolicyDefault)
 		if window.AutoPosLastDirection == DirNone {
 			// If there's not enough room, for tooltip we prefer avoiding the cursor at all cost even if it means that part of the tooltip won't be visible.
 			pos = ref_pos.Add(f64.Vec2{2, 2})
@@ -2064,7 +2055,7 @@ func (c *Context) Dummy(size f64.Vec2) {
 	c.ItemAdd(bb, 0)
 }
 
-func (c *Context) FindScreenRectForWindow(window *Window) f64.Rectangle {
+func (c *Context) FindAllowedExtentRectForWindow(window *Window) f64.Rectangle {
 	padding := c.Style.DisplaySafeAreaPadding
 	r_screen := c.GetViewportRect()
 	expand := f64.Vec2{0, 0}

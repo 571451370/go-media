@@ -1,6 +1,9 @@
-commit 46698c96c58b3878d4f4e63e08c2ec606a069b2e
-Author: omar <omarcornut@gmail.com>
-Date:   Tue Apr 24 16:48:26 2018 +0200
+commit f8c9c33d33835f1e7b2a32131f6802588b521046
+Author: Bruce Mitchener <bruce.mitchener@gmail.com>
+Date:   Thu Apr 26 14:51:46 2018 +0700
 
-    Removed presumably obsolete MovingWindow tests which prevent move/merge logic in viewport branch from working in all situations (e.g. docking away when ActiveId is the ID of a tab)
+    Fixed static analyzers warnings with bool literals (#1775)
+    
+    * Use `false` instead of `0` for a bool literal.
+    * Simplify calls to RadioButton to not need bool literals.
 

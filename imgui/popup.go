@@ -31,10 +31,7 @@ func (c *Context) OpenPopupEx(id ID) {
 	popup_ref.OpenFrameCount = c.FrameCount
 	popup_ref.OpenParentId = parent_window.IDStack[len(parent_window.IDStack)-1]
 	popup_ref.OpenMousePos = c.IO.MousePos
-	popup_ref.OpenPopupPos = c.IO.MousePos
-	if !c.NavDisableHighlight && c.NavDisableMouseHover {
-		c.NavCalcPreferredMousePos()
-	}
+	popup_ref.OpenPopupPos = c.NavCalcPreferredRefPos()
 
 	if len(c.OpenPopupStack) < current_stack_size+1 {
 		c.OpenPopupStack = append(c.OpenPopupStack, popup_ref)
