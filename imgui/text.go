@@ -751,8 +751,8 @@ func (c *Context) InputTextEx(label string, buf []byte, size_arg f64.Vec2, flags
 
 	if c.ActiveId == id {
 		if cancel_edit {
-			// Restore initial value
-			if is_editable {
+			// Restore initial value. Only return true if restoring to the initial value changes the current buffer contents.
+			if is_editable && string(buf) != string(edit_state.InitialText) {
 				buf = edit_state.InitialText
 				value_changed = true
 			}

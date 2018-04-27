@@ -48,10 +48,10 @@ const (
 	ColPlotHistogram
 	ColPlotHistogramHovered
 	ColTextSelectedBg
-	ColModalWindowDarkening // darken entire screen when a modal window is active
+	ColModalWindowDarkening // Darken/colorize entire screen behind a modal window, when one is active
 	ColDragDropTarget
-	ColNavHighlight          // gamepad/keyboard: current highlighted item
-	ColNavWindowingHighlight // gamepad/keyboard: when holding NavMenu to focus/move/resize windows
+	ColNavHighlight          // Gamepad/keyboard: current highlighted item
+	ColNavWindowingHighlight // Gamepad/keyboard: when holding NavMenu to focus/move/resize windows
 	ColCOUNT
 )
 
@@ -188,8 +188,6 @@ func (c *Context) StyleColorsLight(style *Style) {
 
 	colors[ColText] = f64.Vec4{0.00, 0.00, 0.00, 1.00}
 	colors[ColTextDisabled] = f64.Vec4{0.60, 0.60, 0.60, 1.00}
-	//colors[ColTextHovered]          = f64.Vec4{1.00, 1.00, 1.00, 1.00}
-	//colors[ColTextActive]           = f64.Vec4{1.00, 1.00, 0.00, 1.00}
 	colors[ColWindowBg] = f64.Vec4{0.94, 0.94, 0.94, 1.00}
 	colors[ColChildBg] = f64.Vec4{0.00, 0.00, 0.00, 0.00}
 	colors[ColPopupBg] = f64.Vec4{1.00, 1.00, 1.00, 0.98}

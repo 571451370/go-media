@@ -151,8 +151,20 @@ func (c *Context) InputInt(label string, v *int) bool {
 }
 
 func (c *Context) InputIntEx(label string, v *int, step, step_fast int, extra_flags InputTextFlags) bool {
+	var step_ptr, step_fast_ptr *int
+	if step > 0 {
+		step_ptr = &step
+	}
+	if step_fast > 0 {
+		step_fast_ptr = &step_fast
+	}
+
 	// Hexadecimal input provided as a convenience but the flag name is awkward. Typically you'd use InputText() to parse your own data, if you want to handle prefixes.
-	return false
+	format := "%d"
+	if extra_flags&InputTextFlagsCharsHexadecimal != 0 {
+		format = "%08X"
+	}
+	return c.InputScalarEx(label, v, step_ptr, step_fast_ptr, format, extra_flags)
 }
 
 func (c *Context) InputIntN(label string, v []int, extra_flags InputTextFlags) bool {
@@ -186,14 +198,22 @@ func (c *Context) InputIntN(label string, v []int, extra_flags InputTextFlags) b
 }
 
 func (c *Context) InputFloat(label string, v *float64, step float64) bool {
-	return c.InputFloatEx(label, v, step, 0, -1, 0)
+	return c.InputFloatEx(label, v, step, 0, "", 0)
 }
 
-func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64, decimal_precision int, extra_flags InputTextFlags) bool {
-	return false
+func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64, format string, extra_flags InputTextFlags) bool {
+	var step_ptr, step_fast_ptr *float64
+	if step > 0 {
+		step_ptr = &step
+	}
+	if step_fast > 0 {
+		step_fast_ptr = &step_fast
+	}
+	extra_flags |= InputTextFlagsCharsScientific
+	return c.InputScalarEx(label, v, step_ptr, step_fast_ptr, format, extra_flags)
 }
 
-// NB: scalar_format here must be a simple "%xx" format string with no prefix/suffix (unlike the Drag/Slider functions "display_format" argument)
+// NB: scalar_format here must be a simple "%xx" format string with no prefix/suffix (unlike the Drag/Slider functions "format" argument)
 func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr interface{}, scalar_format string, extra_flags InputTextFlags) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {

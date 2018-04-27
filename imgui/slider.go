@@ -237,23 +237,23 @@ func (c *Context) SliderInt(label string, v *int, v_min, v_max int) bool {
 	return c.SliderIntEx(label, v, v_min, v_max, "%.0f")
 }
 
-func (c *Context) SliderIntEx(label string, v *int, v_min, v_max int, display_format string) bool {
-	if display_format == "" {
-		display_format = "%.0f"
+func (c *Context) SliderIntEx(label string, v *int, v_min, v_max int, format string) bool {
+	if format == "" {
+		format = "%.0f"
 	}
 
 	v_f := float64(*v)
-	value_changed := c.SliderFloatEx(label, &v_f, float64(v_min), float64(v_max), display_format, 1)
+	value_changed := c.SliderFloatEx(label, &v_f, float64(v_min), float64(v_max), format, 1)
 	*v = int(v_f)
 	return value_changed
 }
 
 // Use power!=1.0 for logarithmic sliders.
-// Adjust display_format to decorate the value with a prefix or a suffix.
+// Adjust format to decorate the value with a prefix or a suffix.
 //   "%.3f"         1.234
 //   "%5.2f secs"   01.23 secs
 //   "Gold: %.0f"   Gold: 1
-func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, display_format string, power float64) bool {
+func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, format string, power float64) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -284,10 +284,10 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	}
 
 	hovered := c.ItemHoverable(frame_bb, id)
-	if display_format == "" {
-		display_format = "%.3f"
+	if format == "" {
+		format = "%.3f"
 	}
-	decimal_precision := ParseFormatPrecision(display_format, 3)
+	decimal_precision := ParseFormatPrecision(format, 3)
 
 	// Tabbing or CTRL-clicking on Slider turns it into an input box
 	start_text_input := false
@@ -312,7 +312,7 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, 0)
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
-	value := fmt.Sprintf(display_format, *v)
+	value := fmt.Sprintf(format, *v)
 	c.RenderTextClippedEx(frame_bb.Min, frame_bb.Max, value, nil, f64.Vec2{0.5, 0.5}, nil)
 	if label_size.X > 0.0 {
 		c.RenderText(f64.Vec2{
@@ -329,12 +329,12 @@ func (c *Context) VSliderInt(label string, size f64.Vec2, v *int, v_min, v_max i
 	return c.VSliderIntEx(label, size, v, v_min, v_max, "%.0f")
 }
 
-func (c *Context) VSliderIntEx(label string, size f64.Vec2, v *int, v_min, v_max int, display_format string) bool {
-	if display_format == "" {
-		display_format = "%.0f"
+func (c *Context) VSliderIntEx(label string, size f64.Vec2, v *int, v_min, v_max int, format string) bool {
+	if format == "" {
+		format = "%.0f"
 	}
 	v_f := float64(*v)
-	value_changed := c.VSliderFloatEx(label, size, &v_f, float64(v_min), float64(v_max), display_format, 1.0)
+	value_changed := c.VSliderFloatEx(label, size, &v_f, float64(v_min), float64(v_max), format, 1.0)
 	*v = int(v_f)
 	return value_changed
 }
@@ -343,7 +343,7 @@ func (c *Context) VSliderFloat(label string, size f64.Vec2, v *float64, v_min, v
 	return c.VSliderFloatEx(label, size, v, v_min, v_max, "%.3f", 1)
 }
 
-func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min, v_max float64, display_format string, power float64) bool {
+func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min, v_max float64, format string, power float64) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -366,10 +366,10 @@ func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min,
 	}
 	hovered := c.ItemHoverable(frame_bb, id)
 
-	if display_format == "" {
-		display_format = "%.3f"
+	if format == "" {
+		format = "%.3f"
 	}
-	decimal_precision := ParseFormatPrecision(display_format, 3)
+	decimal_precision := ParseFormatPrecision(format, 3)
 
 	if (hovered && c.IO.MouseClicked[0]) || c.NavActivateId == id || c.NavInputId == id {
 		c.SetActiveID(id, window)
@@ -383,7 +383,7 @@ func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min,
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
 	// For the vertical slider we allow centered text to overlap the frame padding
-	value := fmt.Sprintf(display_format, *v)
+	value := fmt.Sprintf(format, *v)
 	c.RenderTextClippedEx(f64.Vec2{frame_bb.Min.X, frame_bb.Min.Y + style.FramePadding.Y}, frame_bb.Max, value, nil, f64.Vec2{0.5, 0.0}, nil)
 	if label_size.X > 0.0 {
 		c.RenderText(f64.Vec2{frame_bb.Max.X + style.ItemInnerSpacing.X, frame_bb.Min.Y + style.FramePadding.Y}, label)
@@ -405,7 +405,12 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	c.FocusableItemUnregister(window)
 
 	buf := []byte(DataTypeFormatString(data, decimal_precision))
-	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), InputTextFlagsCharsDecimal|InputTextFlagsAutoSelectAll, nil)
+	flags := InputTextFlagsAutoSelectAll | InputTextFlagsCharsDecimal
+	switch data.(type) {
+	case float32, float64:
+		flags |= InputTextFlagsCharsScientific
+	}
+	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), flags, nil)
 	// First frame we started displaying the InputText widget
 	if c.ScalarAsInputTextId == 0 {
 		// InputText ID expected to match the Slider ID (else we'd need to store them both, which is also possible)
@@ -432,7 +437,7 @@ func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64) 
 }
 
 // Add multiple sliders on 1 line for compact edition of multiple components
-func (c *Context) SliderFloatNEx(label string, v []float64, v_min, v_max float64, display_format string, power float64) bool {
+func (c *Context) SliderFloatNEx(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
 	components := len(v)
 
 	window := c.GetCurrentWindow()
@@ -446,7 +451,7 @@ func (c *Context) SliderFloatNEx(label string, v []float64, v_min, v_max float64
 	c.PushMultiItemsWidths(components)
 	for i := 0; i < components; i++ {
 		c.PushID(ID(i))
-		changed := c.SliderFloatEx("##v", &v[i], v_min, v_max, display_format, power)
+		changed := c.SliderFloatEx("##v", &v[i], v_min, v_max, format, power)
 		if changed {
 			value_changed = true
 		}

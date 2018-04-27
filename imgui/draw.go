@@ -441,9 +441,8 @@ func (c *Context) BeginEx(name string, p_open *bool, flags WindowFlags) bool {
 	}
 
 	if c.NextWindowData.FocusCond != 0 {
-		c.SetWindowFocus()
+		c.FocusWindow(window)
 	}
-	c.FocusWindow(window)
 
 	if window.Appearing {
 		c.SetWindowConditionAllowFlags(window, CondAppearing, false)
