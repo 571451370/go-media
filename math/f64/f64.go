@@ -1072,7 +1072,7 @@ func Saturate(x float64) float64 {
 	return math.Max(0, math.Min(1, x))
 }
 
-func SignNZ(x float64) float64 {
+func SignStrict(x float64) float64 {
 	if x >= 0 {
 		return 1
 	}
