@@ -1358,13 +1358,49 @@ func TextCountUtf8BytesFromStr(r []rune) int {
 }
 
 func (c *Context) TextDisabled(format string, args ...interface{}) {
-	c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+	c.PushStyleColorVec4(ColText, c.Style.Colors[ColTextDisabled])
 	c.Text(format, args...)
 	c.PopStyleColor()
 }
 
 func (c *Context) TextColored(col color.RGBA, format string, args ...interface{}) {
-	c.PushStyleColorRGBA(ColText, col)
+	c.PushStyleColor(ColText, col)
 	c.Text(format, args...)
 	c.PopStyleColor()
+}
+
+// Add a label+text combo aligned to other label+value widgets
+func (c *Context) LabelText(label, format string, args ...interface{}) {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return
+	}
+
+	style := &c.Style
+	w := c.CalcItemWidth()
+
+	label_size := c.CalcTextSizeEx(label, true, -1)
+	value_bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(f64.Vec2{w, label_size.Y + style.FramePadding.Y*2}),
+	}
+	label_bb := f64.Vec2{w, style.FramePadding.Y * 2}
+	if label_size.X > 0 {
+		label_bb.X += style.ItemInnerSpacing.X
+	}
+	total_bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(label_bb).Add(label_size),
+	}
+	c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
+	if !c.ItemAdd(total_bb, 0) {
+		return
+	}
+
+	// Render
+	value_text := fmt.Sprintf(format, args...)
+	c.RenderTextClippedEx(value_bb.Min, value_bb.Max, value_text, nil, f64.Vec2{0.0, 0.5}, nil)
+	if label_size.X > 0.0 {
+		c.RenderText(f64.Vec2{value_bb.Max.X + style.ItemInnerSpacing.X, value_bb.Min.Y + style.FramePadding.Y}, label)
+	}
 }

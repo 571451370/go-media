@@ -139,7 +139,7 @@ func (c *Context) BeginMenuEx(label string, enabled bool) bool {
 		}
 		pressed = c.SelectableEx(label, menu_is_open, select_flags, f64.Vec2{w, 0})
 		if !enabled {
-			c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+			c.PushStyleColorVec4(ColText, c.Style.Colors[ColTextDisabled])
 		}
 		c.RenderArrow(pos.Add(f64.Vec2{window.MenuColumns.Pos[2] + extra_w + c.FontSize*0.3, 0}), DirRight)
 		if !enabled {
@@ -306,7 +306,7 @@ func (c *Context) MenuItemEx(label, shortcut string, selected, enabled bool) boo
 		extra_w := math.Max(0.0, c.GetContentRegionAvail().X-w)
 		pressed = c.SelectableEx(label, false, flags|SelectableFlagsDrawFillAvailWidth, f64.Vec2{w, 0.0})
 		if shortcut_size.X > 0.0 {
-			c.PushStyleColor(ColText, c.Style.Colors[ColTextDisabled])
+			c.PushStyleColorVec4(ColText, c.Style.Colors[ColTextDisabled])
 			c.RenderTextEx(pos.Add(f64.Vec2{window.MenuColumns.Pos[1] + extra_w, 0.0}), shortcut, false)
 			c.PopStyleColor()
 		}

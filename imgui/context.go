@@ -430,12 +430,16 @@ func (c *Context) PushStringID(str_id string) {
 
 func (c *Context) PushID(id ID) {
 	window := c.GetCurrentWindowRead()
-	window.IDStack = append(window.IDStack, window.GetIDByInt(int(id)))
+	window.IDStack = append(window.IDStack, window.GetIntID(int(id)))
 }
 
 func (c *Context) PopID() {
 	window := c.GetCurrentWindowRead()
 	window.IDStack = window.IDStack[:len(window.IDStack)-1]
+}
+
+func (c *Context) GetStringID(str_id string) ID {
+	return c.CurrentWindow.GetID(str_id)
 }
 
 type BackendFlags int

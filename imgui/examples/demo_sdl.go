@@ -101,8 +101,37 @@ type UI struct {
 	}
 
 	Widgets struct {
-		Clicked                        int
-		Check                          bool
+		Basic struct {
+			Clicked int
+			Check   bool
+			E       int
+
+			Arr []float64
+
+			ItemsCurrent int
+
+			Str0       []byte
+			I0         int
+			F0, D0, F1 float64
+			Vec4a      [4]float64
+
+			I1, I2   int
+			F1D, F2D float64
+
+			Slider struct {
+				I1     int
+				F1, F2 float64
+				Angle  float64
+			}
+
+			ColorEdit struct {
+				Col1, Col2 color.RGBA
+			}
+
+			ListBox struct {
+				ItemCurrent int
+			}
+		}
 		AlignLabelWithCurrentXPosition bool
 		ClosableGroup                  bool
 		WrapWidth                      float64
@@ -242,6 +271,8 @@ func initIM() {
 	ui.MetricsWindow.ShowClipRects = true
 
 	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
+
+	ui.Widgets.Basic.Arr = []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
 }
 
 func evKey(key int, down bool) {
@@ -847,15 +878,143 @@ func showDemoWindow() {
 
 	if im.CollapsingHeader("Widgets") {
 		if im.TreeNode("Basic") {
+			clicked := &ui.Widgets.Basic.Clicked
 			if im.Button("Button") {
-				ui.Widgets.Clicked++
+				*clicked++
 			}
-			if ui.Widgets.Clicked != 0 {
+			if *clicked != 0 {
 				im.SameLine()
 				im.Text("Thanks for clicking me!")
 			}
+			check := &ui.Widgets.Basic.Check
+			im.Checkbox("checkbox", check)
 
-			im.Checkbox("checkbox", &ui.Widgets.Check)
+			e := &ui.Widgets.Basic.E
+			im.RadioButtonEx("radio a", e, 0)
+			im.SameLine()
+			im.RadioButtonEx("radio b", e, 1)
+			im.SameLine()
+			im.RadioButtonEx("radio c", e, 2)
+
+			// Color buttons, demonstrate using PushID() to add unique identifier in the ID stack, and changing style.
+			for i := 0; i < 7; i++ {
+				if i > 0 {
+					im.SameLine()
+				}
+				im.PushID(imgui.ID(i))
+				im.PushStyleColor(imgui.ColButton, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.6, 0.6}))
+				im.PushStyleColor(imgui.ColButtonHovered, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.7, 0.7}))
+				im.PushStyleColor(imgui.ColButtonActive, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.8, 0.8}))
+				im.Button("Click")
+				im.PopStyleColorN(3)
+				im.PopID()
+			}
+			// Arrow buttons
+			spacing := im.GetStyle().ItemInnerSpacing.X
+			if im.ArrowButton("##left", imgui.DirLeft) {
+			}
+			im.SameLineEx(0.0, spacing)
+			if im.ArrowButton("##left", imgui.DirRight) {
+			}
+
+			im.Text("Hover over me")
+			if im.IsItemHovered() {
+				im.SetTooltip("I am a tooltip")
+			}
+
+			im.SameLine()
+			im.Text("- or me")
+			if im.IsItemHovered() {
+				im.BeginTooltip()
+				im.Text("I am a fancy tooltip")
+				arr := ui.Widgets.Basic.Arr
+				im.PlotLines("Curve", arr)
+				im.EndTooltip()
+			}
+
+			im.Separator()
+			im.LabelText("label", "Value")
+			{
+				// Using the _simplified_ one-liner Combo() api here
+				items := []string{"AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIII", "JJJJ", "KKKK", "LLLLLLL", "MMMM", "OOOOOOO"}
+				items_current := &ui.Widgets.Basic.ItemsCurrent
+				im.ComboString("combo", items_current, items)
+				im.SameLine()
+				showHelpMarker("Refer to the \"Combo\" section below for an explanation of the full BeginCombo/EndCombo API, and demonstration of various flags.\n")
+			}
+
+			{
+				str0 := ui.Widgets.Basic.Str0
+				i0 := &ui.Widgets.Basic.I0
+				im.InputText("input text", str0)
+				im.SameLine()
+				showHelpMarker("Hold SHIFT or use mouse to select text.\nCTRL+Left/Right to word jump.\nCTRL+A or double-click to select all.\nCTRL+X,CTRL+C,CTRL+V clipboard.\nCTRL+Z,CTRL+Y undo/redo.\nESCAPE to revert.\n")
+
+				im.InputInt("input int", i0)
+				im.SameLine()
+				showHelpMarker("You can apply arithmetic operators +,*,/ on numerical values.\n  e.g. [ 100 ], input '*2', result becomes [ 200 ]\nUse +- to subtract.\n")
+
+				f0 := &ui.Widgets.Basic.F0
+				im.InputFloatEx("input float", f0, 0.01, 1.0, "", 1)
+
+				d0 := &ui.Widgets.Basic.D0
+				im.InputFloatEx("input double", d0, 0.01, 1.0, "%.6f", 1)
+
+				f1 := &ui.Widgets.Basic.F1
+				im.InputFloatEx("input scientific", f1, 0.0, 0.0, "%e", 1)
+				im.SameLine()
+				showHelpMarker("You can input value using the scientific notation,\n  e.g. \"1e+8\" becomes \"100000000\".\n")
+
+				vec4a := ui.Widgets.Basic.Vec4a[:]
+				im.InputFloatN("input float3", vec4a)
+			}
+
+			{
+				i1 := &ui.Widgets.Basic.I1
+				im.DragInt("drag int", i1)
+				im.SameLine()
+				showHelpMarker("Click and drag to edit value.\nHold SHIFT/ALT for faster/slower edit.\nDouble-click or CTRL+click to input value.")
+
+				i2 := &ui.Widgets.Basic.I2
+				im.DragIntEx("drag int 0..100", i2, 1, 0, 100, "%.0f%%")
+
+				f1 := &ui.Widgets.Basic.F1D
+				f2 := &ui.Widgets.Basic.F2D
+				im.DragFloatEx("drag float", f1, 0.005, 0, 0, "", 1)
+				im.DragFloatEx("drag small float", f2, 0.0001, 0.0, 0.0, "%.06f ns", 1)
+			}
+
+			{
+				i1 := &ui.Widgets.Basic.Slider.I1
+				im.SliderInt("slider int", i1, -1, 3)
+				im.SameLine()
+				showHelpMarker("CTRL+click to input value.")
+
+				f1 := &ui.Widgets.Basic.Slider.F1
+				f2 := &ui.Widgets.Basic.Slider.F2
+				angle := &ui.Widgets.Basic.Slider.Angle
+				im.SliderFloatEx("slider float", f1, 0.0, 1.0, "ratio = %.3f", 1)
+				im.SliderFloatEx("slider log float", f2, -10.0, 10.0, "%.4f", 3)
+				im.SliderAngle("slider angle", angle)
+			}
+
+			{
+				col1 := &ui.Widgets.Basic.ColorEdit.Col1
+				col2 := &ui.Widgets.Basic.ColorEdit.Col2
+				im.ColorEdit3("color1", col1)
+				im.SameLine()
+				showHelpMarker("Click on the colored square to open a color picker.\nRight-click on the colored square to show options.\nCTRL+click on individual component to input value.\n")
+
+				im.ColorEdit4("color 2", col2)
+			}
+
+			{
+				// List box
+				listbox_items := []string{"Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon"}
+				listbox_item_current := &ui.Widgets.Basic.ListBox.ItemCurrent
+				im.ListBoxEx("listbox\n(single select)", listbox_item_current, listbox_items, 4)
+			}
+
 			im.TreePop()
 		}
 		if im.TreeNode("Trees") {

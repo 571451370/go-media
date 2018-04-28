@@ -2597,7 +2597,7 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 		}
 		resize_rect = resize_rect.Canon()
 
-		hovered, held, _ := c.ButtonBehavior(resize_rect, window.GetIDByInt(resize_grip_n), ButtonFlagsFlattenChildren|ButtonFlagsNoNavFocus)
+		hovered, held, _ := c.ButtonBehavior(resize_rect, window.GetIntID(resize_grip_n), ButtonFlagsFlattenChildren|ButtonFlagsNoNavFocus)
 		if hovered || held {
 			if resize_grip_n&1 != 0 {
 				c.MouseCursor = MouseCursorResizeNESW
@@ -2642,7 +2642,7 @@ func (c *Context) UpdateManualResize(window *Window, size_auto_fit f64.Vec2, bor
 			BORDER_APPEAR_TIMER = 0.05 // Reduce visual noise
 		)
 		border_rect := c.GetBorderRect(window, border_n, grip_hover_size, BORDER_SIZE)
-		hovered, held, _ := c.ButtonBehavior(border_rect, window.GetIDByInt(border_n+4), ButtonFlagsFlattenChildren)
+		hovered, held, _ := c.ButtonBehavior(border_rect, window.GetIntID(border_n+4), ButtonFlagsFlattenChildren)
 		if (hovered && c.HoveredIdTimer > BORDER_APPEAR_TIMER) || held {
 			if border_n&1 != 0 {
 				c.MouseCursor = MouseCursorResizeEW

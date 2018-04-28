@@ -425,7 +425,11 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	return false
 }
 
-func (c *Context) SliderAngle(label string, v_rad *float64, v_degrees_min, v_degrees_max float64) bool {
+func (c *Context) SliderAngle(label string, v_rad *float64) bool {
+	return c.SliderAngleEx(label, v_rad, -360, 360)
+}
+
+func (c *Context) SliderAngleEx(label string, v_rad *float64, v_degrees_min, v_degrees_max float64) bool {
 	v_deg := (*v_rad) * 360.0 / (2 * math.Pi)
 	value_changed := c.SliderFloatEx(label, &v_deg, v_degrees_min, v_degrees_max, "%.0f deg", 1.0)
 	*v_rad = v_deg * (2 * math.Pi) / 360.0

@@ -579,3 +579,39 @@ func (c *Context) LogButtons() {
 		c.LogToClipboardEx(c.LogAutoExpandMaxDepth)
 	}
 }
+
+func (c *Context) ArrowButton(str_id string, dir Dir) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	id := window.GetID(str_id)
+	sz := c.GetFrameHeight()
+	bb := f64.Rectangle{
+		window.DC.CursorPos,
+		window.DC.CursorPos.Add(f64.Vec2{sz, sz}),
+	}
+	c.ItemSizeBB(bb)
+	if !c.ItemAdd(bb, id) {
+		return false
+	}
+
+	hovered, held, pressed := c.ButtonBehavior(bb, id, 0)
+
+	// Render
+	var col color.RGBA
+	switch {
+	case hovered && held:
+		col = c.GetColorFromStyle(ColButtonActive)
+	case hovered:
+		col = c.GetColorFromStyle(ColButtonHovered)
+	default:
+		col = c.GetColorFromStyle(ColButton)
+	}
+	c.RenderNavHighlight(bb, id)
+	c.RenderFrameEx(bb.Min, bb.Max, col, true, c.Style.FrameRounding)
+	c.RenderArrow(bb.Min.Add(c.Style.FramePadding), dir)
+
+	return pressed
+}

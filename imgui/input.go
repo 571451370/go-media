@@ -266,3 +266,36 @@ func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr inte
 
 	return value_changed
 }
+
+func (c *Context) InputFloatN(label string, v []float64) bool {
+	return c.InputFloatNEx(label, v, "", 0)
+}
+
+func (c *Context) InputFloatNEx(label string, v []float64, format string, extra_flags InputTextFlags) bool {
+	components := len(v)
+
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	value_changed := false
+	c.BeginGroup()
+	c.PushStringID(label)
+	c.PushMultiItemsWidths(components)
+	for i := 0; i < components; i++ {
+		c.PushID(ID(i))
+		if c.InputFloatEx("##v", &v[i], 0, 0, format, extra_flags) {
+		}
+		c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+		c.PopID()
+		c.PopItemWidth()
+	}
+	c.PopID()
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+
+	return value_changed
+}

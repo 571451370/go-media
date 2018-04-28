@@ -91,7 +91,7 @@ func (c *Context) CollapsingHeaderOpenEx(label string, p_open *bool, flags TreeN
 		}
 		var last_item_backup ItemHoveredDataBackup
 		last_item_backup.Backup(c)
-		if c.CloseButton(window.GetIDByInt(int(id+1)), pos, button_sz) {
+		if c.CloseButton(window.GetIntID(int(id+1)), pos, button_sz) {
 			*p_open = false
 		}
 		last_item_backup.Restore(c)
@@ -122,7 +122,7 @@ func (c *Context) TreeNodeIDEx(id ID, flags TreeNodeFlags, format string, args .
 		return false
 	}
 	label := fmt.Sprintf(format, args...)
-	return c.TreeNodeBehavior(window.GetIDByInt(int(id)), flags, label)
+	return c.TreeNodeBehavior(window.GetIntID(int(id)), flags, label)
 }
 
 func (c *Context) TreeNodeBehavior(id ID, flags TreeNodeFlags, label string) bool {

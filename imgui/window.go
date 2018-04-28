@@ -282,7 +282,7 @@ func (w *Window) GetID(str string) ID {
 	return id
 }
 
-func (w *Window) GetIDByInt(n int) ID {
+func (w *Window) GetIntID(n int) ID {
 	seed := w.IDStack[len(w.IDStack)-1]
 	h := fnv.New32()
 	binary.Write(h, binary.LittleEndian, uint32(seed))
@@ -2172,4 +2172,15 @@ func (c *Context) IsWindowHovered(flags HoveredFlags) bool {
 	}
 
 	return true
+}
+
+func (c *Context) GetCursorPosY() float64 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.CursorPos.Y - window.Pos.Y + window.Scroll.Y
+}
+
+func (c *Context) SetCursorPosY(y float64) {
+	window := c.GetCurrentWindow()
+	window.DC.CursorPos.Y = window.Pos.Y - window.Scroll.Y + y
+	window.DC.CursorMaxPos.Y = math.Max(window.DC.CursorMaxPos.Y, window.DC.CursorPos.Y)
 }
