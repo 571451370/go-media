@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 type DragDropFlags int
@@ -353,4 +354,149 @@ func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_spee
 	}
 
 	return value_changed
+}
+
+func (c *Context) DragFloatRange2(label string, v_current_min, v_current_max *float64) bool {
+	return c.DragFloatRange2Ex(label, v_current_min, v_current_max, 1, 0, 0, "%.3f", "", 1)
+}
+
+func (c *Context) DragFloatRange2Ex(label string, v_current_min, v_current_max *float64, v_speed, v_min, v_max float64, format, format_max string, power float64) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	c.PushStringID(label)
+	c.BeginGroup()
+	c.PushMultiItemsWidths(2)
+
+	min := v_min
+	max := math.Min(v_max, *v_current_max)
+	if v_min >= v_max {
+		min = -math.MaxFloat32
+		max = *v_current_max
+	}
+
+	value_changed := c.DragFloatEx("##min", v_current_min, v_speed, min, max, format, power)
+	c.PopItemWidth()
+	c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+
+	min = math.Max(v_min, *v_current_min)
+	max = v_max
+	if v_min >= v_max {
+		min = *v_current_min
+		max = math.MaxFloat32
+	}
+	if format_max == "" {
+		format_max = format
+	}
+	if c.DragFloatEx("##max", v_current_max, v_speed, min, max, format_max, power) {
+		value_changed = true
+	}
+
+	c.PopItemWidth()
+	c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+	c.PopID()
+
+	return value_changed
+}
+
+func (c *Context) DragIntRange2(label string, v_current_min, v_current_max *int) bool {
+	return c.DragIntRange2Ex(label, v_current_min, v_current_max, 1.0, 0, 0, "%.0f", "")
+}
+
+func (c *Context) DragIntRange2Ex(label string, v_current_min, v_current_max *int, v_speed float64, v_min, v_max int, format, format_max string) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	c.PushStringID(label)
+	c.BeginGroup()
+	c.PushMultiItemsWidths(2)
+
+	min := v_min
+	max := mathutil.Min(v_max, *v_current_max)
+	if v_min >= v_max {
+		min = math.MinInt32
+		max = *v_current_max
+	}
+	value_changed := c.DragIntEx("##min", v_current_min, v_speed, min, max, format)
+	c.PopItemWidth()
+	c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+
+	min = mathutil.Max(v_min, *v_current_min)
+	max = v_max
+	if v_min >= v_max {
+		min = *v_current_min
+		max = math.MaxInt32
+	}
+	if format_max == "" {
+		format_max = format
+	}
+	if c.DragIntEx("##max", v_current_max, v_speed, min, max, format) {
+		value_changed = true
+	}
+
+	c.PopItemWidth()
+	c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+	c.PopID()
+
+	return value_changed
+}
+
+func (c *Context) DragInt2(label string, v []int) bool {
+	return c.DragInt2Ex(label, v, 1.0, 0, 0, "%.0f")
+}
+
+func (c *Context) DragInt2Ex(label string, v []int, v_speed float64, v_min, v_max int, format string) bool {
+	return c.DragIntN(label, v[:2], v_speed, v_min, v_max, format)
+}
+
+func (c *Context) DragInt3(label string, v []int) bool {
+	return c.DragInt2Ex(label, v, 1.0, 0, 0, "%.0f")
+}
+
+func (c *Context) DragInt3Ex(label string, v []int, v_speed float64, v_min, v_max int, format string) bool {
+	return c.DragIntN(label, v[:3], v_speed, v_min, v_max, format)
+}
+
+func (c *Context) DragInt4(label string, v []int) bool {
+	return c.DragInt4Ex(label, v, 1.0, 0, 0, "%.0f")
+}
+
+func (c *Context) DragInt4Ex(label string, v []int, v_speed float64, v_min, v_max int, format string) bool {
+	return c.DragIntN(label, v[:4], v_speed, v_min, v_max, format)
+}
+
+func (c *Context) DragFloat2(label string, v []float64) bool {
+	return c.DragFloat2Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragFloat2Ex(label string, v []float64, v_speed, v_min, v_max float64, format string, power float64) bool {
+	return c.DragFloatN(label, v[:2], v_speed, v_min, v_max, format, 1)
+}
+
+func (c *Context) DragFloat3(label string, v []float64) bool {
+	return c.DragFloat3Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragFloat3Ex(label string, v []float64, v_speed, v_min, v_max float64, format string, power float64) bool {
+	return c.DragFloatN(label, v[:3], v_speed, v_min, v_max, format, 1)
+}
+
+func (c *Context) DragFloat4(label string, v []float64) bool {
+	return c.DragFloat4Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragFloat4Ex(label string, v []float64, v_speed, v_min, v_max float64, format string, power float64) bool {
+	return c.DragFloatN(label, v[:4], v_speed, v_min, v_max, format, 1)
 }

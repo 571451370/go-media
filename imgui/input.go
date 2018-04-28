@@ -299,3 +299,51 @@ func (c *Context) InputFloatNEx(label string, v []float64, format string, extra_
 
 	return value_changed
 }
+
+func (c *Context) InputFloat2(label string, v []float64) bool {
+	return c.InputFloat2Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputFloat2Ex(label string, v []float64, format string, extra_flags InputTextFlags) bool {
+	return c.InputFloatNEx(label, v[:2], format, extra_flags)
+}
+
+func (c *Context) InputFloat3(label string, v []float64) bool {
+	return c.InputFloat3Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputFloat3Ex(label string, v []float64, format string, extra_flags InputTextFlags) bool {
+	return c.InputFloatNEx(label, v[:3], format, extra_flags)
+}
+
+func (c *Context) InputFloat4(label string, v []float64) bool {
+	return c.InputFloat4Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputFloat4Ex(label string, v []float64, format string, extra_flags InputTextFlags) bool {
+	return c.InputFloatNEx(label, v[:4], format, extra_flags)
+}
+
+func (c *Context) InputInt2(label string, v []int) bool {
+	return c.InputInt2Ex(label, v, 0)
+}
+
+func (c *Context) InputInt2Ex(label string, v []int, extra_flags InputTextFlags) bool {
+	return c.InputIntN(label, v[:2], extra_flags)
+}
+
+func (c *Context) InputInt3(label string, v []int) bool {
+	return c.InputInt3Ex(label, v, 0)
+}
+
+func (c *Context) InputInt3Ex(label string, v []int, extra_flags InputTextFlags) bool {
+	return c.InputIntN(label, v[:3], extra_flags)
+}
+
+func (c *Context) InputInt4(label string, v []int) bool {
+	return c.InputInt4Ex(label, v, 0)
+}
+
+func (c *Context) InputInt4Ex(label string, v []int, extra_flags InputTextFlags) bool {
+	return c.InputIntN(label, v[:4], extra_flags)
+}

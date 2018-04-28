@@ -436,12 +436,8 @@ func (c *Context) SliderAngleEx(label string, v_rad *float64, v_degrees_min, v_d
 	return value_changed
 }
 
-func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64) bool {
-	return c.SliderFloatNEx(label, v, v_min, v_max, "%.3f", 1)
-}
-
 // Add multiple sliders on 1 line for compact edition of multiple components
-func (c *Context) SliderFloatNEx(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
+func (c *Context) SliderFloatN(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
 	components := len(v)
 
 	window := c.GetCurrentWindow()
@@ -490,4 +486,80 @@ func (c *Context) PushMultiItemsWidthsEx(components int, w_full float64) {
 		window.DC.ItemWidthStack = append(window.DC.ItemWidthStack, w_item_one)
 	}
 	window.DC.ItemWidth = window.DC.ItemWidthStack[len(window.DC.ItemWidthStack)-1]
+}
+
+func (c *Context) SliderIntN(label string, v []int, v_min, v_max int, format string) bool {
+	components := len(v)
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	value_changed := false
+	c.BeginGroup()
+	c.PushStringID(label)
+	c.PushMultiItemsWidths(components)
+	for i := 0; i < components; i++ {
+		c.PushID(ID(i))
+		if c.SliderIntEx("##v", &v[i], v_min, v_max, format) {
+			value_changed = true
+		}
+		c.SameLineEx(0, c.Style.ItemInnerSpacing.X)
+		c.PopID()
+		c.PopItemWidth()
+	}
+	c.PopID()
+
+	n := c.FindRenderedTextEnd(label)
+	c.TextUnformatted(label[:n])
+	c.EndGroup()
+	return value_changed
+}
+
+func (c *Context) SliderInt2(label string, v []int, v_min, v_max int) bool {
+	return c.SliderInt2Ex(label, v, v_min, v_max, "%.0f")
+}
+
+func (c *Context) SliderInt2Ex(label string, v []int, v_min, v_max int, format string) bool {
+	return c.SliderIntN(label, v[:2], v_min, v_max, format)
+}
+
+func (c *Context) SliderInt3(label string, v []int, v_min, v_max int) bool {
+	return c.SliderInt3Ex(label, v, v_min, v_max, "%.0f")
+}
+
+func (c *Context) SliderInt3Ex(label string, v []int, v_min, v_max int, format string) bool {
+	return c.SliderIntN(label, v[:3], v_min, v_max, format)
+}
+
+func (c *Context) SliderInt4(label string, v []int, v_min, v_max int) bool {
+	return c.SliderInt4Ex(label, v, v_min, v_max, "%.0f")
+}
+
+func (c *Context) SliderInt4Ex(label string, v []int, v_min, v_max int, format string) bool {
+	return c.SliderIntN(label, v[:4], v_min, v_max, format)
+}
+
+func (c *Context) SliderFloat2(label string, v []float64, v_min, v_max float64) bool {
+	return c.SliderFloat2Ex(label, v, v_min, v_max, "%.3f", 1.0)
+}
+
+func (c *Context) SliderFloat2Ex(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
+	return c.SliderFloatN(label, v[:2], v_min, v_max, format, power)
+}
+
+func (c *Context) SliderFloat3(label string, v []float64, v_min, v_max float64) bool {
+	return c.SliderFloat3Ex(label, v, v_min, v_max, "%.3f", 1.0)
+}
+
+func (c *Context) SliderFloat3Ex(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
+	return c.SliderFloatN(label, v[:3], v_min, v_max, format, power)
+}
+
+func (c *Context) SliderFloat4(label string, v []float64, v_min, v_max float64) bool {
+	return c.SliderFloat4Ex(label, v, v_min, v_max, "%.3f", 1.0)
+}
+
+func (c *Context) SliderFloat4Ex(label string, v []float64, v_min, v_max float64, format string, power float64) bool {
+	return c.SliderFloatN(label, v[:4], v_min, v_max, format, power)
 }

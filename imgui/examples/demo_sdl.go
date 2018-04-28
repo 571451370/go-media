@@ -160,6 +160,74 @@ type UI struct {
 			ItemCurrent3 int
 			ItemCurrent4 int
 		}
+
+		Selectables struct {
+			Basic struct {
+				Selection [5]bool
+			}
+			Single struct {
+				Selected int
+			}
+			Multiple struct {
+				Selection [5]bool
+			}
+			Rendering struct {
+				Selected [3]bool
+			}
+			Columns struct {
+				Selected [16]bool
+			}
+			Grid struct {
+				Selected [16]bool
+			}
+		}
+
+		FilteredTextInput struct {
+			Buf1    []byte
+			Buf2    []byte
+			Buf3    []byte
+			Buf4    []byte
+			Buf5    []byte
+			Buf6    []byte
+			Bufpass []byte
+		}
+
+		Plot struct {
+			Animate      bool
+			Values       [90]float64
+			ValuesOffset int
+			RefreshTime  float64
+			Phase        float64
+
+			FuncType     int
+			DisplayCount int
+
+			Progress    float64
+			ProgressDir float64
+		}
+
+		ColorPicker struct {
+			Color              color.RGBA
+			SavedPaletteInited bool
+			SavedPalette       [32]color.RGBA
+		}
+
+		Range struct {
+			Begin  float64
+			End    float64
+			BeginI int
+			EndI   int
+		}
+
+		MultiComponents struct {
+			Vec4f [4]float64
+			Vec4i [4]int
+		}
+
+		VerticalSliders struct {
+			Spacing  float64
+			IntValue int
+		}
 	}
 
 	Layout struct {
@@ -1280,6 +1348,62 @@ func showDemoWindow() {
 				im.TreePop()
 			}
 
+			im.TreePop()
+		}
+
+		if im.TreeNode("Filtered Text Input") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Plots widgets") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Color/Picker Widgets") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Range Widgets") {
+			begin := &ui.Widgets.Range.Begin
+			end := &ui.Widgets.Range.End
+			begin_i := &ui.Widgets.Range.BeginI
+			end_i := &ui.Widgets.Range.EndI
+			im.DragFloatRange2Ex("range", begin, end, 0.25, 0.0, 100.0, "Min: %.1f %%", "Max: %.1f %%", 1)
+			im.DragIntRange2Ex("range int (no bounds)", begin_i, end_i, 5, 0, 0, "Min: %.0f units", "Max: %.0f units")
+			im.TreePop()
+		}
+
+		if im.TreeNode("Multi-component Widgets") {
+			vec4f := ui.Widgets.MultiComponents.Vec4f[:]
+			vec4i := ui.Widgets.MultiComponents.Vec4i[:]
+
+			im.InputFloat2("input float2", vec4f)
+			im.DragFloat2Ex("drag float2", vec4f, 0.01, 0.0, 1.0, "", 1)
+			im.SliderFloat2("slider float 2", vec4f, 0.0, 1.0)
+			im.DragInt2Ex("drag int2", vec4i, 1, 0, 255, "")
+			im.InputInt2("input int2", vec4i)
+			im.SliderInt2("slider int2", vec4i, 0, 255)
+			im.Spacing()
+
+			im.InputFloat3("input float3", vec4f)
+			im.DragFloat3Ex("drag float3", vec4f, 0.01, 0.0, 1.0, "", 1.0)
+			im.SliderFloat3Ex("slider float3", vec4f, 0.0, 1.0, "", 1.0)
+			im.DragInt3Ex("drag int3", vec4i, 1, 0, 255, "")
+			im.InputInt3("input int3", vec4i)
+			im.SliderInt3("slider int3", vec4i, 0, 255)
+			im.Spacing()
+
+			im.InputFloat4("input float4", vec4f)
+			im.DragFloat4Ex("drag float4", vec4f, 0.01, 0.0, 1.0, "", 1)
+			im.SliderFloat4Ex("slider float4", vec4f, 0.0, 1.0, "", 1)
+			im.InputInt4("input int4", vec4i)
+			im.DragInt4Ex("drag int4", vec4i, 1, 0, 255, "")
+			im.SliderInt4("slider int4", vec4i, 0, 255)
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Vertical Sliders") {
 			im.TreePop()
 		}
 	}
