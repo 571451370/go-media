@@ -110,13 +110,17 @@ type UI struct {
 
 			ItemsCurrent int
 
-			Str0       []byte
-			I0         int
-			F0, D0, F1 float64
-			Vec4a      [4]float64
+			Input struct {
+				Str0       []byte
+				I0         int
+				F0, D0, F1 float64
+				Vec4a      [4]float64
+			}
 
-			I1, I2   int
-			F1D, F2D float64
+			Drag struct {
+				I1, I2 int
+				F1, F2 float64
+			}
 
 			Slider struct {
 				I1     int
@@ -132,20 +136,40 @@ type UI struct {
 				ItemCurrent int
 			}
 		}
-		AlignLabelWithCurrentXPosition bool
-		ClosableGroup                  bool
-		WrapWidth                      float64
-		UTF8_Buf                       [32]byte
-		Layout                         struct {
-			Line              int
-			DisableMouseWheel bool
-			DisableMenu       bool
-			WidgetsWidth      struct {
-				F float64
-			}
+
+		CollapsingHeader struct {
+			ClosableGroup bool
 		}
+
+		WordWrapping struct {
+			WrapWidth float64
+		}
+
+		AlignLabelWithCurrentXPosition bool
+
+		UTF8_Buf [32]byte
+
 		Images struct {
 			PressedCount int
+		}
+
+		Combo struct {
+			Flags        uint
+			ItemCurrent  int
+			ItemCurrent2 int
+			ItemCurrent3 int
+			ItemCurrent4 int
+		}
+	}
+
+	Layout struct {
+		ChildRegion struct {
+			DisableMouseWheel bool
+			DisableMenu       bool
+			Line              int
+		}
+		WidgetsWidth struct {
+			F float64
 		}
 	}
 
@@ -944,8 +968,8 @@ func showDemoWindow() {
 			}
 
 			{
-				str0 := ui.Widgets.Basic.Str0
-				i0 := &ui.Widgets.Basic.I0
+				str0 := ui.Widgets.Basic.Input.Str0
+				i0 := &ui.Widgets.Basic.Input.I0
 				im.InputText("input text", str0)
 				im.SameLine()
 				showHelpMarker("Hold SHIFT or use mouse to select text.\nCTRL+Left/Right to word jump.\nCTRL+A or double-click to select all.\nCTRL+X,CTRL+C,CTRL+V clipboard.\nCTRL+Z,CTRL+Y undo/redo.\nESCAPE to revert.\n")
@@ -954,32 +978,32 @@ func showDemoWindow() {
 				im.SameLine()
 				showHelpMarker("You can apply arithmetic operators +,*,/ on numerical values.\n  e.g. [ 100 ], input '*2', result becomes [ 200 ]\nUse +- to subtract.\n")
 
-				f0 := &ui.Widgets.Basic.F0
+				f0 := &ui.Widgets.Basic.Input.F0
 				im.InputFloatEx("input float", f0, 0.01, 1.0, "", 1)
 
-				d0 := &ui.Widgets.Basic.D0
+				d0 := &ui.Widgets.Basic.Input.D0
 				im.InputFloatEx("input double", d0, 0.01, 1.0, "%.6f", 1)
 
-				f1 := &ui.Widgets.Basic.F1
+				f1 := &ui.Widgets.Basic.Input.F1
 				im.InputFloatEx("input scientific", f1, 0.0, 0.0, "%e", 1)
 				im.SameLine()
 				showHelpMarker("You can input value using the scientific notation,\n  e.g. \"1e+8\" becomes \"100000000\".\n")
 
-				vec4a := ui.Widgets.Basic.Vec4a[:]
+				vec4a := ui.Widgets.Basic.Input.Vec4a[:]
 				im.InputFloatN("input float3", vec4a)
 			}
 
 			{
-				i1 := &ui.Widgets.Basic.I1
+				i1 := &ui.Widgets.Basic.Drag.I1
 				im.DragInt("drag int", i1)
 				im.SameLine()
 				showHelpMarker("Click and drag to edit value.\nHold SHIFT/ALT for faster/slower edit.\nDouble-click or CTRL+click to input value.")
 
-				i2 := &ui.Widgets.Basic.I2
+				i2 := &ui.Widgets.Basic.Drag.I2
 				im.DragIntEx("drag int 0..100", i2, 1, 0, 100, "%.0f%%")
 
-				f1 := &ui.Widgets.Basic.F1D
-				f2 := &ui.Widgets.Basic.F2D
+				f1 := &ui.Widgets.Basic.Drag.F1
+				f2 := &ui.Widgets.Basic.Drag.F2
 				im.DragFloatEx("drag float", f1, 0.005, 0, 0, "", 1)
 				im.DragFloatEx("drag small float", f2, 0.0001, 0.0, 0.0, "%.06f ns", 1)
 			}
@@ -1045,14 +1069,15 @@ func showDemoWindow() {
 		}
 
 		if im.TreeNode("Collapsing Headers") {
-			im.Checkbox("Enable extra group", &ui.Widgets.ClosableGroup)
+			closable_group := &ui.Widgets.CollapsingHeader.ClosableGroup
+			im.Checkbox("Enable extra group", closable_group)
 			if im.CollapsingHeader("Header") {
 				im.Text("IsItemHovered: %v", im.IsItemHovered())
 				for i := 0; i < 5; i++ {
 					im.Text("Some content %d", i)
 				}
 			}
-			if im.CollapsingHeaderOpen("Header with a close button", &ui.Widgets.ClosableGroup) {
+			if im.CollapsingHeaderOpen("Header with a close button", closable_group) {
 				im.Text("IsItemHovered: %v", im.IsItemHovered())
 				for i := 0; i < 5; i++ {
 					im.Text("More content %d", i)
@@ -1081,42 +1106,45 @@ func showDemoWindow() {
 				showHelpMarker("The TextDisabled color is stored in ImGuiStyle.")
 				im.TreePop()
 			}
+
+			if im.TreeNode("Word Wrapping") {
+				// Using shortcut. You can use PushTextWrapPos()/PopTextWrapPos() for more flexibility.
+				im.TextWrapped("This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.")
+				im.Spacing()
+
+				wrap_width := &ui.Widgets.WordWrapping.WrapWidth
+				im.SliderFloatEx("Wrap width", wrap_width, -20, 600, "%.0f", 1)
+
+				im.Text("Test paragraph 1:")
+				pos := im.GetCursorScreenPos()
+				im.GetWindowDrawList().AddRectFilled(
+					f64.Vec2{pos.X + *wrap_width, pos.Y},
+					f64.Vec2{pos.X + *wrap_width + 10, pos.Y + im.GetTextLineHeight()},
+					color.RGBA{255, 0, 255, 255},
+				)
+				im.PushTextWrapPos(im.GetCursorPos().X + *wrap_width)
+				im.Text("The lazy dog is a good dog. This paragraph is made to fit within %.0f pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.", *wrap_width)
+				im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
+				im.PopTextWrapPos()
+
+				im.Text("Test paragraph 2:")
+				pos = im.GetCursorScreenPos()
+				im.GetWindowDrawList().AddRectFilled(
+					f64.Vec2{pos.X + *wrap_width, pos.Y},
+					f64.Vec2{pos.X + *wrap_width + 10, pos.Y + im.GetTextLineHeight()},
+					color.RGBA{255, 0, 255, 255},
+				)
+				im.PushTextWrapPos(im.GetCursorPos().X + *wrap_width)
+				im.Text("aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh")
+				im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
+				im.PopTextWrapPos()
+
+				im.TreePop()
+			}
+
 			im.TreePop()
 		}
 
-		if im.TreeNode("Word Wrapping") {
-			// Using shortcut. You can use PushTextWrapPos()/PopTextWrapPos() for more flexibility.
-			im.TextWrapped("This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.")
-			im.Spacing()
-
-			im.SliderFloatEx("Wrap width", &ui.Widgets.WrapWidth, -20, 600, "%.0f", 1)
-
-			im.Text("Test paragraph 1:")
-			pos := im.GetCursorScreenPos()
-			im.GetWindowDrawList().AddRectFilled(
-				f64.Vec2{pos.X + ui.Widgets.WrapWidth, pos.Y},
-				f64.Vec2{pos.X + ui.Widgets.WrapWidth + 10, pos.Y + im.GetTextLineHeight()},
-				color.RGBA{255, 0, 255, 255},
-			)
-			im.PushTextWrapPos(im.GetCursorPos().X + ui.Widgets.WrapWidth)
-			im.Text("The lazy dog is a good dog. This paragraph is made to fit within %.0f pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.", ui.Widgets.WrapWidth)
-			im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
-			im.PopTextWrapPos()
-
-			im.Text("Test paragraph 2:")
-			pos = im.GetCursorScreenPos()
-			im.GetWindowDrawList().AddRectFilled(
-				f64.Vec2{pos.X + ui.Widgets.WrapWidth, pos.Y},
-				f64.Vec2{pos.X + ui.Widgets.WrapWidth + 10, pos.Y + im.GetTextLineHeight()},
-				color.RGBA{255, 0, 255, 255},
-			)
-			im.PushTextWrapPos(im.GetCursorPos().X + ui.Widgets.WrapWidth)
-			im.Text("aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh")
-			im.GetWindowDrawList().AddRect(im.GetItemRectMin(), im.GetItemRectMax(), color.RGBA{255, 255, 0, 255})
-			im.PopTextWrapPos()
-
-			im.TreePop()
-		}
 		if im.TreeNode("UTF-8 Text") {
 			// UTF-8 test with Japanese characters
 			// (needs a suitable font, try Arial Unicode or M+ fonts http://mplus-fonts.sourceforge.jp/mplus-outline-fonts/index-en.html)
@@ -1192,16 +1220,82 @@ func showDemoWindow() {
 			im.TreePop()
 
 		}
+
+		if im.TreeNode("Combo") {
+			// Expose flags as checkbox for the demo
+			flags := &ui.Widgets.Combo.Flags
+			im.CheckboxFlags("ImGuiComboFlags_PopupAlignLeft", flags, uint(imgui.ComboFlagsPopupAlignLeft))
+			if im.CheckboxFlags("ImGuiComboFlags_NoArrowButton", flags, uint(imgui.ComboFlagsNoArrowButton)) {
+				// Clear the other flag, as we cannot combine both
+				*flags &^= uint(imgui.ComboFlagsNoPreview)
+			}
+			if im.CheckboxFlags("ImGuiComboFlags_NoPreview", flags, uint(imgui.ComboFlagsNoPreview)) {
+				// Clear the other flag, as we cannot combine both
+				*flags &^= uint(imgui.ComboFlagsNoArrowButton)
+			}
+
+			// General BeginCombo() API, you have full control over your selection data and display type.
+			// (your selection data could be an index, a pointer to the object, an id for the object, a flag stored in the object itself, etc.)
+			items := []string{"AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIII", "JJJJ", "KKKK", "LLLLLLL", "MMMM", "OOOOOOO"}
+			items_current := &ui.Widgets.Combo.ItemCurrent
+			if im.BeginComboEx("combo 1", items[*items_current], imgui.ComboFlags(*flags)) {
+				for n := range items {
+					is_selected := items[*items_current] == items[n]
+					if im.SelectableEx(items[n], is_selected, 0, f64.Vec2{}) {
+						*items_current = n
+					}
+					if is_selected {
+						// Set the initial focus when opening the combo (scrolling + for keyboard navigation support in the upcoming navigation branch)
+						im.SetItemDefaultFocus()
+					}
+				}
+				im.EndCombo()
+			}
+
+			// Simplified one-liner Combo() API, using values packed in a single constant string
+			item_current_2 := &ui.Widgets.Combo.ItemCurrent2
+			im.ComboString("combo 2 (one liner)", item_current_2, []string{"aaaa", "bbbb", "cccc", "dddd", "eeee"})
+
+			// Simplified one-liner Combo() using an array of const char*
+			// If the selection isn't within 0..count, Combo won't display a preview
+			item_current_3 := &ui.Widgets.Combo.ItemCurrent3
+			im.ComboString("combo 3 (array)", item_current_3, items)
+
+			// Simplified one-liner Combo() using an accessor function
+			item_current_4 := &ui.Widgets.Combo.ItemCurrent4
+			item_getter := func(idx int) (string, bool) {
+				return items[idx], true
+			}
+			im.ComboItem("combo 4 (function", item_current_4, item_getter, len(items))
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Selectables") {
+			// Selectable() has 2 overloads:
+			// - The one taking "bool selected" as a read-only selection information. When Selectable() has been clicked is returns true and you can alter selection state accordingly.
+			// - The one taking "bool* p_selected" as a read-write selection information (convenient in some cases)
+			// The earlier is more flexible, as in real application your selection may be stored in a different manner (in flags within objects, as an external list, etc).
+			if im.TreeNode("Basic") {
+				im.TreePop()
+			}
+
+			im.TreePop()
+		}
 	}
 
 	if im.CollapsingHeader("Layout") {
 		if im.TreeNode("Child regions") {
-			im.Checkbox("Disable Mouse Wheel", &ui.Widgets.Layout.DisableMouseWheel)
-			im.Checkbox("Disable Menu", &ui.Widgets.Layout.DisableMenu)
+			disbale_mouse_wheel := &ui.Layout.ChildRegion.DisableMouseWheel
+			disable_menu := &ui.Layout.ChildRegion.DisableMenu
+			line := &ui.Layout.ChildRegion.Line
+
+			im.Checkbox("Disable Mouse Wheel", disbale_mouse_wheel)
+			im.Checkbox("Disable Menu", disable_menu)
 			im.Button("Goto")
 			im.SameLine()
 			im.PushItemWidth(100)
-			im.InputIntEx("##Line", &ui.Widgets.Layout.Line, 0, 0, imgui.InputTextFlagsEnterReturnsTrue)
+			im.InputIntEx("##Line", line, 0, 0, imgui.InputTextFlagsEnterReturnsTrue)
 			im.PopItemWidth()
 
 			// Child 1: no border, enable horizontal scrollbar
