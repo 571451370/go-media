@@ -253,6 +253,10 @@ type UI struct {
 			TrackLine  int
 			ScrollToPx int
 		}
+
+		HorizontalScrolling struct {
+			Lines int
+		}
 	}
 
 	Colors struct {
@@ -1877,10 +1881,80 @@ func showDemoWindow() {
 		}
 
 		if im.TreeNode("Horizontal Scrolling") {
+			im.Bullet()
+			im.TextWrapped("Horizontal scrolling for a window has to be enabled explicitly via the ImGuiWindowFlags_HorizontalScrollbar flag.")
+			im.Bullet()
+			im.TextWrapped("You may want to explicitly specify content width by calling SetNextWindowContentWidth() before Begin().")
+
+			lines := &ui.Layout.HorizontalScrolling.Lines
+			im.SliderInt("Lines", lines, 1, 15)
+			im.PushStyleVar(imgui.StyleVarFrameRounding, 3.0)
+			im.PushStyleVar(imgui.StyleVarFramePadding, f64.Vec2{2.0, 1.0})
+			im.BeginChildEx("scrolling", f64.Vec2{0, im.GetFrameHeightWithSpacing()*7 + 30}, true, imgui.WindowFlagsHorizontalScrollbar)
+			for line := 0; line < *lines; line++ {
+				// Display random stuff (for the sake of this trivial demo we are using basic Button+SameLine. If you want to create your own time line for a real application you may be better off
+				// manipulating the cursor position yourself, aka using SetCursorPos/SetCursorScreenPos to position the widgets yourself. You may also want to use the lower-level ImDrawList API)
+				num_buttons := 10
+				if *lines&1 != 0 {
+					num_buttons += line * 9
+				} else {
+					num_buttons += line * 3
+				}
+				for n := 0; n < num_buttons; n++ {
+					if n > 0 {
+						im.SameLine()
+					}
+					im.PushID(imgui.ID(n + line*1000))
+					num_buf := fmt.Sprint(n)
+					var label string
+					if n%15 == 0 {
+						label = "FizzBuzz"
+					} else if n%3 == 0 {
+						label = "Fizz"
+					} else if n%5 == 0 {
+						label = "Buzz"
+					} else {
+						label = num_buf
+					}
+					hue := float64(n) * 0.05 * 360
+					im.PushStyleColor(imgui.ColButton, chroma.HSV2RGB(chroma.HSV{hue, 0.6, 0.6}))
+					im.PushStyleColor(imgui.ColButtonHovered, chroma.HSV2RGB(chroma.HSV{hue, 0.7, 0.7}))
+					im.PushStyleColor(imgui.ColButtonActive, chroma.HSV2RGB(chroma.HSV{hue, 0.8, 0.8}))
+					im.ButtonEx(label, f64.Vec2{40.0 + math.Sin(float64(line+n))*20.0, 0.0}, 0)
+					im.PopStyleColorN(3)
+					im.PopID()
+				}
+				scroll_x := im.GetScrollX()
+				scroll_max_x := im.GetScrollMaxX()
+				im.EndChild()
+				im.PopStyleVarN(2)
+				scroll_x_delta := 0.0
+				im.SmallButton("<<")
+				if im.IsItemActive() {
+					scroll_x_delta = -im.GetIO().DeltaTime * 1000.0
+				}
+				im.SameLine()
+				im.Text("Scroll from code")
+				im.SameLine()
+				im.SmallButton(">>")
+				if im.IsItemActive() {
+					scroll_x_delta = +im.GetIO().DeltaTime * 1000.0
+				}
+				im.SameLine()
+				im.Text("%.0f/%.0f", scroll_x, scroll_max_x)
+				if scroll_x_delta != 0.0 {
+					// Demonstrate a trick: you can use Begin to set yourself in the context of another window (here we are already out of your child window)
+					im.BeginChild("scrolling")
+					im.SetScrollX(im.GetScrollX() + scroll_x_delta)
+					im.End()
+				}
+			}
 			im.TreePop()
 		}
 
 		if im.TreeNode("Clipping") {
+			im.TextWrapped("On a per-widget basis we are occasionally clipping text CPU-side if it won't fit in its frame. Otherwise we are doing coarser clipping + passing a scissor rectangle to the renderer. The system is designed to try minimizing both execution and CPU/GPU rendering cost.")
+
 			im.TreePop()
 		}
 	}

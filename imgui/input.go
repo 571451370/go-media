@@ -300,6 +300,39 @@ func (c *Context) InputFloatNEx(label string, v []float64, format string, extra_
 	return value_changed
 }
 
+func (c *Context) InputV2(label string, v *f64.Vec2) bool {
+	return c.InputV2Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputV2Ex(label string, v *f64.Vec2, format string, extra_flags InputTextFlags) bool {
+	f := [...]float64{v.X, v.Y}
+	r := c.InputFloatNEx(label, f[:2], format, extra_flags)
+	v.X, v.Y = f[0], f[1]
+	return r
+}
+
+func (c *Context) InputV3(label string, v *f64.Vec3) bool {
+	return c.InputV3Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputV3Ex(label string, v *f64.Vec3, format string, extra_flags InputTextFlags) bool {
+	f := [...]float64{v.X, v.Y, v.Z}
+	r := c.InputFloatNEx(label, f[:3], format, extra_flags)
+	v.X, v.Y, v.Z = f[0], f[1], f[2]
+	return r
+}
+
+func (c *Context) InputV4(label string, v *f64.Vec4) bool {
+	return c.InputV4Ex(label, v, "%.3f", 0)
+}
+
+func (c *Context) InputV4Ex(label string, v *f64.Vec4, format string, extra_flags InputTextFlags) bool {
+	f := [...]float64{v.X, v.Y, v.Z, v.W}
+	r := c.InputFloatNEx(label, f[:4], format, extra_flags)
+	v.X, v.Y, v.Z, v.W = f[0], f[1], f[2], f[3]
+	return r
+}
+
 func (c *Context) InputFloat2(label string, v []float64) bool {
 	return c.InputFloat2Ex(label, v, "%.3f", 0)
 }

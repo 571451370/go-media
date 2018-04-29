@@ -2202,3 +2202,16 @@ func (c *Context) GetScrollX() float64 {
 func (c *Context) GetScrollY() float64 {
 	return c.CurrentWindow.Scroll.Y
 }
+
+func (c *Context) SetScrollX(scroll_x float64) {
+	window := c.GetCurrentWindow()
+	window.ScrollTarget.X = scroll_x
+	window.ScrollTargetCenterRatio.X = 0.0
+}
+
+func (c *Context) SetScrollY(scroll_y float64) {
+	window := c.GetCurrentWindow()
+	// title bar height canceled out when using ScrollTargetRelY
+	window.ScrollTarget.Y = scroll_y + window.TitleBarHeight() + window.MenuBarHeight()
+	window.ScrollTargetCenterRatio.Y = 0.0
+}

@@ -500,3 +500,36 @@ func (c *Context) DragFloat4(label string, v []float64) bool {
 func (c *Context) DragFloat4Ex(label string, v []float64, v_speed, v_min, v_max float64, format string, power float64) bool {
 	return c.DragFloatN(label, v[:4], v_speed, v_min, v_max, format, 1)
 }
+
+func (c *Context) DragV2(label string, v *f64.Vec2) bool {
+	return c.DragV2Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragV2Ex(label string, v *f64.Vec2, v_speed, v_min, v_max float64, format string, power float64) bool {
+	f := [...]float64{v.X, v.Y}
+	r := c.DragFloatN(label, f[:2], v_speed, v_min, v_max, format, 1)
+	v.X, v.Y = f[0], f[1]
+	return r
+}
+
+func (c *Context) DragV3(label string, v *f64.Vec3) bool {
+	return c.DragV3Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragV3Ex(label string, v *f64.Vec3, v_speed, v_min, v_max float64, format string, power float64) bool {
+	f := [...]float64{v.X, v.Y, v.Z}
+	r := c.DragFloatN(label, f[:3], v_speed, v_min, v_max, format, 1)
+	v.X, v.Y, v.Z = f[0], f[1], f[2]
+	return r
+}
+
+func (c *Context) DragV4(label string, v *f64.Vec4) bool {
+	return c.DragV4Ex(label, v, 1.0, 0.0, 0.0, "%.3f", 1.0)
+}
+
+func (c *Context) DragV4Ex(label string, v *f64.Vec4, v_speed, v_min, v_max float64, format string, power float64) bool {
+	f := [...]float64{v.X, v.Y, v.Z, v.W}
+	r := c.DragFloatN(label, f[:4], v_speed, v_min, v_max, format, 1)
+	v.X, v.Y, v.Z, v.W = f[0], f[1], f[2], f[3]
+	return r
+}
