@@ -3,6 +3,8 @@ package imgui
 import (
 	"fmt"
 	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
 )
 
 type PopupPositionPolicy int
@@ -216,4 +218,64 @@ func (c *Context) BeginPopupContextWindowEx(str_id string, mouse_button int, als
 		}
 	}
 	return c.BeginPopupEx(id, WindowFlagsAlwaysAutoResize|WindowFlagsNoTitleBar|WindowFlagsNoSavedSettings)
+}
+
+func (c *Context) BeginPopupContextItem() bool {
+	return c.BeginPopupContextItemEx("", 1)
+}
+
+// This is a helper to handle the simplest case of associating one named popup to one given widget.
+// You may want to handle this on user side if you have specific needs (e.g. tweaking IsItemHovered() parameters).
+// You can pass a NULL str_id to use the identifier of the last item.
+func (c *Context) BeginPopupContextItemEx(str_id string, mouse_button int) bool {
+	window := c.CurrentWindow
+	id := window.DC.LastItemId
+	// If user hasn't passed an ID, we can use the LastItemID. Using LastItemID as a Popup ID won't conflict!
+	if str_id != "" {
+		id = window.GetID(str_id)
+	}
+	// However, you cannot pass a NULL str_id if the last item has no identifier (e.g. a Text() item)
+	assert(id != 0)
+	if c.IsMouseReleased(mouse_button) && c.IsItemHoveredEx(HoveredFlagsAllowWhenBlockedByPopup) {
+		c.OpenPopupEx(id)
+	}
+	return c.BeginPopupEx(id, WindowFlagsAlwaysAutoResize|WindowFlagsNoTitleBar|WindowFlagsNoSavedSettings)
+}
+
+func (c *Context) BeginPopupModal(name string) bool {
+	return c.BeginPopupModalEx(name, nil, 0)
+}
+
+func (c *Context) BeginPopupModalEx(name string, p_open *bool, flags WindowFlags) bool {
+	window := c.CurrentWindow
+	id := window.GetID(name)
+	if !c.IsPopupOpen(id) {
+		// We behave like Begin() and need to consume those values
+		c.NextWindowData.Clear()
+		return false
+	}
+	// Center modal windows by default
+	// FIXME: Should test for (PosCond & window->SetWindowPosAllowFlags) with the upcoming window.
+	if c.NextWindowData.PosCond == 0 {
+		c.SetNextWindowPos(c.IO.DisplaySize.Scale(0.5), CondAppearing, f64.Vec2{0.5, 0.5})
+	}
+
+	is_open := c.BeginEx(name, p_open, flags|WindowFlagsPopup|WindowFlagsModal|WindowFlagsNoCollapse|WindowFlagsNoSavedSettings)
+	// NB: is_open can be 'false' when the popup is completely clipped (e.g. zero size display)
+	if !is_open || (p_open != nil && !*p_open) {
+		c.EndPopup()
+		if is_open {
+			c.ClosePopup(id)
+		}
+		return false
+	}
+
+	return is_open
+}
+
+func (c *Context) ClosePopup(id ID) {
+	if !c.IsPopupOpen(id) {
+		return
+	}
+	c.ClosePopupToLevel(len(c.OpenPopupStack) - 1)
 }

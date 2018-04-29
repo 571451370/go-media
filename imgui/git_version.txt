@@ -1,5 +1,5 @@
-commit f2e9dddeca2f3e59f4a5e11dfa83e161dac82946
+commit 429f48bb4fa7fdffdb996e4a697d6df48babe3eb
 Author: omar <omarcornut@gmail.com>
-Date:   Sat Apr 28 10:43:15 2018 +0200
+Date:   Sun Apr 29 12:19:44 2018 +0200
 
-    DragDrop: Removed const qualifier from ImGuiPayload 's void* data, easing casting on user side.
+    Clarified usage of ListBoxHeader() before we rename those functions + fixed demo code that didn't honor it correctly. (#1783)

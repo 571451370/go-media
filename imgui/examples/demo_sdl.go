@@ -137,17 +137,22 @@ type UI struct {
 			}
 		}
 
+		Trees struct {
+			AlignLabelWithCurrentXPosition bool
+		}
+
 		CollapsingHeader struct {
 			ClosableGroup bool
 		}
 
-		WordWrapping struct {
-			WrapWidth float64
+		Text struct {
+			WordWrapping struct {
+				WrapWidth float64
+			}
+			UTF8 struct {
+				Buf []byte
+			}
 		}
-
-		AlignLabelWithCurrentXPosition bool
-
-		UTF8_Buf [32]byte
 
 		Images struct {
 			PressedCount int
@@ -274,6 +279,19 @@ type UI struct {
 		}
 		Modals struct {
 			DontAskMeNextTime bool
+			Item              int
+			Color             color.RGBA
+		}
+	}
+
+	Columns struct {
+		MixedItems struct {
+			Foo float64
+			Bar float64
+		}
+		Borders struct {
+			Horizontal bool
+			Vertical   bool
 		}
 	}
 
@@ -1161,9 +1179,10 @@ func showDemoWindow() {
 
 			if im.TreeNode("Advanced, with Selectable nodes") {
 				showHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
-				im.Checkbox("Align label with current X position)", &ui.Widgets.AlignLabelWithCurrentXPosition)
+				align_label_with_current_x_position := &ui.Widgets.Trees.AlignLabelWithCurrentXPosition
+				im.Checkbox("Align label with current X position)", align_label_with_current_x_position)
 				im.Text("Hello!")
-				if ui.Widgets.AlignLabelWithCurrentXPosition {
+				if *align_label_with_current_x_position {
 					im.UnindentEx(im.GetTreeNodeToLabelSpacing())
 				}
 				im.TreePop()
@@ -1216,7 +1235,7 @@ func showDemoWindow() {
 				im.TextWrapped("This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.")
 				im.Spacing()
 
-				wrap_width := &ui.Widgets.WordWrapping.WrapWidth
+				wrap_width := &ui.Widgets.Text.WordWrapping.WrapWidth
 				im.SliderFloatEx("Wrap width", wrap_width, -20, 600, "%.0f", 1)
 
 				im.Text("Test paragraph 1:")
@@ -1260,10 +1279,11 @@ func showDemoWindow() {
 			im.TextWrapped("CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Font->LoadFromFileTTF() manually to load extra character ranges.")
 			im.Text("Hiragana: \xe3\x81\x8b\xe3\x81\x8d\xe3\x81\x8f\xe3\x81\x91\xe3\x81\x93 (kakikukeko)")
 			im.Text("Kanjis: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e (nihongo)")
-			if ui.Widgets.UTF8_Buf == [32]byte{} {
-				copy(ui.Widgets.UTF8_Buf[:], "\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e") // "nihongo"
+			if len(ui.Widgets.Text.UTF8.Buf) == 0 {
+				// "nihongo"
+				ui.Widgets.Text.UTF8.Buf = []byte("\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e")
 			}
-			im.InputText("UTF-8 input", ui.Widgets.UTF8_Buf[:])
+			im.InputText("UTF-8 input", ui.Widgets.Text.UTF8.Buf)
 			im.TreePop()
 		}
 
@@ -1740,10 +1760,11 @@ func showDemoWindow() {
 			im.ButtonEx("LEVERAGE\nBUZZWORD", size, 0)
 			im.SameLine()
 
-			im.ListBoxHeader("List", size)
-			im.SelectableEx("Selected", true, 0, f64.Vec2{})
-			im.SelectableEx("Not Selected", false, 0, f64.Vec2{})
-			im.ListBoxFooter()
+			if im.ListBoxHeader("List", size) {
+				im.SelectableEx("Selected", true, 0, f64.Vec2{})
+				im.SelectableEx("Not Selected", false, 0, f64.Vec2{})
+				im.ListBoxFooter()
+			}
 
 			im.TreePop()
 		}
@@ -2070,16 +2091,120 @@ func showDemoWindow() {
 		}
 
 		if im.TreeNode("Context menus") {
+			// BeginPopupContextItem() is a helper to provide common/simple popup behavior of essentially doing:
+			//    if (IsItemHovered() && IsMouseClicked(0))
+			//       OpenPopup(id);
+			//    return BeginPopup(id);
+			// For more advanced uses you may want to replicate and cuztomize this code. This the comments inside BeginPopupContextItem() implementation.
+
+			value := &ui.PopupsModal.ContextMenus.Value
+			im.Text("Value = %.3f (<-- right-click here)", *value)
+			if im.BeginPopupContextItemEx("item context menu", 1) {
+				if im.Selectable("Set to zero") {
+					*value = 0.0
+				}
+				if im.Selectable("Set to PI") {
+					*value = 3.1415
+				}
+				im.PushItemWidth(-1)
+				im.DragFloatEx("##Value", value, 0.1, 0.0, 0.0, "", 1)
+				im.PopItemWidth()
+				im.EndPopup()
+			}
+			name := ui.PopupsModal.ContextMenus.Name
+			buf := fmt.Sprintf("Button: %s###Button", name)
+			im.Button(buf)
+			// When used after an item that has an ID (here the Button), we can skip providing an ID to BeginPopupContextItem().
+			if im.BeginPopupContextItem() {
+				im.Text("Edit name:")
+				im.InputText("##edit", name)
+				if im.Button("Close") {
+					im.CloseCurrentPopup()
+				}
+				im.EndPopup()
+			}
+			im.SameLine()
+			im.Text("(<-- right-click here)")
 			im.TreePop()
 		}
 
 		if im.TreeNode("Modals") {
+			im.TextWrapped("Modal windows are like popups but the user cannot close them by clicking outside the window.")
+			if im.Button("Delete..") {
+				im.OpenPopup("Delete?")
+			}
+
+			if im.BeginPopupModalEx("Delete?", nil, imgui.WindowFlagsAlwaysAutoResize) {
+				im.Text("All those beautiful files will be deleted.\nThis operation cannot be undone!\n\n")
+				im.Separator()
+
+				//static int dummy_i = 0;
+				//ImGui::Combo("Combo", &dummy_i, "Delete\0Delete harder\0");
+
+				dont_ask_me_next_time := &ui.PopupsModal.Modals.DontAskMeNextTime
+				im.PushStyleVar(imgui.StyleVarFramePadding, f64.Vec2{0, 0})
+				im.Checkbox("Don't ask me next time", dont_ask_me_next_time)
+				im.PopStyleVar()
+
+				if im.ButtonEx("OK", f64.Vec2{120, 0}, 0) {
+					im.CloseCurrentPopup()
+				}
+				im.SetItemDefaultFocus()
+				im.SameLine()
+				if im.ButtonEx("Cancel", f64.Vec2{120, 0}, 0) {
+					im.CloseCurrentPopup()
+				}
+				im.EndPopup()
+			}
+
+			if im.Button("Stacked modals..") {
+				im.OpenPopup("Stacked 1")
+			}
+			if im.BeginPopupModal("Stacked 1") {
+				im.Text("Hello from Stacked The First\nUsing style.Colors[ImGuiCol_ModalWindowDarkening] for darkening.")
+				item := &ui.PopupsModal.Modals.Item
+				im.ComboString("Combo", item, []string{"aaaa", "bbbb", "cccc", "dddd", "eeee"})
+				color := &ui.PopupsModal.Modals.Color
+				// This is to test behavior of stacked regular popups over a modal
+				im.ColorEdit4("color", color)
+				if im.Button("Add another modal..") {
+					im.OpenPopup("Stacked 2")
+				}
+				if im.BeginPopupModal("Stacked 2") {
+					im.Text("Hello from Stacked The Second!")
+					if im.Button("Close") {
+						im.CloseCurrentPopup()
+					}
+					im.EndPopup()
+				}
+
+				if im.Button("Close") {
+					im.CloseCurrentPopup()
+				}
+				im.EndPopup()
+			}
+
 			im.TreePop()
 		}
+
 		if im.TreeNode("Menus inside a regular window") {
+			im.TextWrapped("Below we are testing adding menu items to a regular window. It's rather unusual but should work!")
+			im.Separator()
+			// NB: As a quirk in this very specific example, we want to differentiate the parent of this menu from the parent of the various popup menus above.
+			// To do so we are encloding the items in a PushID()/PopID() block to make them two different menusets. If we don't, opening any popup above and hovering our menu here
+			// would open it. This is because once a menu is active, we allow to switch to a sibling menu by just hovering on it, which is the desired behavior for regular menus.
+			im.PushStringID("foo")
+			im.MenuItemSelect("Menu item", "CTRL+M", nil)
+			if im.BeginMenu("Menu inside a regular window") {
+				showExampleMenuFile()
+				im.EndMenu()
+			}
+			im.PopID()
+			im.Separator()
 			im.TreePop()
 		}
 	}
+
 	if im.CollapsingHeader("Columns") {
 		im.PushStringID("Columns")
 
@@ -2132,6 +2257,126 @@ func showDemoWindow() {
 			im.Separator()
 			im.TreePop()
 		}
+
+		// Create multiple items in a same cell before switching to next column
+		if im.TreeNode("Mixed items") {
+			im.Columns(3, "mixed", true)
+			im.Separator()
+
+			im.Text("Hello")
+			im.Button("Banana")
+			im.NextColumn()
+
+			im.Text("ImGui")
+			im.Button("Apple")
+			foo := &ui.Columns.MixedItems.Foo
+			im.InputFloatEx("red", foo, 0.05, 0, "%.3f", 1)
+			im.Text("An extra line here.")
+			im.NextColumn()
+
+			im.Text("Sailor")
+			im.Button("Corniflower")
+			bar := &ui.Columns.MixedItems.Bar
+			im.InputFloatEx("blue", bar, 0.05, 0, "%.3f", 1)
+			im.NextColumn()
+
+			if im.CollapsingHeader("Category A") {
+				im.Text("Blah blah blah")
+			}
+			im.NextColumn()
+			if im.CollapsingHeader("Category B") {
+				im.Text("Blah blah blah")
+			}
+			im.NextColumn()
+			if im.CollapsingHeader("Category C") {
+				im.Text("Blah blah blah")
+			}
+			im.NextColumn()
+
+			im.Columns(1, "", true)
+			im.Separator()
+			im.TreePop()
+		}
+
+		// Word wrapping
+		if im.TreeNode("Word-wrapping") {
+			im.Columns(2, "word-wrapping", true)
+			im.Separator()
+			im.TextWrapped("The quick brown fox jumps over the lazy dog.")
+			im.TextWrapped("Hello Left")
+			im.NextColumn()
+			im.TextWrapped("The quick brown fox jumps over the lazy dog.")
+			im.TextWrapped("Hello Right")
+			im.Columns(1, "", true)
+			im.Separator()
+			im.TreePop()
+		}
+
+		if im.TreeNode("Borders") {
+			// NB: Future columns API should allow automatic horizontal borders.
+			h_borders := &ui.Columns.Borders.Horizontal
+			v_borders := &ui.Columns.Borders.Vertical
+			im.Checkbox("horizontal", h_borders)
+			im.SameLine()
+			im.Checkbox("vertical", v_borders)
+			im.Columns(4, "", *v_borders)
+			for i := 0; i < 4*3; i++ {
+				if *h_borders && im.GetColumnIndex() == 0 {
+					im.Separator()
+				}
+				im.Text("%c%c%c", 'a'+i, 'a'+i, 'a'+i)
+				im.Text("Width %.2f\nOffset %.2f", im.GetColumnWidth(), im.GetColumnOffset(-1))
+				im.NextColumn()
+			}
+			im.Columns(1, "", true)
+			if *h_borders {
+				im.Separator()
+			}
+			im.TreePop()
+		}
+
+		if im.TreeNode("Horizontal Scrolling") {
+			im.SetNextWindowContentSize(f64.Vec2{1500.0, 0.0})
+			im.BeginChildEx("##ScrollingRegion", f64.Vec2{0, im.GetFontSize() * 20}, false, imgui.WindowFlagsHorizontalScrollbar)
+			im.Columns(10, "", true)
+			ITEMS_COUNT := 2000
+			// Also demonstrate using the clipper for large list
+			var clipper imgui.ListClipper
+			clipper.Init(im, ITEMS_COUNT, -1)
+			for clipper.Step() {
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					for j := 0; j < 10; j++ {
+						im.Text("Line %d Column %d...", i, j)
+						im.NextColumn()
+					}
+				}
+			}
+			im.Columns(1, "", true)
+			im.EndChild()
+			im.TreePop()
+		}
+
+		node_open := im.TreeNode("Tree within single cell")
+		im.SameLine()
+		showHelpMarker("NB: Tree node must be poped before ending the cell. There's no storage of state per-cell.")
+		if node_open {
+			im.Columns(2, "tree items", true)
+			im.Separator()
+			if im.TreeNode("Hello") {
+				im.BulletText("Sailor")
+				im.TreePop()
+			}
+			im.NextColumn()
+			if im.TreeNode("Bonjour") {
+				im.BulletText("Marin")
+				im.TreePop()
+			}
+			im.NextColumn()
+			im.Columns(1, "", true)
+			im.Separator()
+			im.TreePop()
+		}
+		im.PopID()
 	}
 
 	if im.CollapsingHeader("Filtering") {

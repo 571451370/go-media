@@ -2219,3 +2219,9 @@ func (c *Context) SetScrollY(scroll_y float64) {
 	window.ScrollTarget.Y = scroll_y + window.TitleBarHeight() + window.MenuBarHeight()
 	window.ScrollTargetCenterRatio.Y = 0.0
 }
+
+func (c *Context) SetNextWindowContentSize(size f64.Vec2) {
+	// In Begin() we will add the size of window decorations (title bar, menu etc.) to that to form a SizeContents value.
+	c.NextWindowData.ContentSizeVal = size
+	c.NextWindowData.ContentSizeCond = CondAlways
+}
