@@ -227,6 +227,8 @@ type UI struct {
 		VerticalSliders struct {
 			Spacing  float64
 			IntValue int
+			Values   []float64
+			Values2  []float64
 		}
 	}
 
@@ -238,6 +240,18 @@ type UI struct {
 		}
 		WidgetsWidth struct {
 			F float64
+		}
+		Horizontal struct {
+			C1, C2, C3, C4 bool
+			F0, F1, F2     float64
+			Item           int
+			Selection      [4]int
+		}
+
+		Scrolling struct {
+			Track      bool
+			TrackLine  int
+			ScrollToPx int
 		}
 	}
 
@@ -1404,17 +1418,77 @@ func showDemoWindow() {
 		}
 
 		if im.TreeNode("Vertical Sliders") {
+			const spacing = 4
+			im.PushStyleVar(imgui.StyleVarItemSpacing, f64.Vec2{spacing, spacing})
+
+			int_value := &ui.Widgets.VerticalSliders.IntValue
+			im.VSliderInt("##int", f64.Vec2{18, 160}, int_value, 0, 5)
+			im.SameLine()
+
+			values := []float64{0.0, 0.60, 0.35, 0.9, 0.70, 0.20, 0.0}
+			im.PushStringID("set1")
+			for i := 0; i < 7; i++ {
+				if i > 0 {
+					im.SameLine()
+				}
+				im.PushID(imgui.ID(i))
+				im.PushStyleColor(imgui.ColFrameBg, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.6, 0.5}))
+				im.PushStyleColor(imgui.ColFrameBgActive, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.7, 0.5}))
+				im.PushStyleColor(imgui.ColSliderGrab, chroma.HSV2RGB(chroma.HSV{float64(i) / 7.0 * 360, 0.9, 0.5}))
+				im.VSliderFloatEx("##v", f64.Vec2{18, 160}, &values[i], 0.0, 1.0, "", 1.0)
+				im.PopStyleColorN(4)
+				im.PopID()
+			}
+			im.PopID()
+
+			im.SameLine()
+			im.PushStringID("set2")
+			values2 := []float64{0.20, 0.80, 0.40, 0.25}
+			const rows = 3
+			small_slider_size := f64.Vec2{18, (160 - (rows-1)*spacing) / rows}
+			for nx := 0; nx < 4; nx++ {
+				if nx > 0 {
+					im.SameLine()
+				}
+				im.BeginGroup()
+				for ny := 0; ny < rows; ny++ {
+					im.PushID(imgui.ID(nx*rows + ny))
+					im.VSliderFloatEx("##v", small_slider_size, &values2[nx], 0.0, 1.0, "", 1.0)
+					if im.IsItemActive() || im.IsItemHovered() {
+						im.SetTooltip("%.3f", values2[nx])
+					}
+					im.PopID()
+				}
+				im.EndGroup()
+			}
+			im.PopID()
+
+			im.SameLine()
+			im.PushStringID("set3")
+			for i := 0; i < 4; i++ {
+				if i > 0 {
+					im.SameLine()
+				}
+				im.PushID(imgui.ID(i))
+				im.PushStyleVar(imgui.StyleVarGrabMinSize, 40.0)
+				im.VSliderFloatEx("##v", f64.Vec2{40, 160}, &values[i], 0.0, 1.0, "%.2f\nsec", 1.0)
+				im.PopStyleVar()
+				im.PopID()
+			}
+			im.PopID()
+			im.PopStyleVar()
 			im.TreePop()
 		}
 	}
 
 	if im.CollapsingHeader("Layout") {
 		if im.TreeNode("Child regions") {
-			disbale_mouse_wheel := &ui.Layout.ChildRegion.DisableMouseWheel
+			disable_mouse_wheel := &ui.Layout.ChildRegion.DisableMouseWheel
 			disable_menu := &ui.Layout.ChildRegion.DisableMenu
 			line := &ui.Layout.ChildRegion.Line
 
-			im.Checkbox("Disable Mouse Wheel", disbale_mouse_wheel)
+			goto_line := im.Button("Goto")
+			im.Checkbox("Disable Mouse Wheel", disable_mouse_wheel)
 			im.Checkbox("Disable Menu", disable_menu)
 			im.Button("Goto")
 			im.SameLine()
@@ -1424,16 +1498,389 @@ func showDemoWindow() {
 
 			// Child 1: no border, enable horizontal scrollbar
 			{
-
+				window_flags := imgui.WindowFlagsHorizontalScrollbar
+				if *disable_mouse_wheel {
+					window_flags |= imgui.WindowFlagsNoScrollWithMouse
+				}
+				im.BeginChildEx("Child1", f64.Vec2{im.GetWindowContentRegionWidth() * 0.5, 300}, false, window_flags)
+				for i := 0; i < 100; i++ {
+					im.Text("%04d: scrollable region", i)
+					if goto_line && *line == i {
+						im.SetScrollHere()
+					}
+				}
+				if goto_line && *line >= 100 {
+					im.SetScrollHere()
+				}
+				im.EndChild()
 			}
+			im.SameLine()
 
 			// Child 2: rounded border
 			{
+				im.PushStyleVar(imgui.StyleVarChildRounding, 5.0)
+				var window_flags imgui.WindowFlags
+				if *disable_mouse_wheel {
+					window_flags |= imgui.WindowFlagsNoScrollWithMouse
+				}
+				if *disable_menu {
+					window_flags |= imgui.WindowFlagsMenuBar
+				}
+				im.BeginChildEx("Child2", f64.Vec2{0, 300}, true, window_flags)
+				if !*disable_menu && im.BeginMenuBar() {
+					if im.BeginMenu("Menu") {
+						showExampleMenuFile()
+						im.EndMenu()
+					}
+					im.EndMenuBar()
+				}
+				im.Columns(2, "", true)
+				for i := 0; i < 100; i++ {
+					if i == 50 {
+						im.NextColumn()
+					}
+					buf := fmt.Sprintf("%08x", i*5731)
+					im.ButtonEx(buf, f64.Vec2{-1, 0}, 0)
+				}
+				im.EndChild()
+				im.PopStyleVar()
 			}
 			im.TreePop()
 		}
 
 		if im.TreeNode("Widgets Width") {
+			f := &ui.Layout.WidgetsWidth.F
+			im.Text("PushItemWidth(100)")
+			im.SameLine()
+			showHelpMarker("Fixed width.")
+			im.PushItemWidth(100)
+			im.DragFloat("float##1", f)
+			im.PopItemWidth()
+
+			im.Text("PushItemWidth(GetWindowWidth() * 0.5f)")
+			im.SameLine()
+			showHelpMarker("Half of window width.")
+			im.PushItemWidth(im.GetWindowWidth() * 0.5)
+			im.DragFloat("float##2", f)
+			im.PopItemWidth()
+
+			im.Text("PushItemWidth(GetContentRegionAvailWidth() * 0.5f)")
+			im.SameLine()
+			showHelpMarker("Half of available width.\n(~ right-cursor_pos)\n(works within a column set)")
+			im.PushItemWidth(im.GetContentRegionAvailWidth() * 0.5)
+			im.DragFloat("float##3", f)
+			im.PopItemWidth()
+
+			im.Text("PushItemWidth(-100)")
+			im.SameLine()
+			showHelpMarker("Align to right edge minus 100")
+			im.PushItemWidth(-100)
+			im.DragFloat("float##4", f)
+			im.PopItemWidth()
+
+			im.Text("PushItemWidth(-1)")
+			im.SameLine()
+			showHelpMarker("Align to right edge")
+			im.PushItemWidth(-1)
+			im.DragFloat("float##5", f)
+			im.PopItemWidth()
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Basic Horizontal Layout") {
+			im.TextWrapped("(Use ImGui::SameLine() to keep adding items to the right of the preceding item)")
+
+			// Text
+			im.Text("Two items: Hello")
+			im.SameLine()
+			im.TextColored(color.RGBA{255, 255, 0, 255}, "Sailor")
+
+			// Adjust spacing
+			im.Text("More spacing: Hello")
+			im.SameLineEx(0, 20)
+			im.TextColored(color.RGBA{255, 255, 0, 255}, "Sailor")
+
+			// Button
+			im.AlignTextToFramePadding()
+			im.Text("Normal buttons")
+			im.SameLine()
+			im.Button("Banana")
+			im.SameLine()
+			im.Button("Apple")
+			im.SameLine()
+			im.Button("Corniflower")
+
+			// Button
+			im.Text("Small buttons")
+			im.SameLine()
+			im.SmallButton("Like this one")
+			im.SameLine()
+			im.Text("can fit within a text block.")
+
+			// Aligned to arbitrary position. Easy/cheap column.
+			im.Text("Aligned")
+			im.SameLineEx(150, -1)
+			im.Text("x=150")
+			im.SameLineEx(300, -1)
+			im.Text("x=300")
+			im.Text("Aligned")
+			im.SameLineEx(150, -1)
+			im.SmallButton("x=150")
+			im.SameLineEx(300, -1)
+			im.SmallButton("x=300")
+
+			// Checkbox
+			c1 := &ui.Layout.Horizontal.C1
+			c2 := &ui.Layout.Horizontal.C2
+			c3 := &ui.Layout.Horizontal.C3
+			c4 := &ui.Layout.Horizontal.C4
+
+			im.Checkbox("My", c1)
+			im.SameLine()
+			im.Checkbox("Tailor", c2)
+			im.SameLine()
+			im.Checkbox("Is", c3)
+			im.SameLine()
+			im.Checkbox("Rich", c4)
+
+			// Various
+			f0 := &ui.Layout.Horizontal.F0
+			f1 := &ui.Layout.Horizontal.F1
+			f2 := &ui.Layout.Horizontal.F2
+			im.PushItemWidth(80)
+			items := []string{"AAAA", "BBBB", "CCCC", "DDDD"}
+			item := &ui.Layout.Horizontal.Item
+			im.ComboString("Combo", item, items)
+			im.SameLine()
+			im.SliderFloat("X", f0, 0.0, 5.0)
+			im.SameLine()
+			im.SliderFloat("Y", f1, 0.0, 5.0)
+			im.SameLine()
+			im.SliderFloat("Z", f2, 0.0, 5.0)
+			im.PopItemWidth()
+
+			im.PushItemWidth(80)
+			im.Text("Lists:")
+			selection := ui.Layout.Horizontal.Selection[:]
+			for i := 0; i < 4; i++ {
+				if i > 0 {
+					im.SameLine()
+				}
+				im.PushID(imgui.ID(i))
+				im.ListBox("", &selection[i], items)
+				im.PopID()
+			}
+			im.PopItemWidth()
+
+			// Dummy
+			sz := f64.Vec2{30, 30}
+			im.ButtonEx("A", sz, 0)
+			im.SameLine()
+			im.Dummy(sz)
+			im.SameLine()
+			im.ButtonEx("B", sz, 0)
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Groups") {
+			im.TextWrapped("(Using ImGui::BeginGroup()/EndGroup() to layout items. BeginGroup() basically locks the horizontal position. EndGroup() bundles the whole group so that you can use functions such as IsItemHovered() on it.)")
+			im.BeginGroup()
+			{
+				im.BeginGroup()
+				im.Button("AAA")
+				im.SameLine()
+				im.Button("BBB")
+				im.SameLine()
+				im.BeginGroup()
+				im.Button("CCC")
+				im.Button("DDD")
+				im.EndGroup()
+				im.SameLine()
+				im.Button("EEE")
+				im.EndGroup()
+				if im.IsItemHovered() {
+					im.SetTooltip("First group hovered")
+				}
+			}
+			// Capture the group size and create widgets using the same size
+			size := im.GetItemRectSize()
+			values := []float64{0.5, 0.20, 0.80, 0.60, 0.25}
+			im.PlotHistogramEx("##values", values, 0, "", 0.0, 1.0, size)
+
+			im.ButtonEx("ACTION", f64.Vec2{(size.X - im.GetStyle().ItemSpacing.X) * 0.5, size.Y}, 0)
+			im.SameLine()
+			im.ButtonEx("REACTION", f64.Vec2{(size.X - im.GetStyle().ItemSpacing.X) * 0.5, size.Y}, 0)
+			im.EndGroup()
+			im.SameLine()
+
+			im.ButtonEx("LEVERAGE\nBUZZWORD", size, 0)
+			im.SameLine()
+
+			im.ListBoxHeader("List", size)
+			im.SelectableEx("Selected", true, 0, f64.Vec2{})
+			im.SelectableEx("Not Selected", false, 0, f64.Vec2{})
+			im.ListBoxFooter()
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Text Baseline Alignment") {
+			im.TextWrapped("(This is testing the vertical alignment that occurs on text to keep it at the same baseline as widgets. Lines only composed of text or \"small\" widgets fit in less vertical spaces than lines with normal widgets)")
+
+			im.Text("One\nTwo\nThree")
+			im.SameLine()
+			im.Text("Hello\nWorld")
+			im.SameLine()
+			im.Text("Banana")
+
+			im.Text("Banana")
+			im.SameLine()
+			im.Text("Hello\nWorld")
+			im.SameLine()
+			im.Text("One\nTwo\nThree")
+
+			im.Button("HOP##1")
+			im.SameLine()
+			im.Text("Banana")
+			im.SameLine()
+			im.Text("Hello\nWorld")
+			im.SameLine()
+			im.Text("Banana")
+
+			im.Button("HOP##2")
+			im.SameLine()
+			im.Text("Hello\nWorld")
+			im.SameLine()
+			im.Text("Banana")
+
+			im.Button("TEST##1")
+			im.SameLine()
+			im.Text("TEST")
+			im.SameLine()
+			im.SmallButton("TEST##2")
+
+			// If your line starts with text, call this to align it to upcoming widgets.
+			im.AlignTextToFramePadding()
+			im.Text("Text aligned to Widget")
+			im.SameLine()
+			im.Button("Widget##1")
+			im.SameLine()
+			im.Text("Widget")
+			im.SameLine()
+			im.SmallButton("Widget##2")
+			im.SameLine()
+			im.Button("Widget##3")
+
+			// Tree
+			spacing := im.GetStyle().ItemInnerSpacing.X
+			im.Button("Button##1")
+			im.SameLineEx(0.0, spacing)
+			if im.TreeNode("Node##1") {
+				// Dummy tree data
+				for i := 0; i < 6; i++ {
+					im.BulletText("Item %d..", i)
+					im.TreePop()
+				}
+			}
+
+			// Vertically align text node a bit lower so it'll be vertically centered with upcoming widget. Otherwise you can use SmallButton (smaller fit).
+			im.AlignTextToFramePadding()
+
+			// Common mistake to avoid: if we want to SameLine after TreeNode we need to do it before we add child content.
+			node_open := im.TreeNode("Node##2")
+			im.SameLineEx(0.0, spacing)
+			im.Button("Button##2")
+
+			if node_open {
+				// Dummy tree data
+				for i := 0; i < 6; i++ {
+					im.BulletText("Item %d..", i)
+					im.TreePop()
+				}
+			}
+
+			// Bullet
+			im.Button("Button##3")
+			im.SameLineEx(0.0, spacing)
+			im.BulletText("Bullet text")
+
+			im.AlignTextToFramePadding()
+			im.BulletText("Node")
+			im.SameLineEx(0.0, spacing)
+			im.Button("Button##4")
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Scrolling") {
+			im.TextWrapped("(Use SetScrollHere() or SetScrollFromPosY() to scroll to a given position.)")
+			track := &ui.Layout.Scrolling.Track
+			track_line := &ui.Layout.Scrolling.TrackLine
+			scroll_to_px := &ui.Layout.Scrolling.ScrollToPx
+			im.Checkbox("Track", track)
+			im.PushItemWidth(100)
+			im.SameLineEx(130, -1)
+			if im.DragIntEx("##line", track_line, 0.25, 0, 99, "Line = %.0f") {
+				*track = true
+			}
+			scroll_to := im.Button("Scroll To Pos")
+			im.SameLineEx(130, -1)
+			if im.DragIntEx("##pos_y", scroll_to_px, 1.00, 0, 9999, "Y = %.0f px") {
+				scroll_to = true
+			}
+			im.PopItemWidth()
+			if scroll_to {
+				*track = false
+			}
+
+			for i := 0; i < 5; i++ {
+				if i > 0 {
+					im.SameLine()
+				}
+				im.BeginGroup()
+				switch i {
+				case 0:
+					im.Text("Top")
+				case 1:
+					im.Text("25%")
+				case 2:
+					im.Text("Center")
+				case 3:
+					im.Text("75%")
+				default:
+					im.Text("Bottom")
+				}
+				im.BeginChildIDEx(im.GetID(imgui.ID(i)), f64.Vec2{im.GetWindowWidth() * 0.17, 200.0}, true, 0)
+				if scroll_to {
+					im.SetScrollFromPosY(im.GetCursorStartPos().Y+float64(*scroll_to_px), float64(i)*0.25)
+				}
+				for line := 0; line < 100; line++ {
+					if *track && line == *track_line {
+						im.TextColored(color.RGBA{255, 255, 0, 255}, "Line %d", line)
+						// 0.0f:top, 0.5f:center, 1.0f:bottom
+						im.SetScrollHereEx(float64(i) * 0.25)
+					} else {
+						im.Text("Line %d", line)
+					}
+				}
+
+				scroll_y := im.GetScrollY()
+				scroll_max_y := im.GetScrollMaxY()
+				im.EndChild()
+				im.Text("%.0f/%0.f", scroll_y, scroll_max_y)
+				im.EndGroup()
+			}
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Horizontal Scrolling") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Clipping") {
 			im.TreePop()
 		}
 	}

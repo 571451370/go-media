@@ -442,6 +442,10 @@ func (c *Context) GetStringID(str_id string) ID {
 	return c.CurrentWindow.GetID(str_id)
 }
 
+func (c *Context) GetID(id ID) ID {
+	return c.CurrentWindow.GetIntID(int(id))
+}
+
 type BackendFlags int
 
 const (

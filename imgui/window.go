@@ -2184,3 +2184,21 @@ func (c *Context) SetCursorPosY(y float64) {
 	window.DC.CursorPos.Y = window.Pos.Y - window.Scroll.Y + y
 	window.DC.CursorMaxPos.Y = math.Max(window.DC.CursorMaxPos.Y, window.DC.CursorPos.Y)
 }
+
+func (c *Context) GetItemRectSize() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.LastItemRect.Size()
+}
+
+func (c *Context) GetCursorStartPos() f64.Vec2 {
+	window := c.GetCurrentWindowRead()
+	return window.DC.CursorStartPos.Sub(window.Pos)
+}
+
+func (c *Context) GetScrollX() float64 {
+	return c.CurrentWindow.Scroll.X
+}
+
+func (c *Context) GetScrollY() float64 {
+	return c.CurrentWindow.Scroll.Y
+}
