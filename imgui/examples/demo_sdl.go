@@ -197,7 +197,7 @@ type UI struct {
 			Bufpass []byte
 		}
 
-		Plot struct {
+		Plots struct {
 			Animate      bool
 			Values       [90]float64
 			ValuesOffset int
@@ -213,8 +213,21 @@ type UI struct {
 
 		ColorPicker struct {
 			Color              color.RGBA
+			AlphaPreview       bool
+			AlphaHalfPreview   bool
+			OptionsMenu        bool
+			Hdr                bool
 			SavedPaletteInited bool
 			SavedPalette       [32]color.RGBA
+			BackupColor        color.RGBA
+
+			Alpha       bool
+			AlphaBar    bool
+			SidePreview bool
+			RefColor    bool
+			RefColorV   color.RGBA
+			InputsMode  int
+			PickerMode  int
 		}
 
 		Range struct {
@@ -1425,10 +1438,254 @@ func ShowDemoWindow() {
 		}
 
 		if im.TreeNode("Plots widgets") {
+			animate := &ui.Widgets.Plots.Animate
+			im.Checkbox("Animate", animate)
+
+			arr := []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+			im.PlotLines("Frame Times", arr)
+
+			// Create a dummy array of contiguous float values to plot
+			// Tip: If your float aren't contiguous but part of a structure, you can pass a pointer to your first float and the sizeof() of your structure in the Stride parameter.
+			values := ui.Widgets.Plots.Values[:]
+			values_offset := &ui.Widgets.Plots.ValuesOffset
+			refresh_time := &ui.Widgets.Plots.RefreshTime
+			if !*animate || *refresh_time == 0.0 {
+				*refresh_time = im.GetTime()
+			}
+			// Create dummy data at fixed 60 hz rate for the demo
+			for *refresh_time < im.GetTime() {
+				phase := &ui.Widgets.Plots.Phase
+				values[*values_offset] = math.Cos(*phase)
+				*values_offset = (*values_offset + 1) % len(values)
+				*phase += 0.10 * float64(*values_offset)
+				*refresh_time += 1.0 / 60.0
+			}
+			im.PlotLinesEx("Lines", values, *values_offset, "avg 0.0", -1.0, 1.0, f64.Vec2{0, 80})
+			im.PlotHistogramEx("Histogram", arr, 0, "", 0.0, 1.0, f64.Vec2{0, 80})
+
+			// Use functions to generate output
+			// FIXME: This is rather awkward because current plot API only pass in indices. We probably want an API passing floats and user provide sample rate/count.
+			func_type := &ui.Widgets.Plots.FuncType
+			display_count := &ui.Widgets.Plots.DisplayCount
+			im.Separator()
+			im.PushItemWidth(100)
+			im.ComboString("func", func_type, []string{"Sin", "Saw"})
+			im.PopItemWidth()
+			im.SameLine()
+			im.SliderInt("Sample count", display_count, 1, 400)
+			var fun func(idx int) float64
+			if *func_type == 0 {
+				fun = func(i int) float64 { return math.Sin(float64(i) * 0.1) }
+			} else {
+				fun = func(i int) float64 {
+					if i&1 != 0 {
+						return 1
+					}
+					return -1
+				}
+			}
+			im.PlotLinesItemEx("Lines", fun, *display_count, 0, "", -1, 1, f64.Vec2{0, 80})
+			im.PlotHistogramItemEx("Histogram", fun, *display_count, 0, "", -1.0, 1.0, f64.Vec2{0, 80})
+			im.Separator()
+
+			// Animate a simple progress bar
+			progress := &ui.Widgets.Plots.Progress
+			progress_dir := &ui.Widgets.Plots.ProgressDir
+			if *animate {
+				*progress += *progress_dir * 0.4 * im.GetIO().DeltaTime
+				if *progress >= +1.1 {
+					*progress = +1.1
+					*progress_dir *= -1.0
+				}
+				if *progress <= -0.1 {
+					*progress = -0.1
+					*progress_dir *= -1.0
+				}
+			}
+			// Typically we would use ImVec2(-1.0f,0.0f) to use all available width, or ImVec2(width,0.0f) for a specified width. ImVec2(0.0f,0.0f) uses ItemWidth.
+			im.ProgressBarEx(*progress, f64.Vec2{0.0, 0.0}, "")
+			im.SameLineEx(0.0, im.GetStyle().ItemInnerSpacing.X)
+			im.Text("Progress Bar")
+
+			progress_saturated := f64.Saturate(*progress)
+			buf := fmt.Sprintf("%d/%d", int(progress_saturated*1753), 1753)
+			im.ProgressBarEx(*progress, f64.Vec2{0, 0}, buf)
 			im.TreePop()
 		}
 
 		if im.TreeNode("Color/Picker Widgets") {
+			color_ := &ui.Widgets.ColorPicker.Color
+
+			alpha_preview := &ui.Widgets.ColorPicker.AlphaPreview
+			alpha_half_preview := &ui.Widgets.ColorPicker.AlphaHalfPreview
+			options_menu := &ui.Widgets.ColorPicker.OptionsMenu
+			hdr := &ui.Widgets.ColorPicker.Hdr
+			im.Checkbox("With Alpha Preview", alpha_preview)
+			im.Checkbox("With Half Alpha Preview", alpha_half_preview)
+			im.Checkbox("With Options Menu", options_menu)
+			im.SameLine()
+			ShowHelpMarker("Right-click on the individual color widget to show options.")
+			im.Checkbox("With HDR", hdr)
+			im.SameLine()
+			ShowHelpMarker("Currently all this does is to lift the 0..1 limits on dragging widgets.")
+			var misc_flags imgui.ColorEditFlags
+			if *hdr {
+				misc_flags |= imgui.ColorEditFlagsHDR
+			}
+			if *alpha_half_preview {
+				misc_flags |= imgui.ColorEditFlagsAlphaPreviewHalf
+			}
+			if *alpha_preview {
+				misc_flags |= imgui.ColorEditFlagsAlphaPreview
+			}
+			if *options_menu {
+				misc_flags |= imgui.ColorEditFlagsNoOptions
+			}
+
+			im.Text("Color widget:")
+			im.SameLine()
+			ShowHelpMarker("Click on the colored square to open a color picker.\nCTRL+click on individual component to input value.\n")
+			im.ColorEdit3Ex("MyColor##1", color_, misc_flags)
+
+			im.Text("Color widget HSV with Alpha:")
+			im.ColorEdit4Ex("MyColor##2", color_, imgui.ColorEditFlagsHSV|misc_flags)
+
+			im.Text("Color widget with Float Display:")
+			im.ColorEdit4Ex("MyColor##2f", color_, imgui.ColorEditFlagsFloat|misc_flags)
+
+			im.Text("Color button with Picker:")
+			im.SameLine()
+			ShowHelpMarker("With the ImGuiColorEditFlags_NoInputs flag you can hide all the slider/text inputs.\nWith the ImGuiColorEditFlags_NoLabel flag you can pass a non-empty label which will only be used for the tooltip and picker popup.")
+			im.ColorEdit4Ex("MyColor##3", color_, imgui.ColorEditFlagsNoInputs|imgui.ColorEditFlagsNoLabel|misc_flags)
+
+			im.Text("Color button with Custom Picker Popup:")
+
+			// Generate a dummy palette
+			saved_palette_inited := &ui.Widgets.ColorPicker.SavedPaletteInited
+			saved_palette := ui.Widgets.ColorPicker.SavedPalette[:]
+			if !*saved_palette_inited {
+				for n := range saved_palette {
+					saved_palette[n] = chroma.HSV2RGB(chroma.HSV{float64(n) / 31.0 * 360, 0.8, 0.8})
+				}
+				*saved_palette_inited = true
+			}
+
+			backup_color := &ui.Widgets.ColorPicker.BackupColor
+			open_popup := im.ColorButtonEx("MyColor##3b", *color_, misc_flags, f64.Vec2{})
+			im.SameLine()
+			if im.Button("Palette") {
+				open_popup = true
+			}
+			if open_popup {
+				im.OpenPopup("mypicker")
+				*backup_color = *color_
+			}
+			if im.BeginPopup("mypicker") {
+				// FIXME: Adding a drag and drop example here would be perfect!
+				im.Text("MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!")
+				im.Separator()
+				im.ColorPicker4Ex("##picker", color_, misc_flags|imgui.ColorEditFlagsNoSidePreview|imgui.ColorEditFlagsNoSmallPreview, nil)
+				im.SameLine()
+				im.BeginGroup()
+				im.Text("Current")
+				im.ColorButtonEx("##current", *color_, imgui.ColorEditFlagsNoPicker|imgui.ColorEditFlagsAlphaPreviewHalf, f64.Vec2{60, 40})
+				im.Text("Previous")
+				if (im.ColorButtonEx("##previous", *backup_color, imgui.ColorEditFlagsNoPicker|imgui.ColorEditFlagsAlphaPreviewHalf, f64.Vec2{60, 40})) {
+					*color_ = *backup_color
+				}
+				im.Separator()
+				im.Text("Palette")
+				for n := range saved_palette {
+					im.PushID(imgui.ID(n))
+					if n%8 != 0 {
+						im.SameLineEx(0.0, im.GetStyle().ItemSpacing.Y)
+					}
+					if (im.ColorButtonEx("##palette", saved_palette[n], imgui.ColorEditFlagsNoAlpha|imgui.ColorEditFlagsNoPicker|imgui.ColorEditFlagsNoTooltip, f64.Vec2{20, 20})) {
+						*color_ = saved_palette[n]
+					}
+
+					if im.BeginDragDropTarget() {
+						// TODO
+						im.EndDragDropTarget()
+					}
+					im.PopID()
+				}
+				im.EndGroup()
+				im.EndPopup()
+			}
+			im.Text("Color button only:")
+			im.ColorButtonEx("MyColor##3c", *color_, misc_flags, f64.Vec2{80, 80})
+
+			im.Text("Color picker:")
+			alpha := &ui.Widgets.ColorPicker.Alpha
+			alpha_bar := &ui.Widgets.ColorPicker.AlphaBar
+			side_preview := &ui.Widgets.ColorPicker.SidePreview
+			ref_color := &ui.Widgets.ColorPicker.RefColor
+			ref_color_v := &ui.Widgets.ColorPicker.RefColorV
+			inputs_mode := &ui.Widgets.ColorPicker.InputsMode
+			picker_mode := &ui.Widgets.ColorPicker.PickerMode
+			im.Checkbox("With Alpha", alpha)
+			im.Checkbox("With Alpha Bar", alpha_bar)
+			im.Checkbox("With Side Preview", side_preview)
+			if *side_preview {
+				im.SameLine()
+				im.Checkbox("With Ref Color", ref_color)
+				if *ref_color {
+					im.SameLine()
+					im.ColorEdit4Ex("##RefColor", ref_color_v, imgui.ColorEditFlagsNoInputs|misc_flags)
+				}
+			}
+			im.ComboString("Inputs Mode", inputs_mode, []string{"All Inputs", "No Inputs", "RGB Input", "HSV Input", "HEX Input"})
+			im.ComboString("Picker Mode", picker_mode, []string{"Auto/Current", "Hue bar + SV rect", "Hue wheel + SV triangle"})
+			im.SameLine()
+			ShowHelpMarker("User can right-click the picker to change mode.")
+			flags := misc_flags
+			if !*alpha {
+				// This is by default if you call ColorPicker3() instead of ColorPicker4()
+				flags |= imgui.ColorEditFlagsNoAlpha
+			}
+			if *alpha_bar {
+				flags |= imgui.ColorEditFlagsAlphaBar
+			}
+			if !*side_preview {
+				flags |= imgui.ColorEditFlagsNoSidePreview
+			}
+			if *picker_mode == 1 {
+				flags |= imgui.ColorEditFlagsPickerHueBar
+			}
+			if *picker_mode == 2 {
+				flags |= imgui.ColorEditFlagsPickerHueWheel
+			}
+			if *inputs_mode == 1 {
+				flags |= imgui.ColorEditFlagsNoInputs
+			}
+			if *inputs_mode == 2 {
+				flags |= imgui.ColorEditFlagsRGB
+			}
+			if *inputs_mode == 3 {
+				flags |= imgui.ColorEditFlagsHSV
+			}
+			if *inputs_mode == 4 {
+				flags |= imgui.ColorEditFlagsHEX
+			}
+			if *ref_color {
+				im.ColorPicker4Ex("MyColor##4", color_, flags, ref_color_v)
+			} else {
+				im.ColorPicker4Ex("MyColor##4", color_, flags, nil)
+			}
+
+			im.Text("Programmatically set defaults/options:")
+			im.SameLine()
+			ShowHelpMarker("SetColorEditOptions() is designed to allow you to set boot-time default.\nWe don't have Push/Pop functions because you can force options on a per-widget basis if needed, and the user can change non-forced ones with the options menu.\nWe don't have a getter to avoid encouraging you to persistently save values that aren't forward-compatible.")
+
+			if im.Button("Uint8 + HSV") {
+				im.SetColorEditOptions(imgui.ColorEditFlagsUint8 | imgui.ColorEditFlagsHSV)
+			}
+			im.SameLine()
+			if im.Button("Float + HDR") {
+				im.SetColorEditOptions(imgui.ColorEditFlagsFloat | imgui.ColorEditFlagsRGB)
+			}
+
 			im.TreePop()
 		}
 
@@ -2662,6 +2919,14 @@ func ShowDemoWindow() {
 				im.IsItemHoveredEx(imgui.HoveredFlagsAllowWhenOverlapped),
 				im.IsItemHoveredEx(imgui.HoveredFlagsRectOnly))
 
+			im.BeginChildEx("child", f64.Vec2{0, 50}, true, 0)
+			im.Text("This is another child window for testing IsWindowHovered() flags.")
+			im.EndChild()
+
+			if *embed_all_inside_a_child_window {
+				im.EndChild()
+			}
+
 			im.TreePop()
 		}
 
@@ -2692,6 +2957,20 @@ func ShowDemoWindow() {
 		}
 
 		if im.TreeNode("Mouse cursors") {
+			mouse_cursors_names := []string{"Arrow", "TextInput", "Move", "ResizeNS", "ResizeEW", "ResizeNESW", "ResizeNWSE"}
+			assert(len(mouse_cursors_names) == int(imgui.MouseCursorCOUNT))
+			im.Text("Current mouse cursor = %d: %s", im.GetMouseCursor(), mouse_cursors_names[im.GetMouseCursor()])
+			im.Text("Hover to see mouse cursors:")
+			im.SameLine()
+			ShowHelpMarker("Your application can render a different mouse cursor based on what im.GetMouseCursor() returns. If software cursor rendering (io.MouseDrawCursor) is set ImGui will draw the right cursor for you, otherwise your backend needs to handle it.")
+			for i := 0; i < int(imgui.MouseCursorCOUNT); i++ {
+				label := fmt.Sprintf("Mouse cursor %d: %s", i, mouse_cursors_names[i])
+				im.Bullet()
+				im.SelectableEx(label, false, 0, f64.Vec2{})
+				if im.IsItemHovered() || im.IsItemFocused() {
+					im.SetMouseCursor(imgui.MouseCursor(i))
+				}
+			}
 			im.TreePop()
 		}
 	}
