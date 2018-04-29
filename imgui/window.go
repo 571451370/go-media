@@ -830,7 +830,11 @@ func (c *Context) IsMouseDoubleClicked(button int) bool {
 	return c.IO.MouseDoubleClicked[button]
 }
 
-func (c *Context) IsMouseDragging(button int, lock_threshold float64) bool {
+func (c *Context) IsMouseDragging() bool {
+	return c.IsMouseDraggingEx(0, -1)
+}
+
+func (c *Context) IsMouseDraggingEx(button int, lock_threshold float64) bool {
 	if !c.IO.MouseDown[button] {
 		return false
 	}

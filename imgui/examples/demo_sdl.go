@@ -257,6 +257,24 @@ type UI struct {
 		HorizontalScrolling struct {
 			Lines int
 		}
+
+		Clipping struct {
+			Size   f64.Vec2
+			Offset f64.Vec2
+		}
+	}
+
+	PopupsModal struct {
+		Popups struct {
+			SelectedFish int
+		}
+		ContextMenus struct {
+			Value float64
+			Name  []byte
+		}
+		Modals struct {
+			DontAskMeNextTime bool
+		}
 	}
 
 	Colors struct {
@@ -1953,19 +1971,108 @@ func showDemoWindow() {
 		}
 
 		if im.TreeNode("Clipping") {
+			size := &ui.Layout.Clipping.Size
+			offset := &ui.Layout.Clipping.Offset
 			im.TextWrapped("On a per-widget basis we are occasionally clipping text CPU-side if it won't fit in its frame. Otherwise we are doing coarser clipping + passing a scissor rectangle to the renderer. The system is designed to try minimizing both execution and CPU/GPU rendering cost.")
-
+			im.DragV2Ex("size", size, 0.5, 0.0, 200.0, "%.0f", 1)
+			im.TextWrapped("(Click and drag)")
+			pos := im.GetCursorScreenPos()
+			clip_rect := f64.Vec4{pos.X, pos.Y, pos.X + size.X, pos.Y + size.Y}
+			im.InvisibleButton("##dummy", *size)
+			if im.IsItemActive() && im.IsMouseDragging() {
+				offset.X += im.GetIO().MouseDelta.X
+				offset.Y += im.GetIO().MouseDelta.Y
+			}
+			im.GetWindowDrawList().AddRectFilled(pos, f64.Vec2{pos.X + size.X, pos.Y + size.Y}, color.RGBA{90, 90, 120, 255})
+			im.GetWindowDrawList().AddTextEx(
+				im.GetFont(), im.GetFontSize()*2.0,
+				f64.Vec2{pos.X + offset.X, pos.Y + offset.Y}, color.RGBA{255, 255, 255, 255},
+				"Line 1 hello\nLine 2 clip me!", 0.0, &clip_rect,
+			)
 			im.TreePop()
 		}
 	}
 
 	if im.CollapsingHeader("Popups & Modal windows") {
 		if im.TreeNode("Popups") {
+			im.TextWrapped("When a popup is active, it inhibits interacting with windows that are behind the popup. Clicking outside the popup closes it.")
+
+			selected_fish := &ui.PopupsModal.Popups.SelectedFish
+			names := []string{"Bream", "Haddock", "Mackerel", "Pollock", "Tilefish"}
+			toggles := []bool{true, false, false, false, false}
+
+			// Simple selection popup
+			// (If you want to show the current selection inside the Button itself, you may want to build a string using the "###" operator to preserve a constant ID with a variable label)
+			if im.Button("Select..") {
+				im.OpenPopup("select")
+			}
+			im.SameLine()
+			if *selected_fish == -1 {
+				im.TextUnformatted("<None>")
+			} else {
+				im.TextUnformatted(names[*selected_fish])
+			}
+			if im.BeginPopup("select") {
+				im.Text("Aquarium")
+				im.Separator()
+				for i := range names {
+					if im.Selectable(names[i]) {
+						*selected_fish = i
+					}
+				}
+				im.EndPopup()
+			}
+			// Showing a menu with toggles
+			if im.Button("Toggle..") {
+				im.OpenPopup("toggle")
+			}
+			if im.BeginPopup("toggle") {
+				for i := range names {
+					im.MenuItemSelect(names[i], "", &toggles[i])
+				}
+				if im.BeginMenu("Sub-Menu") {
+					im.MenuItem("Click me")
+					im.EndMenu()
+				}
+
+				im.Separator()
+				im.Text("Tooltip here")
+				if im.IsItemHovered() {
+					im.SetTooltip("I am a tooltip over a popup")
+				}
+
+				if im.Button("Stacked Popup") {
+					im.OpenPopup("another popup")
+				}
+
+				if im.BeginPopup("another popup") {
+					for i := range names {
+						im.MenuItemSelect(names[i], "", &toggles[i])
+					}
+					if im.BeginMenu("Sub-menu") {
+						im.MenuItem("Click me")
+						im.EndMenu()
+					}
+					im.EndPopup()
+				}
+				im.EndPopup()
+			}
+
+			if im.Button("Popup Menu..") {
+				im.OpenPopup("FilePopup")
+			}
+			if im.BeginPopup("FilePopup") {
+				showExampleMenuFile()
+				im.EndPopup()
+			}
+
 			im.TreePop()
 		}
+
 		if im.TreeNode("Context menus") {
 			im.TreePop()
 		}
+
 		if im.TreeNode("Modals") {
 			im.TreePop()
 		}

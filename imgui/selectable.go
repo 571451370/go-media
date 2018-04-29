@@ -144,7 +144,7 @@ func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlag
 	}
 
 	if flags&SelectableFlagsDisabled != 0 {
-		c.PushStyleColorVec4(ColText, c.Style.Colors[ColTextDisabled])
+		c.PushStyleColorV4(ColText, c.Style.Colors[ColTextDisabled])
 	}
 	c.RenderTextClippedEx(bb.Min, bb_with_spacing.Max, label, &label_size, f64.Vec2{0.0, 0.0}, nil)
 	if flags&SelectableFlagsDisabled != 0 {

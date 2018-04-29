@@ -412,7 +412,7 @@ func (c *Context) PopStyleVarN(count int) {
 	}
 }
 
-func (c *Context) PushStyleColorVec4(idx Col, col f64.Vec4) {
+func (c *Context) PushStyleColorV4(idx Col, col f64.Vec4) {
 	c.ColorModifiers = append(c.ColorModifiers, ColMod{idx, c.Style.Colors[idx]})
 	c.Style.Colors[idx] = col
 }

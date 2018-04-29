@@ -121,7 +121,7 @@ func (c *Context) EndChild() {
 
 func (c *Context) BeginChildFrame(id ID, size f64.Vec2, extra_flags WindowFlags) bool {
 	style := &c.Style
-	c.PushStyleColorVec4(ColChildBg, style.Colors[ColFrameBg])
+	c.PushStyleColorV4(ColChildBg, style.Colors[ColFrameBg])
 	c.PushStyleVar(StyleVarChildRounding, style.FrameRounding)
 	c.PushStyleVar(StyleVarChildBorderSize, style.FrameBorderSize)
 	c.PushStyleVar(StyleVarWindowPadding, style.FramePadding)
