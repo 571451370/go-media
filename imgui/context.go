@@ -154,7 +154,7 @@ type Context struct {
 	WantTextInputNextFrame       int
 }
 
-type ConfigFlags int
+type ConfigFlags uint
 
 const (
 	ConfigFlagsNavEnableKeyboard    ConfigFlags = 1 << 0 // Master keyboard navigation enable flag. NewFrame() will automatically fill io.NavInputs[] based on io.KeysDown[].
@@ -453,3 +453,11 @@ const (
 	BackendFlagsHasMouseCursors BackendFlags = 1 << 1 // Back-end supports reading GetMouseCursor() to change the OS cursor shape.
 	BackendFlagsHasSetMousePos  BackendFlags = 1 << 2 // Back-end supports io.WantSetMousePos requests to reposition the OS mouse position (only used if ImGuiConfigFlags_NavEnableSetMousePos is set).
 )
+
+func (c *Context) CaptureKeyboardFromApp(capture bool) {
+	c.WantCaptureKeyboardNextFrame = truth(capture)
+}
+
+func (c *Context) CaptureMouseFromApp(capture bool) {
+	c.WantCaptureMouseNextFrame = truth(capture)
+}

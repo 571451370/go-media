@@ -476,9 +476,9 @@ func event() {
 func render() {
 	// 1. Show a simple window.
 	// Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets automatically appears in a window called "Debug".
-	showSimpleWindow()
-	showAnotherWindow()
-	showDemoWindow()
+	ShowSimpleWindow()
+	ShowAnotherWindow()
+	ShowDemoWindow()
 	clearColor := chroma.RGBA2VEC4(ui.ClearColor)
 	// Rendering
 	io := im.GetIO()
@@ -490,7 +490,7 @@ func render() {
 	window.SwapGL()
 }
 
-func showSimpleWindow() {
+func ShowSimpleWindow() {
 	if !ui.ShowSimpleWindow {
 		return
 	}
@@ -508,7 +508,7 @@ func showSimpleWindow() {
 	im.Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0/im.GetIO().Framerate, im.GetIO().Framerate)
 }
 
-func showAnotherWindow() {
+func ShowAnotherWindow() {
 	if !ui.ShowAnotherWindow {
 		return
 	}
@@ -873,7 +873,7 @@ func renderDrawData(draw_data *imgui.DrawData) {
 	gl.Scissor(last_scissor_box[0], last_scissor_box[1], last_scissor_box[2], last_scissor_box[3])
 }
 
-func showDemoWindow() {
+func ShowDemoWindow() {
 	if !ui.ShowDemoWindow {
 		return
 	}
@@ -882,44 +882,44 @@ func showDemoWindow() {
 
 	// Demonstrate the various window flags. Typically you would just use the default.
 	if ui.ShowAppMainMenuBar {
-		showExampleAppMainMenuBar()
+		ShowExampleAppMainMenuBar()
 	}
 	if ui.ShowAppConsole {
-		showExampleAppConsole()
+		ShowExampleAppConsole()
 	}
 	if ui.ShowAppLog {
-		showExampleAppLog()
+		ShowExampleAppLog()
 	}
 	if ui.ShowAppLayout {
-		showExampleAppLayout()
+		ShowExampleAppLayout()
 	}
 	if ui.ShowAppPropertyEditor {
-		showExampleAppPropertyEditor()
+		ShowExampleAppPropertyEditor()
 	}
 	if ui.ShowAppLongText {
-		showExampleAppLongText()
+		ShowExampleAppLongText()
 	}
 	if ui.ShowAppAutoResize {
-		showExampleAppAutoResize()
+		ShowExampleAppAutoResize()
 	}
 	if ui.ShowAppConstrainedResize {
-		showExampleAppConstrainedResize()
+		ShowExampleAppConstrainedResize()
 	}
 	if ui.ShowAppFixedOverlay {
-		showExampleAppFixedOverlay()
+		ShowExampleAppFixedOverlay()
 	}
 	if ui.ShowAppWindowTitles {
-		showExampleAppWindowTitles()
+		ShowExampleAppWindowTitles()
 	}
 	if ui.ShowAppCustomRendering {
-		showExampleAppCustomRendering()
+		ShowExampleAppCustomRendering()
 	}
 
 	if ui.ShowAppMetrics {
-		showMetricsWindow()
+		ShowMetricsWindow()
 	}
 	if ui.ShowAppAbout {
-		showAppAbout()
+		ShowAppAbout()
 	}
 	// Demonstrate the various window flags. Typically you would just use the default.
 	var window_flags imgui.WindowFlags
@@ -961,7 +961,7 @@ func showDemoWindow() {
 	// Menu
 	if im.BeginMenuBar() {
 		if im.BeginMenu("Menu") {
-			showExampleMenuFile()
+			ShowExampleMenuFile()
 			im.EndMenu()
 		}
 		if im.BeginMenu("Examples") {
@@ -992,7 +992,7 @@ func showDemoWindow() {
 	if im.CollapsingHeader("Help") {
 		im.TextWrapped("This window is being created by the ShowDemoWindow() function. Please refer to the code in imgui_demo.cpp for reference.\n\n")
 		im.Text("USER GUIDE:")
-		showUserGuide()
+		ShowUserGuide()
 	}
 
 	if im.CollapsingHeader("Window options") {
@@ -1011,7 +1011,7 @@ func showDemoWindow() {
 		im.Checkbox("No nav", &ui.NoNav)
 
 		if im.TreeNode("Style") {
-			showStyleEditor()
+			ShowStyleEditor()
 			im.TreePop()
 		}
 
@@ -1086,7 +1086,7 @@ func showDemoWindow() {
 				items_current := &ui.Widgets.Basic.ItemsCurrent
 				im.ComboString("combo", items_current, items)
 				im.SameLine()
-				showHelpMarker("Refer to the \"Combo\" section below for an explanation of the full BeginCombo/EndCombo API, and demonstration of various flags.\n")
+				ShowHelpMarker("Refer to the \"Combo\" section below for an explanation of the full BeginCombo/EndCombo API, and demonstration of various flags.\n")
 			}
 
 			{
@@ -1094,11 +1094,11 @@ func showDemoWindow() {
 				i0 := &ui.Widgets.Basic.Input.I0
 				im.InputText("input text", str0)
 				im.SameLine()
-				showHelpMarker("Hold SHIFT or use mouse to select text.\nCTRL+Left/Right to word jump.\nCTRL+A or double-click to select all.\nCTRL+X,CTRL+C,CTRL+V clipboard.\nCTRL+Z,CTRL+Y undo/redo.\nESCAPE to revert.\n")
+				ShowHelpMarker("Hold SHIFT or use mouse to select text.\nCTRL+Left/Right to word jump.\nCTRL+A or double-click to select all.\nCTRL+X,CTRL+C,CTRL+V clipboard.\nCTRL+Z,CTRL+Y undo/redo.\nESCAPE to revert.\n")
 
 				im.InputInt("input int", i0)
 				im.SameLine()
-				showHelpMarker("You can apply arithmetic operators +,*,/ on numerical values.\n  e.g. [ 100 ], input '*2', result becomes [ 200 ]\nUse +- to subtract.\n")
+				ShowHelpMarker("You can apply arithmetic operators +,*,/ on numerical values.\n  e.g. [ 100 ], input '*2', result becomes [ 200 ]\nUse +- to subtract.\n")
 
 				f0 := &ui.Widgets.Basic.Input.F0
 				im.InputFloatEx("input float", f0, 0.01, 1.0, "", 1)
@@ -1109,7 +1109,7 @@ func showDemoWindow() {
 				f1 := &ui.Widgets.Basic.Input.F1
 				im.InputFloatEx("input scientific", f1, 0.0, 0.0, "%e", 1)
 				im.SameLine()
-				showHelpMarker("You can input value using the scientific notation,\n  e.g. \"1e+8\" becomes \"100000000\".\n")
+				ShowHelpMarker("You can input value using the scientific notation,\n  e.g. \"1e+8\" becomes \"100000000\".\n")
 
 				vec4a := ui.Widgets.Basic.Input.Vec4a[:]
 				im.InputFloatN("input float3", vec4a)
@@ -1119,7 +1119,7 @@ func showDemoWindow() {
 				i1 := &ui.Widgets.Basic.Drag.I1
 				im.DragInt("drag int", i1)
 				im.SameLine()
-				showHelpMarker("Click and drag to edit value.\nHold SHIFT/ALT for faster/slower edit.\nDouble-click or CTRL+click to input value.")
+				ShowHelpMarker("Click and drag to edit value.\nHold SHIFT/ALT for faster/slower edit.\nDouble-click or CTRL+click to input value.")
 
 				i2 := &ui.Widgets.Basic.Drag.I2
 				im.DragIntEx("drag int 0..100", i2, 1, 0, 100, "%.0f%%")
@@ -1134,7 +1134,7 @@ func showDemoWindow() {
 				i1 := &ui.Widgets.Basic.Slider.I1
 				im.SliderInt("slider int", i1, -1, 3)
 				im.SameLine()
-				showHelpMarker("CTRL+click to input value.")
+				ShowHelpMarker("CTRL+click to input value.")
 
 				f1 := &ui.Widgets.Basic.Slider.F1
 				f2 := &ui.Widgets.Basic.Slider.F2
@@ -1149,7 +1149,7 @@ func showDemoWindow() {
 				col2 := &ui.Widgets.Basic.ColorEdit.Col2
 				im.ColorEdit3("color1", col1)
 				im.SameLine()
-				showHelpMarker("Click on the colored square to open a color picker.\nRight-click on the colored square to show options.\nCTRL+click on individual component to input value.\n")
+				ShowHelpMarker("Click on the colored square to open a color picker.\nRight-click on the colored square to show options.\nCTRL+click on individual component to input value.\n")
 
 				im.ColorEdit4("color 2", col2)
 			}
@@ -1178,7 +1178,7 @@ func showDemoWindow() {
 			}
 
 			if im.TreeNode("Advanced, with Selectable nodes") {
-				showHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
+				ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
 				align_label_with_current_x_position := &ui.Widgets.Trees.AlignLabelWithCurrentXPosition
 				im.Checkbox("Align label with current X position)", align_label_with_current_x_position)
 				im.Text("Hello!")
@@ -1226,7 +1226,7 @@ func showDemoWindow() {
 				im.TextColored(color.RGBA{255, 255, 0, 255}, "Yellow")
 				im.TextDisabled("Disabled")
 				im.SameLine()
-				showHelpMarker("The TextDisabled color is stored in ImGuiStyle.")
+				ShowHelpMarker("The TextDisabled color is stored in ImGuiStyle.")
 				im.TreePop()
 			}
 
@@ -1571,7 +1571,7 @@ func showDemoWindow() {
 				im.BeginChildEx("Child2", f64.Vec2{0, 300}, true, window_flags)
 				if !*disable_menu && im.BeginMenuBar() {
 					if im.BeginMenu("Menu") {
-						showExampleMenuFile()
+						ShowExampleMenuFile()
 						im.EndMenu()
 					}
 					im.EndMenuBar()
@@ -1594,35 +1594,35 @@ func showDemoWindow() {
 			f := &ui.Layout.WidgetsWidth.F
 			im.Text("PushItemWidth(100)")
 			im.SameLine()
-			showHelpMarker("Fixed width.")
+			ShowHelpMarker("Fixed width.")
 			im.PushItemWidth(100)
 			im.DragFloat("float##1", f)
 			im.PopItemWidth()
 
 			im.Text("PushItemWidth(GetWindowWidth() * 0.5f)")
 			im.SameLine()
-			showHelpMarker("Half of window width.")
+			ShowHelpMarker("Half of window width.")
 			im.PushItemWidth(im.GetWindowWidth() * 0.5)
 			im.DragFloat("float##2", f)
 			im.PopItemWidth()
 
 			im.Text("PushItemWidth(GetContentRegionAvailWidth() * 0.5f)")
 			im.SameLine()
-			showHelpMarker("Half of available width.\n(~ right-cursor_pos)\n(works within a column set)")
+			ShowHelpMarker("Half of available width.\n(~ right-cursor_pos)\n(works within a column set)")
 			im.PushItemWidth(im.GetContentRegionAvailWidth() * 0.5)
 			im.DragFloat("float##3", f)
 			im.PopItemWidth()
 
 			im.Text("PushItemWidth(-100)")
 			im.SameLine()
-			showHelpMarker("Align to right edge minus 100")
+			ShowHelpMarker("Align to right edge minus 100")
 			im.PushItemWidth(-100)
 			im.DragFloat("float##4", f)
 			im.PopItemWidth()
 
 			im.Text("PushItemWidth(-1)")
 			im.SameLine()
-			showHelpMarker("Align to right edge")
+			ShowHelpMarker("Align to right edge")
 			im.PushItemWidth(-1)
 			im.DragFloat("float##5", f)
 			im.PopItemWidth()
@@ -2083,7 +2083,7 @@ func showDemoWindow() {
 				im.OpenPopup("FilePopup")
 			}
 			if im.BeginPopup("FilePopup") {
-				showExampleMenuFile()
+				ShowExampleMenuFile()
 				im.EndPopup()
 			}
 
@@ -2196,7 +2196,7 @@ func showDemoWindow() {
 			im.PushStringID("foo")
 			im.MenuItemSelect("Menu item", "CTRL+M", nil)
 			if im.BeginMenu("Menu inside a regular window") {
-				showExampleMenuFile()
+				ShowExampleMenuFile()
 				im.EndMenu()
 			}
 			im.PopID()
@@ -2358,7 +2358,7 @@ func showDemoWindow() {
 
 		node_open := im.TreeNode("Tree within single cell")
 		im.SameLine()
-		showHelpMarker("NB: Tree node must be poped before ending the cell. There's no storage of state per-cell.")
+		ShowHelpMarker("NB: Tree node must be poped before ending the cell. There's no storage of state per-cell.")
 		if node_open {
 			im.Columns(2, "tree items", true)
 			im.Separator()
@@ -2401,12 +2401,151 @@ func showDemoWindow() {
 		im.Text("NavActive: %v, NavVisible: %v", io.NavActive, io.NavVisible)
 
 		im.Checkbox("io.MouseDrawCursor", &io.MouseDrawCursor)
+		im.SameLine()
+		ShowHelpMarker("Instruct ImGui to render a mouse cursor for you in software. Note that a mouse cursor rendered via your application GPU rendering path will feel more laggy than hardware cursor, but will be more in sync with your other visuals.\n\nSome desktop applications may use both kinds of cursors (e.g. enable software cursor only when resizing/dragging something).")
+
+		im.CheckboxFlags("io.ConfigFlags: NavEnableGamepad", (*uint)(&io.ConfigFlags), uint(imgui.ConfigFlagsNavEnableGamepad))
+		im.CheckboxFlags("io.ConfigFlags: NavEnableKeyboard", (*uint)(&io.ConfigFlags), uint(imgui.ConfigFlagsNavEnableKeyboard))
+		im.CheckboxFlags("io.ConfigFlags: NavEnableSetMousePos", (*uint)(&io.ConfigFlags), uint(imgui.ConfigFlagsNavEnableSetMousePos))
+		im.SameLine()
+		ShowHelpMarker("Instruct navigation to move the mouse cursor. See comment for ImGuiConfigFlags_NavEnableSetMousePos.")
+		im.CheckboxFlags("io.ConfigFlags: NoMouseCursorChange", (*uint)(&io.ConfigFlags), uint(imgui.ConfigFlagsNoMouseCursorChange))
+		im.SameLine()
+		ShowHelpMarker("Instruct back-end to not alter mouse cursor shape and visibility.")
+
+		if im.TreeNode("Keyboard, Mouse & Navigation State") {
+			if im.IsMousePosValid(nil) {
+				im.Text("Mouse pos: (%g, %g)", io.MousePos.X, io.MousePos.Y)
+			} else {
+				im.Text("Mouse pos: <INVALID>")
+			}
+			im.Text("Mouse delta: (%g, %g)", io.MouseDelta.X, io.MouseDelta.Y)
+			im.Text("Mouse down:")
+			for i := range io.MouseDown {
+				if io.MouseDownDuration[i] >= 0.0 {
+					im.SameLine()
+					im.Text("b%d (%.02f secs)", i, io.MouseDownDuration[i])
+				}
+			}
+			im.Text("Mouse clicked:")
+			for i := range io.MouseDown {
+				if im.IsMouseClicked(i, false) {
+					im.SameLine()
+					im.Text("b%d", i)
+				}
+			}
+			im.Text("Mouse dbl-clicked:")
+			for i := range io.MouseDown {
+				if im.IsMouseDoubleClicked(i) {
+					im.SameLine()
+					im.Text("b%d", i)
+				}
+			}
+			im.Text("Mouse released:")
+			for i := range io.MouseDown {
+				if im.IsMouseReleased(i) {
+					im.SameLine()
+					im.Text("b%d", i)
+				}
+			}
+			im.Text("Mouse wheel: %.1f", io.MouseWheel)
+
+			im.Text("Keys down:")
+			for i := range io.KeysDown {
+				if io.KeysDownDuration[i] >= 0.0 {
+					im.SameLine()
+					im.Text("%d (%.02f secs)", i, io.KeysDownDuration[i])
+				}
+			}
+			im.Text("Keys pressed:")
+			for i := range io.KeysDown {
+				if im.IsKeyPressed(i, true) {
+					im.SameLine()
+					im.Text("%d", i)
+				}
+			}
+			im.Text("Keys release:")
+			for i := range io.KeysDown {
+				if im.IsKeyReleased(i) {
+					im.SameLine()
+					im.Text("%d", i)
+				}
+			}
+			var ctrl, shift, alt, super string
+			if io.KeyCtrl {
+				ctrl = "CTRL"
+			}
+			if io.KeyShift {
+				shift = "SHIFT"
+			}
+			if io.KeyAlt {
+				alt = "ALT"
+			}
+			if io.KeySuper {
+				super = "SUPER"
+			}
+			im.Text("Keys mods: %s%s%s%s", ctrl, shift, alt, super)
+
+			im.Text("NavInputs down:")
+			for i := range io.NavInputs {
+				if io.NavInputs[i] > 0.0 {
+					im.SameLine()
+					im.Text("[%d] %.2f", i, io.NavInputs[i])
+				}
+			}
+			im.Text("NavInputs pressed:")
+			for i := range io.NavInputs {
+				if io.NavInputsDownDuration[i] == 0.0 {
+					im.SameLine()
+					im.Text("[%d]", i)
+				}
+			}
+			im.Text("NavInputs duration:")
+			for i := range io.NavInputs {
+				if io.NavInputsDownDuration[i] >= 0.0 {
+					im.SameLine()
+					im.Text("[%d] %.2f", i, io.NavInputsDownDuration[i])
+				}
+			}
+
+			im.Button("Hovering me sets the\nkeyboard capture flag")
+			if im.IsItemHovered() {
+				im.CaptureKeyboardFromApp(true)
+			}
+			im.SameLine()
+			im.Button("Holding me clears the\nthe keyboard capture flag")
+			if im.IsItemActive() {
+				im.CaptureKeyboardFromApp(false)
+			}
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Tabbing") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Focus from code") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Focused & Hovered Test") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Dragging") {
+			im.TreePop()
+		}
+
+		if im.TreeNode("Mouse cursors") {
+			im.TreePop()
+		}
 	}
 
 	im.End()
 }
 
-func showUserGuide() {
+func ShowUserGuide() {
 	im.BulletText("Double-click on title bar to collapse window.")
 	im.BulletText("Click and drag on lower right corner to resize window\n(double-click to auto fit window to its contents).")
 	im.BulletText("Click and drag on any empty space to move window.")
@@ -2428,10 +2567,10 @@ func showUserGuide() {
 	im.Unindent()
 }
 
-func showExampleAppMainMenuBar() {
+func ShowExampleAppMainMenuBar() {
 	if im.BeginMainMenuBar() {
 		if im.BeginMenu("File") {
-			showExampleMenuFile()
+			ShowExampleMenuFile()
 			im.EndMenu()
 		}
 		if im.BeginMenu("Edit") {
@@ -2452,11 +2591,11 @@ func showExampleAppMainMenuBar() {
 	}
 }
 
-func showExampleAppConsole() {
+func ShowExampleAppConsole() {
 }
 
 // Demonstrate creating a simple log window with basic filtering.
-func showExampleAppLog() {
+func ShowExampleAppLog() {
 	// Demo: add random items (unless Ctrl is held)
 	p_open := &ui.ShowAppLog
 	log := &ui.AppLog.Log
@@ -2471,7 +2610,7 @@ func showExampleAppLog() {
 }
 
 // Demonstrate create a window with multiple child windows.
-func showExampleAppLayout() {
+func ShowExampleAppLayout() {
 	p_open := &ui.ShowAppLayout
 	im.SetNextWindowSize(f64.Vec2{500, 440}, imgui.CondFirstUseEver)
 	if im.BeginEx("Example: Layout", p_open, imgui.WindowFlagsMenuBar) {
@@ -2518,14 +2657,14 @@ func showExampleAppLayout() {
 	im.End()
 }
 
-func showExampleAppPropertyEditor() {
+func ShowExampleAppPropertyEditor() {
 }
 
-func showExampleAppLongText() {
+func ShowExampleAppLongText() {
 }
 
 // Demonstrate creating a window which gets auto-resized according to its content.
-func showExampleAppAutoResize() {
+func ShowExampleAppAutoResize() {
 	if !im.BeginEx("Example: Auto-resizing window", &ui.ShowAppAutoResize, imgui.WindowFlagsAlwaysAutoResize) {
 		im.End()
 		return
@@ -2541,7 +2680,7 @@ func showExampleAppAutoResize() {
 }
 
 // Demonstrate creating a window with custom resize constraints.
-func showExampleAppConstrainedResize() {
+func ShowExampleAppConstrainedResize() {
 	Square := func(data *imgui.SizeCallbackData) {
 		data.DesiredSize = f64.Vec2{math.Max(data.DesiredSize.X, data.DesiredSize.Y), math.Max(data.DesiredSize.X, data.DesiredSize.Y)}
 	}
@@ -2613,7 +2752,7 @@ func showExampleAppConstrainedResize() {
 }
 
 // Demonstrate creating a simple static window with no decoration + a context-menu to choose which corner of the screen to use.
-func showExampleAppFixedOverlay() {
+func ShowExampleAppFixedOverlay() {
 	const DISTANCE = 10.0
 
 	corner := &ui.AppFixedOverlay.Corner
@@ -2673,7 +2812,7 @@ func showExampleAppFixedOverlay() {
 
 // Demonstrate using "##" and "###" in identifiers to manipulate ID generation.
 // This apply to regular items as well. Read FAQ section "How can I have multiple widgets with the same label? Can I have widget without a label? (Yes). A primer on the purpose of labels/IDs." for details.
-func showExampleAppWindowTitles() {
+func ShowExampleAppWindowTitles() {
 	// By default, Windows are uniquely identified by their title.
 	// You can use the "##" and "###" markers to manipulate the display/ID.
 	// Using "##" to display same title but have unique identifier.
@@ -2695,10 +2834,10 @@ func showExampleAppWindowTitles() {
 	im.End()
 }
 
-func showExampleAppCustomRendering() {
+func ShowExampleAppCustomRendering() {
 }
 
-func showAppAbout() {
+func ShowAppAbout() {
 	im.BeginEx("About Dear ImGui", &ui.ShowAppAbout, imgui.WindowFlagsAlwaysAutoResize)
 	im.Text("Dear ImGui, %s", im.GetVersion())
 	im.Separator()
@@ -2707,7 +2846,7 @@ func showAppAbout() {
 	im.End()
 }
 
-func showExampleMenuFile() {
+func ShowExampleMenuFile() {
 	im.MenuItemEx("(dummy menu)", "", false, false)
 	im.MenuItem("New")
 	im.MenuItemEx("Open", "Ctrl+O", false, true)
@@ -2719,7 +2858,7 @@ func showExampleMenuFile() {
 			im.MenuItem("Hello")
 			im.MenuItem("Sailor")
 			if im.BeginMenu("Recurse..") {
-				showExampleMenuFile()
+				ShowExampleMenuFile()
 				im.EndMenu()
 			}
 			im.EndMenu()
@@ -2761,7 +2900,7 @@ func showExampleMenuFile() {
 	im.MenuItemEx("Quit", "Alt+F4", false, true)
 }
 
-func showStyleEditor() {
+func ShowStyleEditor() {
 	style := im.GetStyle()
 
 	im.PushItemWidth(im.GetWindowWidth() * 0.50)
@@ -2805,12 +2944,12 @@ func showStyleEditor() {
 	if im.Button("Revert Ref") {
 	}
 	im.SameLine()
-	showHelpMarker("Save/Revert in local non-persistent storage. Default Colors definition are not affected. Use \"Export Colors\" below to save them somewhere.")
+	ShowHelpMarker("Save/Revert in local non-persistent storage. Default Colors definition are not affected. Use \"Export Colors\" below to save them somewhere.")
 
 	if im.TreeNode("Rendering") {
 		im.Checkbox("Anti-aliased lines", &style.AntiAliasedLines)
 		im.SameLine()
-		showHelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.")
+		ShowHelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.")
 		im.PushItemWidth(100)
 		im.DragFloatEx("Curve Tessellation Tolerance", &style.CurveTessellationTol, 0.02, 0.10, math.MaxFloat32, "", 2.0)
 		if style.CurveTessellationTol < 0.0 {
@@ -2833,7 +2972,7 @@ func showStyleEditor() {
 	im.PopItemWidth()
 }
 
-func showHelpMarker(desc string) {
+func ShowHelpMarker(desc string) {
 	im.TextDisabled("(?)")
 	if im.IsItemHovered() {
 		im.BeginTooltip()
@@ -2844,7 +2983,7 @@ func showHelpMarker(desc string) {
 	}
 }
 
-func showMetricsWindow() {
+func ShowMetricsWindow() {
 	p_open := &ui.ShowAppMetrics
 	if im.BeginEx("ImGui Metrics", p_open, 0) {
 		im.Text("Dear ImGui %s", im.GetVersion())
