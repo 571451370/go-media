@@ -212,7 +212,7 @@ func (c *Context) BeginPopupContextWindowEx(str_id string, mouse_button int, als
 		str_id = "window_context"
 	}
 	id := c.CurrentWindow.GetID(str_id)
-	if c.IsMouseReleased(mouse_button) && c.IsWindowHovered(HoveredFlagsAllowWhenBlockedByPopup) {
+	if c.IsMouseReleased(mouse_button) && c.IsWindowHoveredEx(HoveredFlagsAllowWhenBlockedByPopup) {
 		if also_over_items || !c.IsAnyItemHovered() {
 			c.OpenPopupEx(id)
 		}

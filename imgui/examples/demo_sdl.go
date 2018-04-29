@@ -304,6 +304,19 @@ type UI struct {
 	MetricsWindow struct {
 		ShowClipRects bool
 	}
+
+	Input struct {
+		Tabbing struct {
+			Buf []byte
+		}
+		Focus struct {
+			Buf []byte
+			F3  [3]float64
+		}
+		FocusHovered struct {
+			EmbedAllInsideAChildWindow bool
+		}
+	}
 }
 
 var (
@@ -2522,18 +2535,159 @@ func ShowDemoWindow() {
 		}
 
 		if im.TreeNode("Tabbing") {
+			im.Text("Use TAB/SHIFT+TAB to cycle through keyboard editable fields.")
+			buf := ui.Input.Tabbing.Buf
+			im.InputText("1", buf)
+			im.InputText("2", buf)
+			im.InputText("3", buf)
+			im.PushAllowKeyboardFocus(false)
+			im.InputText("4 (tab skip)", buf)
+			im.PopAllowKeyboardFocus()
+			im.InputText("5", buf)
 			im.TreePop()
 		}
 
 		if im.TreeNode("Focus from code") {
+			focus_1 := im.Button("Focus on 1")
+			im.SameLine()
+			focus_2 := im.Button("Focus on 2")
+			im.SameLine()
+			focus_3 := im.Button("Focus on 3")
+			has_focus := 0
+			buf := ui.Input.Focus.Buf
+
+			if focus_1 {
+				im.SetKeyboardFocusHere()
+			}
+			im.InputText("1", buf)
+			if im.IsItemActive() {
+				has_focus = 1
+			}
+
+			if focus_2 {
+				im.SetKeyboardFocusHere()
+			}
+			im.InputText("2", buf)
+			if im.IsItemActive() {
+				has_focus = 2
+			}
+
+			im.PushAllowKeyboardFocus(false)
+			if focus_3 {
+				im.SetKeyboardFocusHere()
+			}
+			im.InputText("3 (tab skip)", buf)
+			if im.IsItemActive() {
+				has_focus = 3
+			}
+			im.PopAllowKeyboardFocus()
+
+			if has_focus != 0 {
+				im.Text("Item with focus: %d", has_focus)
+			} else {
+				im.Text("Item with focus: <none>")
+			}
+
+			// Use >= 0 parameter to SetKeyboardFocusHere() to focus an upcoming item
+			f3 := ui.Input.Focus.F3[:]
+			focus_ahead := -1
+			if im.Button("Focus on X") {
+				focus_ahead = 0
+			}
+			im.SameLine()
+			if im.Button("Focus on Y") {
+				focus_ahead = 1
+			}
+			im.SameLine()
+			if im.Button("Focus on Z") {
+				focus_ahead = 2
+			}
+			if focus_ahead != -1 {
+				im.SetKeyboardFocusHereEx(focus_ahead)
+			}
+			im.SliderFloat3("Float3", f3, 0.0, 1.0)
+
+			im.TextWrapped("NB: Cursor & selection are preserved when refocusing last used item in code.")
 			im.TreePop()
 		}
 
 		if im.TreeNode("Focused & Hovered Test") {
+			embed_all_inside_a_child_window := &ui.Input.FocusHovered.EmbedAllInsideAChildWindow
+			im.Checkbox("Embed everything inside a child window (for additional testing)", embed_all_inside_a_child_window)
+			if *embed_all_inside_a_child_window {
+				im.BeginChildEx("embeddingchild", f64.Vec2{0, im.GetFontSize() * 25}, true, 0)
+			}
+
+			// Testing IsWindowFocused() function with its various flags (note that the flags can be combined)
+			im.BulletText(
+				"IsWindowFocused() = %v\n"+
+					"IsWindowFocused(_ChildWindows) = %v\n"+
+					"IsWindowFocused(_ChildWindows|_RootWindow) = %v\n"+
+					"IsWindowFocused(_RootWindow) = %v\n"+
+					"IsWindowFocused(_AnyWindow) = %v\n",
+				im.IsWindowFocused(),
+				im.IsWindowFocusedEx(imgui.FocusedFlagsChildWindows),
+				im.IsWindowFocusedEx(imgui.FocusedFlagsChildWindows|imgui.FocusedFlagsRootWindow),
+				im.IsWindowFocusedEx(imgui.FocusedFlagsRootWindow),
+				im.IsWindowFocusedEx(imgui.FocusedFlagsAnyWindow))
+
+			// Testing IsWindowHovered() function with its various flags (note that the flags can be combined)
+			im.BulletText(
+				"IsWindowHovered() = %v\n"+
+					"IsWindowHovered(_AllowWhenBlockedByPopup) = %v\n"+
+					"IsWindowHovered(_AllowWhenBlockedByActiveItem) = %v\n"+
+					"IsWindowHovered(_ChildWindows) = %v\n"+
+					"IsWindowHovered(_ChildWindows|_RootWindow) = %v\n"+
+					"IsWindowHovered(_RootWindow) = %v\n"+
+					"IsWindowHovered(_AnyWindow) = %v\n",
+				im.IsWindowHovered(),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsAllowWhenBlockedByPopup),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsAllowWhenBlockedByActiveItem),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsChildWindows),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsChildWindows|imgui.HoveredFlagsRootWindow),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsRootWindow),
+				im.IsWindowHoveredEx(imgui.HoveredFlagsAnyWindow))
+
+			// Testing IsItemHovered() function (because BulletText is an item itself and that would affect the output of IsItemHovered, we pass all lines in a single items to shorten the code)
+			im.Button("ITEM")
+			im.BulletText(
+				"IsItemHovered() = %v\n"+
+					"IsItemHovered(_AllowWhenBlockedByPopup) = %v\n"+
+					"IsItemHovered(_AllowWhenBlockedByActiveItem) = %v\n"+
+					"IsItemHovered(_AllowWhenOverlapped) = %v\n"+
+					"IsItemhovered(_RectOnly) = %v\n",
+				im.IsItemHovered(),
+				im.IsItemHoveredEx(imgui.HoveredFlagsAllowWhenBlockedByPopup),
+				im.IsItemHoveredEx(imgui.HoveredFlagsAllowWhenBlockedByActiveItem),
+				im.IsItemHoveredEx(imgui.HoveredFlagsAllowWhenOverlapped),
+				im.IsItemHoveredEx(imgui.HoveredFlagsRectOnly))
+
 			im.TreePop()
 		}
 
 		if im.TreeNode("Dragging") {
+			im.TextWrapped("You can use im.GetMouseDragDelta(0) to query for the dragged amount on any widget.")
+			for button := 0; button < 3; button++ {
+				im.Text("IsMouseDragging(%d):\n  w/ default threshold: %v,\n  w/ zero threshold: %v\n  w/ large threshold: %v",
+					button, im.IsMouseDraggingEx(button, -1.0), im.IsMouseDraggingEx(button, 0.0), im.IsMouseDraggingEx(button, 20.0))
+			}
+			im.Button("Drag Me")
+			if im.IsItemActive() {
+				// Draw a line between the button and the mouse cursor
+				draw_list := im.GetWindowDrawList()
+				draw_list.PushClipRectFullScreen()
+				draw_list.AddLineEx(io.MouseClickedPos[0], io.MousePos, im.GetColorFromStyle(imgui.ColButton), 4.0)
+				draw_list.PopClipRect()
+
+				// Drag operations gets "unlocked" when the mouse has moved past a certain threshold (the default threshold is stored in io.MouseDragThreshold)
+				// You can request a lower or higher threshold using the second parameter of IsMouseDragging() and GetMouseDragDelta()
+				value_raw := im.GetMouseDragDelta(0, 0.0)
+				value_with_lock_threshold := im.GetMouseDragDelta(0, -1)
+				mouse_delta := io.MouseDelta
+				im.SameLine()
+				im.Text("Raw (%.1f, %.1f), WithLockThresold (%.1f, %.1f), MouseDelta (%.1f, %.1f)",
+					value_raw.X, value_raw.Y, value_with_lock_threshold.X, value_with_lock_threshold.Y, mouse_delta.X, mouse_delta.Y)
+			}
 			im.TreePop()
 		}
 

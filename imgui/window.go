@@ -2137,7 +2137,11 @@ func (c *Context) SetNextWindowBgAlpha(alpha float64) {
 	c.NextWindowData.BgAlphaCond = CondAlways
 }
 
-func (c *Context) IsWindowHovered(flags HoveredFlags) bool {
+func (c *Context) IsWindowHovered() bool {
+	return c.IsWindowHoveredEx(0)
+}
+
+func (c *Context) IsWindowHoveredEx(flags HoveredFlags) bool {
 	// Flags not supported by this function
 	assert(flags&HoveredFlagsAllowWhenOverlapped == 0)
 	if flags&HoveredFlagsAnyWindow != 0 {
@@ -2225,3 +2229,48 @@ func (c *Context) SetNextWindowContentSize(size f64.Vec2) {
 	c.NextWindowData.ContentSizeVal = size
 	c.NextWindowData.ContentSizeCond = CondAlways
 }
+
+func (c *Context) SetKeyboardFocusHere() {
+	c.SetKeyboardFocusHereEx(-1)
+}
+
+func (c *Context) SetKeyboardFocusHereEx(offset int) {
+	// -1 is allowed but not below
+	assert(offset >= -1)
+	window := c.GetCurrentWindow()
+	window.FocusIdxAllRequestNext = window.FocusIdxAllCounter + 1 + offset
+	window.FocusIdxTabRequestNext = math.MaxInt32
+}
+
+func (c *Context) IsWindowFocused() bool {
+	return c.IsWindowFocusedEx(0)
+}
+
+func (c *Context) IsWindowFocusedEx(flags FocusedFlags) bool {
+	// Not inside a Begin()/End()
+	assert(c.CurrentWindow != nil)
+
+	if flags&FocusedFlagsAnyWindow != 0 {
+		return c.NavWindow != nil
+	}
+
+	switch flags & (FocusedFlagsRootWindow | FocusedFlagsChildWindows) {
+	case FocusedFlagsRootWindow | FocusedFlagsChildWindows:
+		return c.NavWindow != nil && c.NavWindow.RootWindow == c.CurrentWindow.RootWindow
+	case FocusedFlagsRootWindow:
+		return c.NavWindow == c.CurrentWindow.RootWindow
+	case FocusedFlagsChildWindows:
+		return c.NavWindow != nil && c.IsWindowChildOf(c.NavWindow, c.CurrentWindow)
+	default:
+		return c.NavWindow == c.CurrentWindow
+	}
+}
+
+type FocusedFlags uint
+
+const (
+	FocusedFlagsChildWindows        FocusedFlags = 1 << 0 // IsWindowFocused(): Return true if any children of the window is focused
+	FocusedFlagsRootWindow          FocusedFlags = 1 << 1 // IsWindowFocused(): Test from root window (top most parent of the current hierarchy)
+	FocusedFlagsAnyWindow           FocusedFlags = 1 << 2 // IsWindowFocused(): Return true if any window is focused
+	FocusedFlagsRootAndChildWindows FocusedFlags = FocusedFlagsRootWindow | FocusedFlagsChildWindows
+)
