@@ -100,6 +100,12 @@ type UI struct {
 		Log      ExampleAppLog
 	}
 
+	AppLongText struct {
+		TestType int
+		Log      strings.Builder
+		Lines    int
+	}
+
 	Widgets struct {
 		Basic struct {
 			Clicked int
@@ -3093,7 +3099,58 @@ func ShowExampleAppLayout() {
 func ShowExampleAppPropertyEditor() {
 }
 
+// Demonstrate/test rendering huge amount of text, and the incidence of clipping.
 func ShowExampleAppLongText() {
+	p_open := &ui.ShowAppLongText
+	test_type := &ui.AppLongText.TestType
+	lines := &ui.AppLongText.Lines
+	log := &ui.AppLongText.Log
+
+	im.SetNextWindowSize(f64.Vec2{520, 600}, imgui.CondFirstUseEver)
+	if !im.BeginEx("Example: Long text display", p_open, 0) {
+		im.End()
+		return
+	}
+	im.Text("Printing unusually long amount of text.")
+	im.ComboString("Test type", test_type, []string{"Single call to TextUnformatted()", "Multiple calls to Text(), clipped manually", "Multiple calls to Text(), not clipped (slow)"})
+	im.Text("Buffer contents: %d lines, %d bytes", *lines, log.Len())
+	if im.Button("Clear") {
+		log.Reset()
+		*lines = 0
+	}
+	im.SameLine()
+	if im.Button("Add 1000 lines") {
+		for i := 0; i < 1000; i++ {
+			fmt.Fprintf(log, "%d The quick brown fox jumps over the lazy dog\n", *lines+i)
+		}
+		*lines += 1000
+	}
+	im.BeginChild("Log")
+	switch *test_type {
+	case 0:
+		// Single call to TextUnformatted() with a big buffer
+		im.TextUnformatted(log.String())
+	case 1:
+		// Multiple calls to Text(), manually coarsely clipped - demonstrate how to use the ImGuiListClipper helper.
+		im.PushStyleVar(imgui.StyleVarItemSpacing, f64.Vec2{0, 0})
+		var clipper imgui.ListClipper
+		clipper.Init(im, *lines, -1)
+		for clipper.Step() {
+			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+				im.Text("%d The quick brown fox jumps over the lazy dog", i)
+			}
+		}
+		im.PopStyleVar()
+	case 2:
+		// Multiple calls to Text(), not clipped (slow)
+		im.PushStyleVar(imgui.StyleVarItemSpacing, f64.Vec2{0, 0})
+		for i := 0; i < *lines; i++ {
+			im.Text("%d The quick brown fox jumps over the lazy dog", i)
+		}
+		im.PopStyleVar()
+	}
+	im.EndChild()
+	im.End()
 }
 
 // Demonstrate creating a window which gets auto-resized according to its content.
