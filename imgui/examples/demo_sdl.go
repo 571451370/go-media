@@ -204,6 +204,11 @@ type UI struct {
 			Bufpass []byte
 		}
 
+		MultilineTextInput struct {
+			ReadOnly bool
+			Text     []byte
+		}
+
 		Plots struct {
 			Animate      bool
 			Values       [90]float64
@@ -1454,6 +1459,101 @@ func ShowDemoWindow() {
 			// - The one taking "bool* p_selected" as a read-write selection information (convenient in some cases)
 			// The earlier is more flexible, as in real application your selection may be stored in a different manner (in flags within objects, as an external list, etc).
 			if im.TreeNode("Basic") {
+				selection := ui.Widgets.Selectables.Basic.Selection[:]
+				im.SelectableOpen("1. I am selectable", &selection[0])
+				im.SelectableOpen("2. I am selectable", &selection[1])
+				im.Text("3. I am not selectable")
+				im.SelectableOpen("4. I am selectable", &selection[3])
+				if im.SelectableEx("5. I am double clickable", selection[4], imgui.SelectableFlagsAllowDoubleClick, f64.Vec2{}) {
+					if im.IsMouseDoubleClicked(0) {
+						selection[4] = !selection[4]
+					}
+				}
+				im.TreePop()
+			}
+
+			if im.TreeNode("Selection State: Single Selection") {
+				selected := &ui.Widgets.Selectables.Single.Selected
+				for n := 0; n < 5; n++ {
+					buf := fmt.Sprintf("Object %d", n)
+					if im.SelectableEx(buf, *selected == n, 0, f64.Vec2{}) {
+						*selected = n
+					}
+				}
+				im.TreePop()
+			}
+
+			if im.TreeNode("Selection State: Multiple Selection") {
+				ShowHelpMarker("Hold CTRL and click to select multiple items.")
+				selection := ui.Widgets.Selectables.Multiple.Selection[:]
+				for n := 0; n < 5; n++ {
+					buf := fmt.Sprintf("Object %d", n)
+					if im.SelectableEx(buf, selection[n], 0, f64.Vec2{}) {
+						// Clear selection when CTRL is not held
+						if !im.GetIO().KeyCtrl {
+							for i := range selection {
+								selection[i] = false
+							}
+						}
+						selection[n] = !selection[n]
+					}
+				}
+				im.TreePop()
+			}
+
+			if im.TreeNode("Rendering more text into the same line") {
+				// Using the Selectable() override that takes "bool* p_selected" parameter and toggle your booleans automatically.
+				selected := ui.Widgets.Selectables.Rendering.Selected[:]
+				im.SelectableOpen("main.c", &selected[0])
+				im.SameLineEx(300, -1)
+				im.Text(" 2,345 bytes")
+				im.SelectableOpen("Hello.cpp", &selected[1])
+				im.SameLineEx(300, -1)
+				im.Text("12,345 bytes")
+				im.SelectableOpen("Hello.h", &selected[2])
+				im.SameLineEx(300, -1)
+				im.Text(" 2,345 bytes")
+				im.TreePop()
+			}
+
+			if im.TreeNode("In columns") {
+				im.Columns(3, "", false)
+				selected := ui.Widgets.Selectables.Columns.Selected[:]
+				for i := range selected {
+					label := fmt.Sprintf("Item %d", i)
+					if im.SelectableOpen(label, &selected[i]) {
+					}
+					im.NextColumn()
+				}
+				im.Columns(1, "", true)
+				im.TreePop()
+			}
+
+			if im.TreeNode("Grid") {
+				selected := ui.Widgets.Selectables.Grid.Selected[:]
+				for i := range selected {
+					im.PushID(imgui.ID(i))
+					if im.SelectableOpenEx("Sailor", &selected[i], 0, f64.Vec2{50, 50}) {
+						x := i % 4
+						y := i / 4
+						if x > 0 {
+							selected[i-1] = !selected[i-1]
+						}
+						if x < 3 {
+							selected[i+1] = !selected[i+1]
+						}
+						if y > 0 {
+							selected[i-4] = !selected[i-4]
+						}
+						if y < 3 {
+							selected[i+4] = !selected[i+4]
+						}
+					}
+					if i%4 < 3 {
+						im.SameLine()
+					}
+					im.PopID()
+				}
 				im.TreePop()
 			}
 
@@ -1461,6 +1561,46 @@ func ShowDemoWindow() {
 		}
 
 		if im.TreeNode("Filtered Text Input") {
+			buf1 := ui.Widgets.FilteredTextInput.Buf1
+			im.InputText("default", buf1)
+			buf2 := ui.Widgets.FilteredTextInput.Buf2
+			im.InputTextEx("decimal", buf2, f64.Vec2{}, imgui.InputTextFlagsCharsDecimal, nil)
+			buf3 := ui.Widgets.FilteredTextInput.Buf3
+			im.InputTextEx("hexadecimal", buf3, f64.Vec2{}, imgui.InputTextFlagsCharsHexadecimal|imgui.InputTextFlagsCharsUppercase, nil)
+			buf4 := ui.Widgets.FilteredTextInput.Buf4
+			im.InputTextEx("uppercase", buf4, f64.Vec2{}, imgui.InputTextFlagsCharsUppercase, nil)
+			buf5 := ui.Widgets.FilteredTextInput.Buf5
+			im.InputTextEx("no blank", buf5, f64.Vec2{}, imgui.InputTextFlagsCharsNoBlank, nil)
+			im.TreePop()
+
+			FilterLetters := func(data *imgui.TextEditCallbackData) int {
+				return 0
+			}
+			buf6 := ui.Widgets.FilteredTextInput.Buf6
+			im.InputTextEx("\"imgui\" letters", buf6, f64.Vec2{}, imgui.InputTextFlagsCallbackCharFilter, FilterLetters)
+
+			bufpass := ui.Widgets.FilteredTextInput.Bufpass
+			im.Text("Password input")
+			im.InputTextEx("password", bufpass, f64.Vec2{}, imgui.InputTextFlagsPassword|imgui.InputTextFlagsCharsNoBlank, nil)
+			im.SameLine()
+			ShowHelpMarker("Display all characters as '*'.\nDisable clipboard cut and copy.\nDisable logging.\n")
+			im.InputTextEx("password (clear)", bufpass, f64.Vec2{}, imgui.InputTextFlagsCharsNoBlank, nil)
+
+			im.TreePop()
+		}
+
+		if im.TreeNode("Multi-line Text Input") {
+			read_only := &ui.Widgets.MultilineTextInput.ReadOnly
+			text := ui.Widgets.MultilineTextInput.Text
+
+			im.PushStyleVar(imgui.StyleVarFramePadding, f64.Vec2{0, 0})
+			im.Checkbox("Read-only", read_only)
+			im.PopStyleVar()
+			flags := imgui.InputTextFlagsAllowTabInput
+			if *read_only {
+				flags |= imgui.InputTextFlagsReadOnly
+			}
+			im.InputTextMultiline("##source", text, f64.Vec2{-1.0, im.GetTextLineHeight() * 16}, flags, nil)
 			im.TreePop()
 		}
 

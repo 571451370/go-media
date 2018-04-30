@@ -157,3 +157,15 @@ func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlag
 	}
 	return pressed
 }
+
+func (c *Context) SelectableOpen(label string, p_selected *bool) bool {
+	return c.SelectableOpenEx(label, p_selected, 0, f64.Vec2{0, 0})
+}
+
+func (c *Context) SelectableOpenEx(label string, p_selected *bool, flags SelectableFlags, size f64.Vec2) bool {
+	if c.SelectableEx(label, *p_selected, flags, size) {
+		*p_selected = !*p_selected
+		return true
+	}
+	return false
+}
