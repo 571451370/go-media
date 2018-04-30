@@ -344,6 +344,19 @@ type UI struct {
 		AddingLine bool
 		Points     []f64.Vec2
 	}
+
+	StyleEditor struct {
+		Init          bool
+		RefSavedStyle imgui.Style
+		Colors        struct {
+			OutputDest         int
+			OutputOnlyModified bool
+		}
+	}
+
+	StyleSelector struct {
+		StyleIdx int
+	}
 }
 
 var (
@@ -1051,7 +1064,7 @@ func ShowDemoWindow() {
 		im.Checkbox("No nav", &ui.NoNav)
 
 		if im.TreeNode("Style") {
-			ShowStyleEditor()
+			ShowStyleEditor(nil)
 			im.TreePop()
 		}
 
@@ -3591,10 +3604,26 @@ func ShowExampleMenuFile() {
 	im.MenuItemEx("Quit", "Alt+F4", false, true)
 }
 
-func ShowStyleEditor() {
+func ShowStyleEditor(ref *imgui.Style) {
 	style := im.GetStyle()
+	ref_saved_style := &ui.StyleEditor.RefSavedStyle
+
+	// Default to using internal storage as reference
+	init := &ui.StyleEditor.Init
+	if *init && ref == nil {
+		*ref_saved_style = *style
+	}
+	*init = false
+	if ref == nil {
+		ref = ref_saved_style
+	}
 
 	im.PushItemWidth(im.GetWindowWidth() * 0.50)
+
+	if ShowStyleSelector("Colors##Selector") {
+		*ref_saved_style = *style
+	}
+	ShowFontSelector("Fonts##Selector")
 
 	// Simplified Settings
 	if im.SliderFloatEx("FrameRounding", &style.FrameRounding, 0.0, 12.0, "%.0f", 1.0) {
@@ -3653,6 +3682,8 @@ func ShowStyleEditor() {
 	}
 
 	if im.TreeNode("Settings") {
+		im.SliderV2Ex("WindowPadding", &style.WindowPadding, 0.0, 20.0, "%.0f", 1)
+		im.SliderFloatEx("PopupRounding", &style.PopupRounding, 0.0, 16.0, "%.0f", 1)
 		im.TreePop()
 	}
 
@@ -3661,6 +3692,43 @@ func ShowStyleEditor() {
 	}
 
 	im.PopItemWidth()
+}
+
+func ShowStyleSelector(label string) bool {
+	style_idx := &ui.StyleSelector.StyleIdx
+	if im.ComboString(label, style_idx, []string{"Classic", "Dark", "Light"}) {
+		switch *style_idx {
+		case 0:
+			im.StyleColorsClassic(nil)
+		case 1:
+			im.StyleColorsDark(nil)
+		case 2:
+			im.StyleColorsLight(nil)
+		}
+		return true
+	}
+	return false
+}
+
+// Demo helper function to select among loaded fonts.
+// Here we use the regular BeginCombo()/EndCombo() api which is more the more flexible one.
+func ShowFontSelector(label string) {
+	io := im.GetIO()
+	font_current := im.GetFont()
+	if im.BeginCombo(label, font_current.GetDebugName()) {
+		for n := range io.Fonts.Fonts {
+			if im.SelectableEx(io.Fonts.Fonts[n].GetDebugName(), io.Fonts.Fonts[n] == font_current, 0, f64.Vec2{}) {
+				io.FontDefault = io.Fonts.Fonts[n]
+			}
+		}
+		im.EndCombo()
+	}
+	im.SameLine()
+	ShowHelpMarker(
+		"- Load additional fonts with io.Fonts->AddFontFromFileTTF().\n" +
+			"- The font atlas is built when calling io.Fonts->GetTexDataAsXXXX() or io.Fonts->Build().\n" +
+			"- Read FAQ and documentation in misc/fonts/ for more details.\n" +
+			"- If you need to add/remove fonts at runtime (e.g. for DPI change), do it before calling NewFrame().")
 }
 
 func ShowHelpMarker(desc string) {

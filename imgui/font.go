@@ -667,3 +667,10 @@ func (f *Font) GetCharAdvance(c rune) float64 {
 func (c *Context) GetFontTexUvWhitePixel() f64.Vec2 {
 	return c.DrawListSharedData.TexUvWhitePixel
 }
+
+func (f *Font) GetDebugName() string {
+	if f.ConfigData != nil {
+		return f.ConfigData.Name
+	}
+	return "<unknown>"
+}
