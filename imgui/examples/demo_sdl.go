@@ -101,9 +101,10 @@ type UI struct {
 	}
 
 	AppLongText struct {
-		TestType int
-		Log      strings.Builder
-		Lines    int
+		TestType     int
+		Log          strings.Builder
+		Lines        int
+		DummyMembers [8]float64
 	}
 
 	Widgets struct {
@@ -335,6 +336,13 @@ type UI struct {
 		FocusHovered struct {
 			EmbedAllInsideAChildWindow bool
 		}
+	}
+
+	AppCustomRendering struct {
+		Sz         float64
+		Col        color.RGBA
+		AddingLine bool
+		Points     []f64.Vec2
 	}
 }
 
@@ -2690,7 +2698,7 @@ func ShowDemoWindow() {
 		ShowHelpMarker("Instruct back-end to not alter mouse cursor shape and visibility.")
 
 		if im.TreeNode("Keyboard, Mouse & Navigation State") {
-			if im.IsMousePosValid(nil) {
+			if im.IsMousePosValid() {
 				im.Text("Mouse pos: (%g, %g)", io.MousePos.X, io.MousePos.Y)
 			} else {
 				im.Text("Mouse pos: <INVALID>")
@@ -3097,6 +3105,68 @@ func ShowExampleAppLayout() {
 }
 
 func ShowExampleAppPropertyEditor() {
+	p_open := &ui.ShowAppPropertyEditor
+	im.SetNextWindowSize(f64.Vec2{430, 450}, imgui.CondFirstUseEver)
+	if !im.BeginEx("Example: Property editor", p_open, 0) {
+		im.End()
+		return
+	}
+
+	ShowHelpMarker("This example shows how you may implement a property editor using two columns.\nAll objects/fields data are dummies here.\nRemember that in many simple cases, you can use ImGui::SameLine(xxx) to position\nyour cursor horizontally instead of using the Columns() API.")
+
+	im.PushStyleVar(imgui.StyleVarFramePadding, f64.Vec2{2, 2})
+	im.Columns(2, "", true)
+	im.Separator()
+
+	var ShowDummyObject func(prefix string, uid int)
+	ShowDummyObject = func(prefix string, uid int) {
+		// Use object uid as identifier. Most commonly you could also use the object pointer as a base ID.
+		im.PushID(imgui.ID(uid))
+		// Text and Tree nodes are less high than regular widgets, here we add vertical spacing to make the tree lines equal high.
+		im.AlignTextToFramePadding()
+
+		node_open := im.TreeNodeStringID("Object", "%s_%u", prefix, uid)
+		im.NextColumn()
+		im.AlignTextToFramePadding()
+		im.Text("my sailor is rich")
+		im.NextColumn()
+		if node_open {
+			dummy_members := ui.AppLongText.DummyMembers[:]
+			for i := 0; i < 8; i++ {
+				im.PushID(imgui.ID(i))
+				if i < 2 {
+					ShowDummyObject("Child", 424242)
+				} else {
+					im.AlignTextToFramePadding()
+					label := fmt.Sprintf("Field_%d", i)
+					im.Bullet()
+					im.Selectable(label)
+					im.NextColumn()
+					im.PushItemWidth(-1)
+					if i >= 5 {
+						im.InputFloat("##value", &dummy_members[i], 1.0)
+					} else {
+						im.DragFloatEx("##value", &dummy_members[i], 0.01, 0, 0, "", 1)
+					}
+					im.PopItemWidth()
+					im.NextColumn()
+				}
+				im.PopID()
+			}
+			im.TreePop()
+		}
+		im.PopID()
+	}
+
+	// Iterate dummy objects with dummy members (all the same data)
+	for obj_i := 0; obj_i < 3; obj_i++ {
+		ShowDummyObject("Object", obj_i)
+	}
+
+	im.Columns(1, "", true)
+	im.Separator()
+	im.PopStyleVar()
+	im.End()
 }
 
 // Demonstrate/test rendering huge amount of text, and the incidence of clipping.
@@ -3270,7 +3340,7 @@ func ShowExampleAppFixedOverlay() {
 	if im.BeginEx("Example: Fixed Overlay", p_open, window_flags) {
 		im.Text("Simple overlay\nin the corner of the screen.\n(right-click to change position)")
 		im.Separator()
-		if im.IsMousePosValid(nil) {
+		if im.IsMousePosValid() {
 			im.Text("Mouse Position: (%.1f,%.1f)", im.GetIO().MousePos.X, im.GetIO().MousePos.Y)
 		} else {
 			im.Text("Mouse Position: <invalid>")
@@ -3324,7 +3394,138 @@ func ShowExampleAppWindowTitles() {
 	im.End()
 }
 
+// Demonstrate using the low-level ImDrawList to draw custom shapes.
 func ShowExampleAppCustomRendering() {
+	p_open := &ui.ShowAppCustomRendering
+
+	im.SetNextWindowSize(f64.Vec2{350, 560}, imgui.CondFirstUseEver)
+	if !im.BeginEx("Example: Custom rendering", p_open, 0) {
+		im.End()
+		return
+	}
+
+	// Tip: If you do a lot of custom rendering, you probably want to use your own geometrical types and benefit of overloaded operators, etc.
+	// Define IM_VEC2_CLASS_EXTRA in imconfig.h to create implicit conversions between your types and ImVec2/ImVec4.
+	// ImGui defines overloaded operators but they are internal to imgui.cpp and not exposed outside (to avoid messing with your types)
+	// In this example we are not using the maths operators!
+	draw_list := im.GetWindowDrawList()
+
+	// Primitives
+	im.Text("Primitives")
+	sz := &ui.AppCustomRendering.Sz
+	col := &ui.AppCustomRendering.Col
+	im.DragFloatEx("Size", sz, 0.2, 2.0, 72.0, "%.0f", 1)
+	im.ColorEdit3("Color", col)
+	{
+		p := im.GetCursorScreenPos()
+		x := p.X + 4.0
+		y := p.Y + 4.0
+		spacing := 8.0
+		for n := 0; n < 2; n++ {
+			thickness := 4.0
+			if n == 0 {
+				thickness = 1.0
+			}
+			draw_list.AddCircleEx(f64.Vec2{x + *sz*0.5, y + *sz*0.5}, *sz*0.5, *col, 20, thickness)
+			x += *sz + spacing
+			draw_list.AddRectEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, 0.0, imgui.DrawCornerFlagsAll, thickness)
+			x += *sz + spacing
+			draw_list.AddRectEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, 10.0, imgui.DrawCornerFlagsAll, thickness)
+			x += *sz + spacing
+			draw_list.AddRectEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, 10.0, imgui.DrawCornerFlagsTopLeft|imgui.DrawCornerFlagsBotRight, thickness)
+			x += *sz + spacing
+			draw_list.AddTriangleEx(f64.Vec2{x + *sz*0.5, y}, f64.Vec2{x + *sz, y + *sz - 0.5}, f64.Vec2{x, y + *sz - 0.5}, *col, thickness)
+			x += *sz + spacing
+			draw_list.AddLineEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y}, *col, thickness)
+			x += *sz + spacing
+			draw_list.AddLineEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, thickness)
+			x += *sz + spacing
+			draw_list.AddLineEx(f64.Vec2{x, y}, f64.Vec2{x, y + *sz}, *col, thickness)
+			x += spacing
+			draw_list.AddBezierCurve(f64.Vec2{x, y}, f64.Vec2{x + *sz*1.3, y + *sz*0.3}, f64.Vec2{x + *sz - *sz*1.3, y + *sz - *sz*0.3}, f64.Vec2{x + *sz, y + *sz}, *col, thickness)
+			x = p.X + 4
+			y += *sz + spacing
+		}
+		draw_list.AddCircleFilledEx(f64.Vec2{x + *sz*0.5, y + *sz*0.5}, *sz*0.5, *col, 32)
+		x += *sz + spacing
+		draw_list.AddRectFilled(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col)
+		x += *sz + spacing
+		draw_list.AddRectFilledEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, 10.0, 0)
+		x += *sz + spacing
+		draw_list.AddRectFilledEx(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz}, *col, 10.0, imgui.DrawCornerFlagsTopLeft|imgui.DrawCornerFlagsBotRight)
+		x += *sz + spacing
+		draw_list.AddTriangleFilled(f64.Vec2{x + *sz*0.5, y}, f64.Vec2{x + *sz, y + *sz - 0.5}, f64.Vec2{x, y + *sz - 0.5}, *col)
+		x += *sz + spacing
+		draw_list.AddRectFilledMultiColor(f64.Vec2{x, y}, f64.Vec2{x + *sz, y + *sz},
+			color.RGBA{0, 0, 0, 255}, color.RGBA{255, 0, 0, 255}, color.RGBA{255, 255, 0, 255}, color.RGBA{0, 255, 0, 255})
+		im.Dummy(f64.Vec2{(*sz + spacing) * 8, (*sz + spacing) * 3})
+	}
+	im.Separator()
+	{
+		points := &ui.AppCustomRendering.Points
+		adding_line := &ui.AppCustomRendering.AddingLine
+		im.Text("Canvas example")
+		if im.Button("Clear") {
+			*points = (*points)[:0]
+		}
+		if len(*points) >= 2 {
+			im.SameLine()
+			if im.Button("Undo") {
+				*points = (*points)[len(*points)-2:]
+			}
+		}
+		im.Text("Left-click and drag to add lines,\nRight-click to undo")
+
+		// Here we are using InvisibleButton() as a convenience to 1) advance the cursor and 2) allows us to use IsItemHovered()
+		// However you can draw directly and poll mouse/keyboard by yourself. You can manipulate the cursor using GetCursorPos() and SetCursorPos().
+		// If you only use the ImDrawList API, you can notify the owner window of its extends by using SetCursorPos(max).
+
+		// ImDrawList API uses screen coordinates!
+		canvas_pos := im.GetCursorScreenPos()
+		// Resize canvas to what's available
+		canvas_size := im.GetContentRegionAvail()
+		if canvas_size.X < 50.0 {
+			canvas_size.X = 50.0
+		}
+		if canvas_size.Y < 50.0 {
+			canvas_size.Y = 50.0
+		}
+		draw_list.AddRectFilledMultiColor(canvas_pos, f64.Vec2{canvas_pos.X + canvas_size.X, canvas_pos.Y + canvas_size.Y},
+			color.RGBA{50, 50, 50, 255}, color.RGBA{50, 50, 60, 255}, color.RGBA{60, 60, 70, 255}, color.RGBA{50, 50, 60, 255})
+		draw_list.AddRect(canvas_pos, f64.Vec2{canvas_pos.X + canvas_size.X, canvas_pos.Y + canvas_size.Y}, color.RGBA{255, 255, 255, 255})
+
+		adding_preview := false
+		im.InvisibleButton("canvas", canvas_size)
+		mouse_pos_in_canvas := f64.Vec2{im.GetIO().MousePos.X - canvas_pos.X, im.GetIO().MousePos.Y - canvas_pos.Y}
+		if *adding_line {
+			adding_preview = true
+			*points = append(*points, mouse_pos_in_canvas)
+			if !im.IsMouseDown(0) {
+				*adding_line = false
+				adding_preview = false
+			}
+		}
+		if im.IsItemHovered() {
+			if !*adding_line && im.IsMouseClicked(0, true) {
+				*points = append(*points, mouse_pos_in_canvas)
+				*adding_line = true
+			}
+			if im.IsMouseClicked(1, true) && len(*points) > 0 {
+				*adding_line, adding_preview = false, false
+				*points = (*points)[:len(*points)-2]
+			}
+		}
+		// clip lines within the canvas (if we resize it, etc.)
+		draw_list.PushClipRectEx(canvas_pos, f64.Vec2{canvas_pos.X + canvas_size.X, canvas_pos.Y + canvas_size.Y}, true)
+		for i := 0; i < len(*points)-1; i += 2 {
+			draw_list.PushClipRectEx(canvas_pos, f64.Vec2{canvas_pos.X + canvas_size.X, canvas_pos.Y + canvas_size.Y}, true)
+		}
+		draw_list.PopClipRect()
+		if adding_preview {
+			*points = (*points)[:len(*points)-1]
+		}
+	}
+	im.End()
 }
 
 func ShowAppAbout() {
@@ -3563,7 +3764,7 @@ func assert(x bool) {
 //  my_log.AddLog("Hello %d world\n", 123);
 //  my_log.Draw("title");
 type ExampleAppLog struct {
-	Buf            []rune
+	Buf            strings.Builder
 	Filter         imgui.TextFilter
 	Lines          []string
 	ScrollToBottom bool

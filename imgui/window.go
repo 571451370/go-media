@@ -848,7 +848,11 @@ func (c *Context) GetMousePos() f64.Vec2 {
 	return c.IO.MousePos
 }
 
-func (c *Context) IsMousePosValid(mouse_pos *f64.Vec2) bool {
+func (c *Context) IsMousePosValid() bool {
+	return c.IsMousePosValidEx(nil)
+}
+
+func (c *Context) IsMousePosValidEx(mouse_pos *f64.Vec2) bool {
 	if mouse_pos == nil {
 		mouse_pos = &c.IO.MousePos
 	}
@@ -1420,7 +1424,7 @@ func (c *Context) UpdateMovingWindow() {
 		// We track it to preserve Focus and so that generally ActiveIdWindow == MovingWindow and ActiveId == MovingWindow->MoveId for consistency.
 		c.KeepAliveID(c.ActiveId)
 		moving_window := c.MovingWindow.RootWindow
-		if c.IO.MouseDown[0] && c.IsMousePosValid(&c.IO.MousePos) {
+		if c.IO.MouseDown[0] && c.IsMousePosValidEx(&c.IO.MousePos) {
 			pos := c.IO.MousePos.Sub(c.ActiveIdClickOffset)
 			if moving_window.Pos.X != pos.X || moving_window.Pos.Y != pos.Y {
 				c.MarkIniSettingsDirtyForWindow(moving_window)

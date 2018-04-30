@@ -3244,7 +3244,7 @@ func (d *DrawChannel) Init() {
 
 func (c *Context) UpdateMouseInputs() {
 	// If mouse just appeared or disappeared (usually denoted by -FLT_MAX component, but in reality we test for -256000.0f) we cancel out movement in MouseDelta
-	if c.IsMousePosValid(&c.IO.MousePos) && c.IsMousePosValid(&c.IO.MousePosPrev) {
+	if c.IsMousePosValidEx(&c.IO.MousePos) && c.IsMousePosValidEx(&c.IO.MousePosPrev) {
 		c.IO.MouseDelta = c.IO.MousePos.Sub(c.IO.MousePosPrev)
 	} else {
 		c.IO.MouseDelta = f64.Vec2{0.0, 0.0}
@@ -3508,7 +3508,11 @@ func (d *DrawList) PrimVtx(pos, uv f64.Vec2, col color.RGBA) {
 	d.PrimWriteVtx(pos, uv, col)
 }
 
-func (d *DrawList) AddTriangle(a, b, c f64.Vec2, col color.RGBA, thickness float64) {
+func (d *DrawList) AddTriangle(a, b, c f64.Vec2, col color.RGBA) {
+	d.AddTriangleEx(a, b, c, col, 1)
+}
+
+func (d *DrawList) AddTriangleEx(a, b, c f64.Vec2, col color.RGBA, thickness float64) {
 	if col.A == 0 {
 		return
 	}
@@ -3517,4 +3521,37 @@ func (d *DrawList) AddTriangle(a, b, c f64.Vec2, col color.RGBA, thickness float
 	d.PathLineTo(b)
 	d.PathLineTo(c)
 	d.PathStrokeEx(col, true, thickness)
+}
+
+func (d *DrawList) AddBezierCurve(pos0, cp0, cp1, pos1 f64.Vec2, col color.RGBA, thickness float64) {
+	d.AddBezierCurveEx(pos0, cp0, cp1, pos1, col, thickness, 0)
+}
+
+func (d *DrawList) AddBezierCurveEx(pos0, cp0, cp1, pos1 f64.Vec2, col color.RGBA, thickness float64, num_segments int) {
+	if col.A == 0 {
+		return
+	}
+
+	d.PathLineTo(pos0)
+	d.PathBezierCurveTo(cp0, cp1, pos1, num_segments)
+	d.PathStrokeEx(col, false, thickness)
+}
+
+func (d *DrawList) PathBezierCurveTo(p2, p3, p4 f64.Vec2, num_segments int) {
+	p1 := d._Path[len(d._Path)-1]
+	if num_segments == 0 {
+		// Auto-tessellated
+		d.PathBezierToCasteljau(&d._Path, p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, p4.X, p4.Y, d._Data.CurveTessellationTol, 0)
+	} else {
+		t_step := 1.0 / float64(num_segments)
+		for i_step := 1; i_step <= num_segments; i_step++ {
+			t := t_step * float64(i_step)
+			u := 1.0 - t
+			w1 := u * u * u
+			w2 := 3 * u * u * t
+			w3 := 3 * u * t * t
+			w4 := t * t * t
+			d._Path = append(d._Path, f64.Vec2{w1*p1.X + w2*p2.X + w3*p3.X + w4*p4.X, w1*p1.Y + w2*p2.Y + w3*p3.Y + w4*p4.Y})
+		}
+	}
 }

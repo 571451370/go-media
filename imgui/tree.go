@@ -107,6 +107,14 @@ func (c *Context) TreeNode(label string) bool {
 	return c.TreeNodeBehavior(window.GetID(label), 0, label)
 }
 
+func (c *Context) TreeNodeStringID(str_id string, format string, args ...interface{}) bool {
+	return c.TreeNodeStringIDEx(str_id, 0, format, args...)
+}
+
+func (c *Context) TreeNodeID(id ID, format string, args ...interface{}) bool {
+	return c.TreeNodeIDEx(id, 0, format, args...)
+}
+
 func (c *Context) TreeNodeStringIDEx(str_id string, flags TreeNodeFlags, format string, args ...interface{}) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {

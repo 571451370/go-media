@@ -302,7 +302,7 @@ func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_spee
 
 	mouse_drag_delta := c.GetMouseDragDelta(0, 1.0)
 	adjust_delta := 0.0
-	if c.ActiveIdSource == InputSourceMouse && c.IsMousePosValid(nil) {
+	if c.ActiveIdSource == InputSourceMouse && c.IsMousePosValid() {
 		adjust_delta := mouse_drag_delta.X - c.DragLastMouseDelta.X
 		if c.IO.KeyShift && c.DragSpeedScaleFast >= 0.0 {
 			adjust_delta *= c.DragSpeedScaleFast

@@ -626,7 +626,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		draw_list.PrimVtx(tra, uv_white, black_trans)
 		draw_list.PrimVtx(trb, uv_white, black)
 		draw_list.PrimVtx(trc, uv_white, black_trans)
-		draw_list.AddTriangle(tra, trb, trc, color.RGBA{128, 128, 128, 255}, 1.5)
+		draw_list.AddTriangleEx(tra, trb, trc, color.RGBA{128, 128, 128, 255}, 1.5)
 		t0 := trc.Lerp(f64.Saturate(hsv.S), tra)
 		t1 := t0.Lerp(f64.Saturate(1-hsv.V), trb)
 		sv_cursor_pos = t1

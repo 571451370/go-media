@@ -999,7 +999,7 @@ func (c *Context) NavUpdateWindowing() {
 	// Keyboard: Press and Release ALT to toggle menu layer
 	// FIXME: We lack an explicit IO variable for "is the imgui window focused", so compare mouse validity to detect the common case of back-end clearing releases all keys on ALT-TAB
 	if (c.ActiveId == 0 || c.ActiveIdAllowOverlap) && c.IsNavInputPressed(NavInputKeyMenu_, InputReadModeReleased) {
-		if c.IsMousePosValid(&c.IO.MousePos) == c.IsMousePosValid(&c.IO.MousePosPrev) {
+		if c.IsMousePosValidEx(&c.IO.MousePos) == c.IsMousePosValidEx(&c.IO.MousePosPrev) {
 			apply_toggle_layer = true
 		}
 	}
