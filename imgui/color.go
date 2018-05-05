@@ -813,3 +813,31 @@ func (c *Context) ColorEditOptionsPopup(col color.RGBA, flags ColorEditFlags) {
 	c.ColorEditOptions = opts
 	c.EndPopup()
 }
+
+func (c *Context) ColorEditV3(label string, col *f64.Vec4) bool {
+	rgba := col.ToRGBA()
+	value_changed := c.ColorEdit3(label, &rgba)
+	*col = chroma.RGBA2VEC4(rgba)
+	return value_changed
+}
+
+func (c *Context) ColorEditV3Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
+	rgba := col.ToRGBA()
+	value_changed := c.ColorEdit3Ex(label, &rgba, flags)
+	*col = chroma.RGBA2VEC4(rgba)
+	return value_changed
+}
+
+func (c *Context) ColorEditV4(label string, col *f64.Vec4) bool {
+	rgba := col.ToRGBA()
+	value_changed := c.ColorEdit4(label, &rgba)
+	*col = chroma.RGBA2VEC4(rgba)
+	return value_changed
+}
+
+func (c *Context) ColorEditV4Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
+	rgba := col.ToRGBA()
+	value_changed := c.ColorEdit4Ex(label, &rgba, flags)
+	*col = chroma.RGBA2VEC4(rgba)
+	return value_changed
+}

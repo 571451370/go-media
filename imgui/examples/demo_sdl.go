@@ -356,6 +356,11 @@ type UI struct {
 		Colors        struct {
 			OutputDest         int
 			OutputOnlyModified bool
+			Filter             imgui.TextFilter
+			AlphaFlags         int
+		}
+		Fonts struct {
+			WindowScale float64
 		}
 	}
 
@@ -469,14 +474,20 @@ func initIM() {
 
 	ui.ShowSimpleWindow = true
 	ui.ShowDemoWindow = true
+
+	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
+
+	ui.Widgets.Basic.Arr = []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+
 	ui.MenuOptions.Enabled = true
 	ui.MenuOptions.Float = 0.5
 
 	ui.MetricsWindow.ShowClipRects = true
 
-	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
-
-	ui.Widgets.Basic.Arr = []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+	ui.StyleSelector.StyleIdx = -1
+	ui.StyleEditor.Colors.OutputDest = 0
+	ui.StyleEditor.Colors.OutputOnlyModified = true
+	ui.StyleEditor.Fonts.WindowScale = 1.0
 }
 
 func evKey(key int, down bool) {
@@ -975,6 +986,11 @@ func ShowDemoWindow() {
 
 	if ui.ShowAppMetrics {
 		ShowMetricsWindow()
+	}
+	if ui.ShowAppStyleEditor {
+		im.BeginEx("Style Editor", &ui.ShowAppStyleEditor, 0)
+		ShowStyleEditor(nil)
+		im.End()
 	}
 	if ui.ShowAppAbout {
 		ShowAppAbout()
@@ -3771,37 +3787,46 @@ func ShowStyleEditor(ref *imgui.Style) {
 		style.GrabRounding = style.FrameRounding
 	}
 
-	window_border := style.WindowBorderSize > 0
-	if im.Checkbox("WindowBorder", &window_border) {
-		style.WindowBorderSize = 0
-		if window_border {
-			style.WindowBorderSize = 1
+	{
+		window_border := style.WindowBorderSize > 0
+		if im.Checkbox("WindowBorder", &window_border) {
+			style.WindowBorderSize = 0
+			if window_border {
+				style.WindowBorderSize = 1
+			}
 		}
 	}
 	im.SameLine()
 
-	frame_border := style.FrameBorderSize > 0
-	if im.Checkbox("FrameBorder", &frame_border) {
-		style.FrameBorderSize = 0
-		if frame_border {
-			style.FrameBorderSize = 1
+	{
+		frame_border := style.FrameBorderSize > 0
+		if im.Checkbox("FrameBorder", &frame_border) {
+			style.FrameBorderSize = 0
+			if frame_border {
+				style.FrameBorderSize = 1
+			}
 		}
 	}
 	im.SameLine()
 
-	popup_border := style.PopupBorderSize > 0
-	if im.Checkbox("PopupBorder", &popup_border) {
-		style.PopupBorderSize = 0
-		if popup_border {
-			style.PopupBorderSize = 1
+	{
+		popup_border := style.PopupBorderSize > 0
+		if im.Checkbox("PopupBorder", &popup_border) {
+			style.PopupBorderSize = 0
+			if popup_border {
+				style.PopupBorderSize = 1
+			}
 		}
 	}
 
 	// Save/Revert button
 	if im.Button("Save Ref") {
+		*ref_saved_style = *style
+		*ref = *ref_saved_style
 	}
 	im.SameLine()
 	if im.Button("Revert Ref") {
+		*style = *ref
 	}
 	im.SameLine()
 	ShowHelpMarker("Save/Revert in local non-persistent storage. Default Colors definition are not affected. Use \"Export Colors\" below to save them somewhere.")
@@ -3824,10 +3849,104 @@ func ShowStyleEditor(ref *imgui.Style) {
 	if im.TreeNode("Settings") {
 		im.SliderV2Ex("WindowPadding", &style.WindowPadding, 0.0, 20.0, "%.0f", 1)
 		im.SliderFloatEx("PopupRounding", &style.PopupRounding, 0.0, 16.0, "%.0f", 1)
+		im.SliderV2Ex("FramePadding", &style.FramePadding, 0.0, 20.0, "%.0f", 1)
+		im.SliderV2Ex("ItemSpacing", &style.ItemSpacing, 0.0, 20.0, "%.0f", 1)
+		im.SliderV2Ex("ItemInnerSpacing", &style.ItemInnerSpacing, 0.0, 20.0, "%.0f", 1)
+		im.SliderV2Ex("TouchExtraPadding", &style.TouchExtraPadding, 0.0, 10.0, "%.0f", 1)
+		im.SliderFloatEx("IndentSpacing", &style.IndentSpacing, 0.0, 30.0, "%.0f", 1)
+		im.SliderFloatEx("ScrollbarSize", &style.ScrollbarSize, 1.0, 20.0, "%.0f", 1)
+		im.SliderFloatEx("GrabMinSize", &style.GrabMinSize, 1.0, 20.0, "%.0f", 1)
+		im.Text("BorderSize")
+		im.SliderFloatEx("WindowBorderSize", &style.WindowBorderSize, 0.0, 1.0, "%.0f", 1)
+		im.SliderFloatEx("ChildBorderSize", &style.ChildBorderSize, 0.0, 1.0, "%.0f", 1)
+		im.SliderFloatEx("PopupBorderSize", &style.PopupBorderSize, 0.0, 1.0, "%.0f", 1)
+		im.SliderFloatEx("FrameBorderSize", &style.FrameBorderSize, 0.0, 1.0, "%.0f", 1)
+		im.Text("Rounding")
+		im.SliderFloatEx("WindowRounding", &style.WindowRounding, 0.0, 14.0, "%.0f", 1)
+		im.SliderFloatEx("ChildRounding", &style.ChildRounding, 0.0, 16.0, "%.0f", 1)
+		im.SliderFloatEx("FrameRounding", &style.FrameRounding, 0.0, 12.0, "%.0f", 1)
+		im.SliderFloatEx("ScrollbarRounding", &style.ScrollbarRounding, 0.0, 12.0, "%.0f", 1)
+		im.SliderFloatEx("GrabRounding", &style.GrabRounding, 0.0, 12.0, "%.0f", 1)
+		im.Text("Alignment")
+		im.SliderV2Ex("WindowTitleAlign", &style.WindowTitleAlign, 0.0, 1.0, "%.2f", 1)
+		im.SliderV2Ex("ButtonTextAlign", &style.ButtonTextAlign, 0.0, 1.0, "%.2f", 1)
+		im.SameLine()
+		ShowHelpMarker("Alignment applies when a button is larger than its text content.")
+		im.Text("Safe Area Padding")
+		im.SameLine()
+		ShowHelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).")
+		im.SliderV2Ex("DisplaySafeAreaPadding", &style.DisplaySafeAreaPadding, 0.0, 30.0, "%.0f", 1)
 		im.TreePop()
 	}
 
 	if im.TreeNode("Colors") {
+		output_dest := &ui.StyleEditor.Colors.OutputDest
+		output_only_modified := &ui.StyleEditor.Colors.OutputOnlyModified
+		if im.Button("Export Unsaved") {
+			if *output_dest == 0 {
+				im.LogToClipboard()
+			} else {
+				im.LogToTTY()
+			}
+			im.LogText("ImVec4* colors = ImGui::GetStyle().Colors;\n")
+			for i := imgui.Col(0); i < imgui.ColCOUNT; i++ {
+				col := style.Colors[i]
+				name := im.GetStyleColorName(i)
+				if !*output_only_modified || col != ref.Colors[i] {
+					im.LogText("colors[ImGuiCol_%s]%*s= ImVec4(%.2ff, %.2ff, %.2ff, %.2ff);\n", name, 23-len(name), "", col.X, col.Y, col.Z, col.W)
+				}
+			}
+			im.LogFinish()
+		}
+		im.SameLine()
+		im.PushItemWidth(120)
+		im.ComboString("##output_type", output_dest, []string{"To Clipboard", "To TTY"})
+		im.PopItemWidth()
+		im.SameLine()
+		im.Checkbox("Only Modified Colors", output_only_modified)
+
+		im.Text("Tip: Left-click on colored square to open color picker,\nRight-click to open edit options menu.")
+
+		alpha_flags := &ui.StyleEditor.Colors.AlphaFlags
+		im.RadioButtonEx("Opaque", alpha_flags, 0)
+		im.SameLine()
+		im.RadioButtonEx("Alpha", alpha_flags, int(imgui.ColorEditFlagsAlphaPreview))
+		im.SameLine()
+		im.RadioButtonEx("Both", alpha_flags, int(imgui.ColorEditFlagsAlphaPreviewHalf))
+		im.SameLine()
+
+		im.BeginChildEx("#colors", f64.Vec2{0, 300}, true, imgui.WindowFlagsAlwaysVerticalScrollbar|imgui.WindowFlagsAlwaysHorizontalScrollbar|imgui.WindowFlagsNavFlattened)
+		im.PushItemWidth(-160)
+		for i := imgui.Col(0); i < imgui.ColCOUNT; i++ {
+			name := im.GetStyleColorName(i)
+			im.PushID(imgui.ID(i))
+			im.ColorEditV4Ex("##color", &style.Colors[i], imgui.ColorEditFlagsAlphaBar|imgui.ColorEditFlags(*alpha_flags))
+			if style.Colors[i] != ref.Colors[i] {
+				// Tips: in a real user application, you may want to merge and use an icon font into the main font, so instead of "Save"/"Revert" you'd use icons.
+				// Read the FAQ and misc/fonts/README.txt about using icon fonts. It's really easy and super convenient!
+				im.SameLineEx(0.0, style.ItemInnerSpacing.X)
+				if im.Button("Save") {
+					ref.Colors[i] = style.Colors[i]
+				}
+				im.SameLineEx(0.0, style.ItemInnerSpacing.X)
+				if im.Button("Revert") {
+					style.Colors[i] = ref.Colors[i]
+				}
+			}
+			im.SameLineEx(0.0, style.ItemInnerSpacing.X)
+			im.TextUnformatted(name)
+			im.PopID()
+		}
+		im.PopItemWidth()
+		im.EndChild()
+
+		im.TreePop()
+	}
+
+	fonts_opened := im.TreeNodeStringID("Fonts", "Fonts (%d)", len(im.GetIO().Fonts.Fonts))
+	if fonts_opened {
+		window_scale := &ui.StyleEditor.Fonts.WindowScale
+		im.SetWindowFontScale(*window_scale)
 		im.TreePop()
 	}
 
