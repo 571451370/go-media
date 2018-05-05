@@ -371,9 +371,9 @@ func (p Vec3) ToRGBA() color.RGBA {
 		p.Z *= 255
 	}
 	return color.RGBA{
-		uint8(Clamp(p.X, 0, 255)),
-		uint8(Clamp(p.Y, 0, 255)),
-		uint8(Clamp(p.Z, 0, 255)),
+		uint8(Clamp(p.X+0.5, 0, 255)),
+		uint8(Clamp(p.Y+0.5, 0, 255)),
+		uint8(Clamp(p.Z+0.5, 0, 255)),
 		255,
 	}
 
@@ -521,10 +521,10 @@ func (p Vec4) ToRGBA() color.RGBA {
 		p.W *= 255
 	}
 	c := color.RGBA{
-		uint8(Clamp(p.X, 0, 255)),
-		uint8(Clamp(p.Y, 0, 255)),
-		uint8(Clamp(p.Z, 0, 255)),
-		uint8(Clamp(p.W, 0, 255)),
+		uint8(Clamp(p.X+0.5, 0, 255)),
+		uint8(Clamp(p.Y+0.5, 0, 255)),
+		uint8(Clamp(p.Z+0.5, 0, 255)),
+		uint8(Clamp(p.W+0.5, 0, 255)),
 	}
 	return c
 }

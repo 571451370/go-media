@@ -301,7 +301,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 	// Convert back
 	if picker_active_window == nil {
 		if !value_changed_as_float {
-			for n := 0; n < 4; n++ {
+			for n := range i {
 				f[n] = float64(i[n]) / 255.0
 			}
 		}
@@ -369,11 +369,10 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	// Read stored options
 	if flags&ColorEditFlags_PickerMask == 0 {
 		if c.ColorEditOptions&ColorEditFlags_PickerMask != 0 {
-			flags |= c.ColorEditOptions
+			flags |= c.ColorEditOptions & ColorEditFlags_PickerMask
 		} else {
-			flags |= ColorEditFlags_OptionsDefault
+			flags |= ColorEditFlags_OptionsDefault & ColorEditFlags_PickerMask
 		}
-		flags &= ColorEditFlags_PickerMask
 	}
 	// Check that only 1 is selected
 	assert(mathutil.IsPow2(int(flags & ColorEditFlags_PickerMask)))
@@ -516,7 +515,14 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		c.ColorButtonEx("##current", col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2})
 		if ref_col != nil {
 			c.Text("Original")
-
+			ref_col_v4 := *ref_col
+			if flags&ColorEditFlagsNoAlpha != 0 {
+				ref_col_v4.A = 255
+			}
+			if c.ColorButtonEx("##original", ref_col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2}) {
+				*col = *ref_col
+				value_changed = true
+			}
 		}
 		c.PopItemFlag()
 		c.EndGroup()
@@ -557,6 +563,19 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	// Try to cancel hue wrap (after ColorEdit), if any
 	if value_changed {
+		new_hsv := chroma.RGB2HSV(*col)
+		if new_hsv.V <= 0 && hsv.H > 0 {
+			if new_hsv.V <= 0 && hsv.V != new_hsv.V {
+				if new_hsv.V <= 0 {
+					new_hsv.V = hsv.V * 0.5
+				}
+			} else if new_hsv.S <= 0 {
+				if new_hsv.S <= 0 {
+					new_hsv.S = hsv.S * 0.5
+				}
+			}
+			*col = chroma.HSV2RGB(new_hsv)
+		}
 	}
 
 	hue_color32 := color.RGBA{255, 255, 255, 255}
@@ -676,7 +695,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	c.EndGroup()
 	c.PopID()
-	return value_changed && backup_initial_col == *col
+	return value_changed && backup_initial_col != *col
 }
 
 func (c *Context) ColorPickerOptionsPopup(flags ColorEditFlags, ref_col *color.RGBA) {

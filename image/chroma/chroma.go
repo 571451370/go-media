@@ -64,52 +64,37 @@ func (h HSL) RGBA() (r, g, b, a uint32) {
 }
 
 func HSV2RGB(c HSV) color.RGBA {
-	h := math.Mod(c.H, 360)
-	s := f64.Clamp(c.S, 0, 1)
-	v := f64.Clamp(c.V, 0, 1)
+	h := c.H * 360
+	s := c.S
+	v := c.V
 
-	var r color.RGBA
-	if s == 0 {
-		x := uint8(f64.Clamp(v*255, 0, 255))
-		r = color.RGBA{x, x, x, 255}
-	} else {
-		b := (1 - s) * v
-		vb := v - b
-		hm := math.Mod(h, 60)
+	hi := int(h/60.0) % 6
+	f := (h / 60.0) - float64(hi)
+	p := v * (1.0 - s)
+	q := v * (1.0 - s*f)
+	t := v * (1.0 - s*(1.0-f))
 
-		var cr, cg, cb float64
-		switch int(h / 60) {
-		case 0:
-			cr = v
-			cg = vb*h/60 + b
-			cb = b
-		case 1:
-			cr = vb*(60-hm)/60 + b
-			cg = v
-			cb = b
-		case 2:
-			cr = b
-			cg = v
-			cb = vb*hm/60 + b
-		case 3:
-			cr = b
-			cg = vb*(60-hm)/60 + b
-			cb = v
-		case 4:
-			cr = vb*hm/60 + b
-			cg = b
-			cb = v
-		case 5:
-			cr = v
-			cg = b
-			cb = vb*(60-hm)/60 + b
-		}
-		cr = f64.Clamp(cr*255, 0, 255)
-		cg = f64.Clamp(cg*255, 0, 255)
-		cb = f64.Clamp(cb*255, 0, 255)
-		r = color.RGBA{uint8(cr), uint8(cg), uint8(cb), 255}
+	var r, g, b float64
+	switch hi {
+	case 0:
+		r, g, b = v, t, p
+	case 1:
+		r, g, b = q, v, p
+	case 2:
+		r, g, b = p, v, t
+	case 3:
+		r, g, b = p, q, v
+	case 4:
+		r, g, b = t, p, v
+	case 5:
+		r, g, b = v, p, q
 	}
-	return r
+	return color.RGBA{
+		uint8(f64.Clamp(r*255, 0, 255)),
+		uint8(f64.Clamp(g*255, 0, 255)),
+		uint8(f64.Clamp(b*255, 0, 255)),
+		255,
+	}
 }
 
 func VEC42HSV(c f64.Vec4) HSV {
@@ -117,33 +102,35 @@ func VEC42HSV(c f64.Vec4) HSV {
 }
 
 func RGB2HSV(c color.RGBA) HSV {
-	r := float64(c.R)
-	g := float64(c.G)
-	b := float64(c.B)
-	min := math.Min(r, math.Max(g, b))
+	r := float64(c.R) / 255
+	g := float64(c.G) / 255
+	b := float64(c.B) / 255
+
 	max := math.Max(r, math.Max(g, b))
-	delta := max - min
+	min := math.Min(r, math.Min(g, b))
 
-	v := float64(max) / 255.0
-	if delta == 0 {
-		return HSV{0, 0, v}
-	}
+	var h, s, v float64
 
-	s := float64(delta) / float64(max)
-
-	h := 0.0
-	if r == max {
-		h = float64(g-b) / float64(delta)
-	} else if g == max {
-		h = 2 + float64(b-r)/float64(delta)
+	v = max
+	if max == 0 || max == min {
+		s = 0
+		h = 0
 	} else {
-		h = 4 + float64(r-g)/float64(delta)
-	}
+		s = (max - min) / max
 
-	h *= 60
+		if max == r {
+			h = 60*((g-b)/(max-min)) + 0
+		} else if max == g {
+			h = 60*((b-r)/(max-min)) + 120
+		} else {
+			h = 60*((r-g)/(max-min)) + 240
+		}
+	}
 	if h < 0 {
 		h += 360
 	}
+	h /= 360
+
 	return HSV{h, s, v}
 }
 
@@ -265,7 +252,7 @@ func RandRGBA() color.RGBA {
 
 func RandHSV() HSV {
 	return HSV{
-		H: rand.Float64() * 360,
+		H: rand.Float64(),
 		S: rand.Float64(),
 		V: rand.Float64(),
 	}
