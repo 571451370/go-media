@@ -112,6 +112,8 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 		w_extra = square_sz + style.ItemInnerSpacing.X
 	}
 	w_items_all := c.CalcItemWidth() - w_extra
+	label_display_end := c.FindRenderedTextEnd(label)
+	label = label[:label_display_end]
 
 	alpha := (flags & ColorEditFlagsNoAlpha) == 0
 	hdr := (flags & ColorEditFlagsHDR) != 0
@@ -578,9 +580,10 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		}
 	}
 
-	hue_color32 := color.RGBA{255, 255, 255, 255}
+	hue_color32 := chroma.HSV2RGB(chroma.HSV{hsv.H, 1, 1})
 	col32_no_alpha := *col
 	col32_no_alpha.A = 255
+
 	hue_colors := [...]color.RGBA{
 		color.RGBA{255, 0, 0, 255},
 		color.RGBA{255, 255, 0, 255},
@@ -590,8 +593,8 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		color.RGBA{255, 0, 255, 255},
 		color.RGBA{255, 0, 0, 255},
 	}
-
 	var sv_cursor_pos f64.Vec2
+
 	white := color.RGBA{255, 255, 255, 255}
 	black := color.RGBA{0, 0, 0, 255}
 	black_trans := color.RGBA{0, 0, 0, 0}
