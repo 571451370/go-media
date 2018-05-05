@@ -3,6 +3,7 @@ package imgui
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 
 	"github.com/qeedquan/go-media/math/f64"
@@ -422,4 +423,20 @@ func LineClosestPoint(a, b, p f64.Vec2) f64.Vec2 {
 	v := ab_dir.Scale(dot / ab_len_sqr)
 	v = a.Add(v)
 	return v
+}
+
+func DataTypeApplyOp(op int, output, arg1, arg2 interface{}) {
+	a := reflect.ValueOf(arg1).Elem()
+	b := reflect.ValueOf(arg2).Elem()
+	v := reflect.ValueOf(output).Elem()
+
+	assert(op == '+' || op == '-')
+	switch v.Kind() {
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
+		v.SetInt(a.Int() + b.Int())
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
+		v.SetUint(a.Uint() + b.Uint())
+	case reflect.Float32, reflect.Float64:
+		v.SetFloat(a.Float() + b.Float())
+	}
 }

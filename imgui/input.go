@@ -1,6 +1,8 @@
 package imgui
 
 import (
+	"math"
+
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -213,6 +215,66 @@ func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64
 
 // NB: scalar_format here must be a simple "%xx" format string with no prefix/suffix (unlike the Drag/Slider functions "format" argument)
 func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr interface{}, scalar_format string, extra_flags InputTextFlags) bool {
+	window := c.GetCurrentWindow()
+	if window.SkipItems {
+		return false
+	}
+
+	style := &c.Style
+
+	buf := DataTypeFormatString(data, scalar_format)
+
+	value_changed := false
+	if extra_flags&(InputTextFlagsCharsHexadecimal|InputTextFlagsCharsScientific) == 0 {
+		extra_flags |= InputTextFlagsCharsDecimal
+	}
+	extra_flags |= InputTextFlagsAutoSelectAll
+
+	if step_ptr != nil {
+		button_size := c.GetFrameHeight()
+
+		// The only purpose of the group here is to allow the caller to query item data e.g. IsItemActive()
+		c.BeginGroup()
+		c.PushStringID(label)
+		c.PushItemWidth(math.Max(1.0, c.CalcItemWidth()-(button_size+style.ItemInnerSpacing.X)*2))
+		// PushId(label) + "" gives us the expected ID from outside point of view
+		if c.InputTextEx("", buf, f64.Vec2{0, 0}, extra_flags, nil) {
+			value_changed = DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, scalar_format)
+		}
+		c.PopItemWidth()
+
+		// Step buttons
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		if c.ButtonEx("-", f64.Vec2{button_size, button_size}, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
+			step := step_fast_ptr
+			if c.IO.KeyCtrl && step_fast_ptr != nil {
+				step = step_ptr
+			}
+			DataTypeApplyOp('-', data, data, step)
+			value_changed = true
+		}
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		if c.ButtonEx("+", f64.Vec2{button_size, button_size}, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
+			step := step_fast_ptr
+			if c.IO.KeyCtrl && step_fast_ptr != nil {
+				step = step_ptr
+			}
+			DataTypeApplyOp('+', data, data, step)
+			value_changed = true
+		}
+		c.SameLineEx(0, style.ItemInnerSpacing.X)
+		n := c.FindRenderedTextEnd(label)
+		c.TextUnformatted(label[:n])
+
+		c.PopID()
+		c.EndGroup()
+	} else {
+		if c.InputTextEx(label, buf, f64.Vec2{0, 0}, extra_flags, nil) {
+			value_changed = DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, scalar_format)
+		}
+	}
+
+	return value_changed
 }
 
 func (c *Context) InputFloatN(label string, v []float64) bool {
