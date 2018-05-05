@@ -117,7 +117,7 @@ func (c *Context) SelectableEx(label string, selected bool, flags SelectableFlag
 
 	// Hovering selectable with mouse updates NavId accordingly so navigation can be resumed with gamepad/keyboard (this doesn't happen on most widgets)
 	if pressed || hovered {
-		if !c.NavDisableMouseHover && c.NavWindow == window && c.NavLayer == window.DC.NavLayerActiveMask {
+		if !c.NavDisableMouseHover && c.NavWindow == window && c.NavLayer == window.DC.NavLayerCurrent {
 			c.NavDisableHighlight = true
 			c.SetNavID(id, window.DC.NavLayerCurrent)
 		}

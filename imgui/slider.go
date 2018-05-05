@@ -41,7 +41,7 @@ func (c *Context) SliderBehaviorCalcRatioFromValue(v, v_min, v_max, power, linea
 	return (v_clamped - v_min) / (v_max - v_min)
 }
 
-func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_min, v_max, power float64, decimal_precision int, flags SliderFlags) bool {
+func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_min, v_max, power float64, format string, flags SliderFlags) bool {
 	window := c.GetCurrentWindow()
 	style := &c.Style
 
@@ -60,6 +60,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 
 	is_non_linear := (power < 1.0-0.00001) || (power > 1.0+0.00001)
 	is_horizontal := (flags & SliderFlagsVertical) == 0
+	is_decimal := ParseFormatPrecision(format, 3) > 0
 
 	grab_padding := 2.0
 	var slider_sz float64
@@ -70,7 +71,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 	}
 
 	grab_sz := 0.0
-	if decimal_precision != 0 {
+	if is_decimal {
 		grab_sz = math.Min(style.GrabMinSize, slider_sz)
 	} else {
 		// Integer sliders, if possible have the grab size represent 1 unit
@@ -134,7 +135,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 				c.ClearActiveID()
 			} else if delta != 0.0 {
 				clicked_t = c.SliderBehaviorCalcRatioFromValue(*v, v_min, v_max, power, linear_zero_pos)
-				if decimal_precision == 0 && !is_non_linear {
+				if !is_decimal && !is_non_linear {
 					if math.Abs(v_max-v_min) <= 100.0 || c.IsNavInputDown(NavInputTweakSlow) {
 						// Gamepad/keyboard tweak speeds in integer steps
 						if delta < 0 {
@@ -192,7 +193,7 @@ func (c *Context) SliderBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_mi
 			}
 
 			// Round past decimal precision
-			new_value = f64.RoundPrec(new_value, decimal_precision)
+			new_value = RoundScalarWithFormat(format, new_value)
 			if *v != new_value {
 				*v = new_value
 				value_changed = true
@@ -287,7 +288,6 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	if format == "" {
 		format = "%.3f"
 	}
-	decimal_precision := ParseFormatPrecision(format, 3)
 
 	// Tabbing or CTRL-clicking on Slider turns it into an input box
 	start_text_input := false
@@ -304,12 +304,12 @@ func (c *Context) SliderFloatEx(label string, v *float64, v_min, v_max float64, 
 	}
 
 	if start_text_input || (c.ActiveId == id && c.ScalarAsInputTextId == id) {
-		return c.InputScalarAsWidgetReplacement(frame_bb, label, *v, id, decimal_precision)
+		return c.InputScalarAsWidgetReplacement(frame_bb, label, *v, id, format)
 	}
 
 	// Actual slider behavior + render grab
 	c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
-	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, 0)
+	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, format, 0)
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
 	value := fmt.Sprintf(format, *v)
@@ -369,7 +369,6 @@ func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min,
 	if format == "" {
 		format = "%.3f"
 	}
-	decimal_precision := ParseFormatPrecision(format, 3)
 
 	if (hovered && c.IO.MouseClicked[0]) || c.NavActivateId == id || c.NavInputId == id {
 		c.SetActiveID(id, window)
@@ -379,7 +378,7 @@ func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min,
 	}
 
 	// Actual slider behavior + render grab
-	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, decimal_precision, SliderFlagsVertical)
+	value_changed := c.SliderBehavior(frame_bb, id, v, v_min, v_max, power, format, SliderFlagsVertical)
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
 	// For the vertical slider we allow centered text to overlap the frame padding
@@ -394,7 +393,7 @@ func (c *Context) VSliderFloatEx(label string, size f64.Vec2, v *float64, v_min,
 
 // Create text input in place of a slider (when CTRL+Clicking on slider)
 // FIXME: Logic is messy and confusing.
-func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label string, data interface{}, id ID, decimal_precision int) bool {
+func (c *Context) InputScalarAsWidgetReplacement(bb f64.Rectangle, label string, data interface{}, id ID, format string) bool {
 	window := c.GetCurrentWindow()
 
 	// Our replacement widget will override the focus ID (registered previously to allow for a TAB focus to happen)
@@ -404,22 +403,23 @@ func (c *Context) InputScalarAsWidgetReplacement(aabb f64.Rectangle, label strin
 	c.SetHoveredID(0)
 	c.FocusableItemUnregister(window)
 
-	buf := []byte(DataTypeFormatString(data, decimal_precision))
+	format = ParseFormatTrimDecorations(format)
+	data_buf := DataTypeFormatString(data, format)
 	flags := InputTextFlagsAutoSelectAll | InputTextFlagsCharsDecimal
 	switch data.(type) {
 	case float32, float64:
 		flags |= InputTextFlagsCharsScientific
 	}
-	text_value_changed := c.InputTextEx(label, buf, aabb.Size(), flags, nil)
+	text_value_changed := c.InputTextEx(label, data_buf, bb.Size(), flags, nil)
 	// First frame we started displaying the InputText widget
 	if c.ScalarAsInputTextId == 0 {
-		// InputText ID expected to match the Slider ID (else we'd need to store them both, which is also possible)
+		// InputText ID expected to match the Slider ID
 		assert(c.ActiveId == id)
 		c.ScalarAsInputTextId = c.ActiveId
 		c.SetHoveredID(id)
 	}
 	if text_value_changed {
-		return DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, "")
+		return DataTypeApplyOpFromText(data_buf, string(c.InputTextState.InitialText), data, "")
 	}
 
 	return false

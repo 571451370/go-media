@@ -198,7 +198,6 @@ func (c *Context) DragFloatEx(label string, v *float64, v_speed, v_min, v_max fl
 	if format == "" {
 		format = "%.3f"
 	}
-	decimal_precision := ParseFormatPrecision(format, 3)
 
 	// Tabbing or CTRL-clicking on Drag turns it into an input box
 	start_text_input := false
@@ -214,12 +213,12 @@ func (c *Context) DragFloatEx(label string, v *float64, v_speed, v_min, v_max fl
 		}
 	}
 	if start_text_input || (c.ActiveId == id && c.ScalarAsInputTextId == id) {
-		return c.InputScalarAsWidgetReplacement(frame_bb, label, v, id, decimal_precision)
+		return c.InputScalarAsWidgetReplacement(frame_bb, label, v, id, format)
 	}
 
 	// Actual drag behavior
 	c.ItemSizeBBEx(total_bb, style.FramePadding.Y)
-	value_changed := c.DragBehavior(frame_bb, id, v, v_speed, v_min, v_max, decimal_precision, power)
+	value_changed := c.DragBehavior(frame_bb, id, v, v_speed, v_min, v_max, format, power)
 
 	// Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
 	value := fmt.Sprintf(format, *v)
@@ -261,7 +260,7 @@ func (c *Context) DragFloatN(label string, v []float64, v_speed, v_min, v_max fl
 	return value_changed
 }
 
-func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_speed, v_min, v_max float64, decimal_precision int, power float64) bool {
+func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_speed, v_min, v_max float64, format string, power float64) bool {
 	style := &c.Style
 
 	// Draw frame
@@ -314,6 +313,7 @@ func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_spee
 	}
 
 	if c.ActiveIdSource == InputSourceNav {
+		decimal_precision := ParseFormatPrecision(format, 3)
 		adjust_delta = c.GetNavInputAmount2dEx(NavDirSourceFlagsKeyboard|NavDirSourceFlagsPadDPad, InputReadModeRepeatFast, 1.0/10.0, 10.0).X
 		v_speed = math.Max(v_speed, GetMinimumStepAtDecimalPrecision(decimal_precision))
 	}
@@ -347,7 +347,7 @@ func (c *Context) DragBehavior(frame_bb f64.Rectangle, id ID, v *float64, v_spee
 
 	// Round to user desired precision, then apply
 	value_changed := false
-	v_cur = f64.RoundPrec(v_cur, decimal_precision)
+	v_cur = RoundScalarWithFormat(format, v_cur)
 	if *v != v_cur {
 		*v = v_cur
 		value_changed = true

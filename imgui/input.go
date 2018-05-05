@@ -1,8 +1,6 @@
 package imgui
 
 import (
-	"math"
-
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -215,56 +213,6 @@ func (c *Context) InputFloatEx(label string, v *float64, step, step_fast float64
 
 // NB: scalar_format here must be a simple "%xx" format string with no prefix/suffix (unlike the Drag/Slider functions "format" argument)
 func (c *Context) InputScalarEx(label string, data, step_ptr, step_fast_ptr interface{}, scalar_format string, extra_flags InputTextFlags) bool {
-	window := c.GetCurrentWindow()
-	if window.SkipItems {
-		return false
-	}
-
-	style := &c.Style
-	label_size := c.CalcTextSizeEx(label, true, -1)
-
-	c.BeginGroup()
-	c.PushStringID(label)
-	button_sz := f64.Vec2{c.GetFrameHeight(), c.GetFrameHeight()}
-	if step_ptr != nil {
-		c.PushItemWidth(math.Max(1.0, c.CalcItemWidth()-(button_sz.X+style.ItemInnerSpacing.X)*2))
-	}
-
-	buf := []byte(DataTypeFormatStringCustom(data, scalar_format))
-	value_changed := false
-	if (extra_flags & (InputTextFlagsCharsHexadecimal | InputTextFlagsCharsScientific)) == 0 {
-		extra_flags |= InputTextFlagsCharsDecimal
-	}
-	extra_flags |= InputTextFlagsAutoSelectAll
-
-	// PushId(label) + "" gives us the expected ID from outside point of view
-	if c.InputTextEx("", buf, f64.Vec2{0, 0}, extra_flags, nil) {
-		value_changed = DataTypeApplyOpFromText(buf, string(c.InputTextState.InitialText), data, scalar_format)
-	}
-
-	// Step buttons
-	if step_ptr != nil {
-		c.PopItemWidth()
-		c.SameLineEx(0, style.ItemInnerSpacing.X)
-		if c.ButtonEx("-", button_sz, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
-			value_changed = true
-		}
-		c.SameLineEx(0, style.ItemInnerSpacing.X)
-		if c.ButtonEx("+", button_sz, ButtonFlagsRepeat|ButtonFlagsDontClosePopups) {
-			value_changed = true
-		}
-	}
-	c.PopID()
-
-	if label_size.X > 0 {
-		c.SameLineEx(0, style.ItemInnerSpacing.X)
-		c.RenderText(f64.Vec2{window.DC.CursorPos.X, window.DC.CursorPos.Y + style.FramePadding.Y}, label)
-		c.ItemSizeEx(label_size, style.FramePadding.Y)
-
-	}
-	c.EndGroup()
-
-	return value_changed
 }
 
 func (c *Context) InputFloatN(label string, v []float64) bool {

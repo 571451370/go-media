@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -224,72 +223,100 @@ func (c *stbCompress) Decompress(output, input []byte) error {
 }
 
 // Parse display precision back from the display format string
+// FIXME: This is still used by some navigation code path to infer a minimum tweak step, but we should aim to rework widgets so it isn't needed.
 func ParseFormatPrecision(format string, default_precision int) int {
-	precision := default_precision
-	for {
-		n := strings.IndexRune(format, '%')
-		if n < 0 {
-			break
-		}
-		format = format[n:]
-
-		// Ignore "%%"
-		if strings.HasPrefix(format, "%") {
-			format = format[1:]
-			continue
-		}
-
-		for ; len(format) > 0; format = format[1:] {
-			if !('0' <= format[0] && format[0] <= '9') {
+	format = ParseFormatTrimDecorationsLeading(format)
+	if len(format) > 0 && format[0] == '%' {
+		return default_precision
+	}
+	format = format[1:]
+	for len(format) > 0 && format[0] >= '0' && format[0] <= '9' {
+		format = format[1:]
+	}
+	precision := math.MaxInt32
+	if len(format) > 0 && format[0] == '.' {
+		format = format[1:]
+		n := 0
+		for ; n < len(format); n++ {
+			if !(format[n] >= '0' && format[n] <= '9') {
+				precision, _ = strconv.Atoi(format[:n])
+				format = format[n:]
 				break
 			}
 		}
-
-		if strings.HasPrefix(format, ".") {
-			format = format[1:]
+		if n == len(format) {
 			precision, _ = strconv.Atoi(format)
-			if precision < 0 || precision > 10 {
-				precision = default_precision
-			}
 		}
+		if precision < 0 || precision > 99 {
+			precision = default_precision
+		}
+	}
+	if len(format) > 0 && (format[0] == 'e' || format[0] == 'E') {
+		precision = -1
+	}
+	if len(format) > 0 && (format[0] == 'g' || format[0] == 'G') && precision == math.MaxInt32 {
+		precision = -1
+	}
 
-		// Maximum precision with scientific notation
-		if strings.HasPrefix(format, "e") || strings.HasPrefix(format, "E") {
-			precision = -1
-		}
-		break
+	if precision == math.MaxInt32 {
+		return default_precision
 	}
 	return precision
 }
 
-func DataTypeFormatStringCustom(data interface{}, format string) string {
-	return fmt.Sprintf(format, data)
+func DataTypeFormatString(data interface{}, format string) []byte {
+	return []byte(fmt.Sprintf(format, data))
 }
 
-func DataTypeFormatString(data interface{}, decimal_precision int) string {
-	switch v := data.(type) {
-	case int:
-		if decimal_precision < 0 {
-			return fmt.Sprintf("%d", v)
-		} else {
-			return fmt.Sprintf("%.*d", v)
+func ParseFormatTrimDecorationsLeading(format string) string {
+	i := 0
+	for ; i < len(format); i++ {
+		if i+1 < len(format) && format[i] == '%' && format[i+1] != '%' {
+			return format[i:]
+		} else if format[i] == '%' {
+			i++
 		}
-	case float32:
-		// Ideally we'd have a minimum decimal precision of 1 to visually denote that it is a float, while hiding non-significant digits?
-		if decimal_precision < 0 {
-			return fmt.Sprintf("%f", v)
-		} else {
-			return fmt.Sprintf("%.*f", v)
-		}
-	case float64:
-		if decimal_precision < 0 {
-			return fmt.Sprintf("%f", v)
-		} else {
-			return fmt.Sprintf("%.*f", v)
-		}
-	default:
-		panic("unreachable")
 	}
+	return format[i:]
+}
+
+// Extract the format out of a format string with leading or trailing decorations
+//  fmt = "blah blah"  -> return fmt
+//  fmt = "%.3f"       -> return fmt
+//  fmt = "hello %.3f" -> return fmt + 6
+//  fmt = "%.3f hello" -> return buf written with "%.3f"
+func ParseFormatTrimDecorations(format string) string {
+	// We don't use strchr() because our strings are usually very short and often start with '%'
+	format_start := ParseFormatTrimDecorationsLeading(format)
+	if len(format_start) > 0 && format_start[0] != '%' {
+		return format
+	}
+
+	format = format_start
+	i := 0
+	for ; i < len(format); i++ {
+		c := format[i]
+		// L is a type modifier, other letters qualify as types aka end of the format
+		if c >= 'A' && c <= 'Z' && (c != 'L') {
+			break
+		}
+		// h/j/l/t/w/z are type modifiers, other letters qualify as types aka end of the format
+		if c >= 'a' && c <= 'z' && (c != 'h' && c != 'j' && c != 'l' && c != 't' && c != 'w' && c != 'z') {
+			break
+		}
+	}
+	// If we only have leading decoration, we don't need to copy the data.
+	if format[i:] == "" {
+		return format_start
+	}
+	return format_start[:i+1]
+}
+
+func RoundScalarWithFormat(format string, value float64) float64 {
+	format = ParseFormatTrimDecorationsLeading(format)
+	buf := fmt.Sprintf(format, value)
+	val, _ := strconv.ParseFloat(buf, 64)
+	return val
 }
 
 // User can input math operators (e.g. +100) to edit a numerical values.
