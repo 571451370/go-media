@@ -184,13 +184,14 @@ func (c *Context) NewFrame() {
 	// Update keyboard input state
 	copy(c.IO.KeysDownDurationPrev[:], c.IO.KeysDownDuration[:])
 	for i := range c.IO.KeysDown {
-		c.IO.KeysDownDuration[i] = -1
 		if c.IO.KeysDown[i] {
 			if c.IO.KeysDownDuration[i] < 0 {
 				c.IO.KeysDownDuration[i] = 0
 			} else {
 				c.IO.KeysDownDuration[i] = c.IO.KeysDownDuration[i] + c.IO.DeltaTime
 			}
+		} else {
+			c.IO.KeysDownDuration[i] = -1
 		}
 	}
 
