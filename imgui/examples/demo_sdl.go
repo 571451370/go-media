@@ -3945,6 +3945,96 @@ func ShowStyleEditor(ref *imgui.Style) {
 
 	fonts_opened := im.TreeNodeStringID("Fonts", "Fonts (%d)", len(im.GetIO().Fonts.Fonts))
 	if fonts_opened {
+		atlas := im.GetIO().Fonts
+		if im.TreeNodeStringIDEx("Atlas Texture", 0, "Atlas texture (%dx%d pixels)", atlas.TexWidth, atlas.TexHeight) {
+			im.Image(atlas.TexID, f64.Vec2{float64(atlas.TexWidth), float64(atlas.TexHeight)}, f64.Vec2{0, 0}, f64.Vec2{1, 1}, color.RGBA{255, 255, 255, 255}, color.RGBA{255, 255, 255, 128})
+			im.TreePop()
+		}
+		im.PushItemWidth(100)
+		for i := range atlas.Fonts {
+			font := atlas.Fonts[i]
+			im.PushID(font.ID)
+			font_name := ""
+			if font.ConfigData != nil {
+				font_name = font.ConfigData[0].Name
+			}
+			font_details_opened := im.TreeNodeIDEx(font.ID, 0, "Font %d: '%s', %.2f px, %d glyphs", i, font_name, font.FontSize, len(font.Glyphs))
+			im.SameLine()
+			if im.SmallButton("Set as default") {
+				im.GetIO().FontDefault = font
+			}
+			if font_details_opened {
+				im.PushFont(font)
+				im.Text("The quick brown fox jumps over the lazy dog")
+				im.PopFont()
+				// Scale only this font
+				im.DragFloatEx("Font scale", &font.Scale, 0.005, 0.3, 2.0, "%.1f", 1)
+				im.InputFloatEx("Font offset", &font.DisplayOffset.Y, 1, 1, "", 1)
+				im.SameLine()
+				ShowHelpMarker("Note than the default embedded font is NOT meant to be scaled.\n\nFont are currently rendered into bitmaps at a given size at the time of building the atlas. You may oversample them to get some flexibility with scaling. You can also render at multiple sizes and select which one to use at runtime.\n\n(Glimmer of hope: the atlas system should hopefully be rewritten in the future to make scaling more natural and automatic.)")
+				im.Text("Ascent: %f, Descent: %f, Height: %f", font.Ascent, font.Descent, font.Ascent-font.Descent)
+				im.Text("Fallback character: '%c' (%d)", font.FallbackChar, font.FallbackChar)
+				im.Text("Texture surface: %d pixels (approx) ~ %dx%d", font.MetricsTotalSurface,
+					int(math.Sqrt(float64(font.MetricsTotalSurface))),
+					int(math.Sqrt(float64(font.MetricsTotalSurface))))
+				for config_i := 0; config_i < font.ConfigDataCount; config_i++ {
+					cfg := &font.ConfigData[config_i]
+					if cfg != nil {
+						im.BulletText("Input %d: '%s', Oversample: (%d,%d), PixelSnapH: %v", config_i, cfg.Name, cfg.OversampleH, cfg.OversampleV, cfg.PixelSnapH)
+					}
+				}
+				if im.TreeNodeStringIDEx("Glyphs", 0, "Glyphs (%d)", len(font.Glyphs)) {
+					// Display all glyphs of the fonts in separate pages of 256 characters
+					for base := 0; base < 0x10000; base += 256 {
+						count := 0
+						for n := 0; n < 256; n++ {
+							if font.FindGlyphNoFallback(rune(base+n)) != nil {
+								count += 1
+							}
+						}
+						glyph_str := "glyph"
+						if count > 0 {
+							glyph_str = "glyphs"
+						}
+						if count > 0 && im.TreeNodeIDEx(imgui.ID(base), 0, "U+%04X..U+%04X (%d %s)", base, base+255, count, glyph_str) {
+							cell_size := font.FontSize * 1
+							cell_spacing := style.ItemSpacing.Y
+							base_pos := im.GetCursorScreenPos()
+							draw_list := im.GetWindowDrawList()
+							for n := 0; n < 256; n++ {
+								cell_p1 := f64.Vec2{
+									base_pos.X + float64(n%16)*(cell_size+cell_spacing),
+									base_pos.Y + float64(n/16)*(cell_size+cell_spacing),
+								}
+								cell_p2 := f64.Vec2{cell_p1.X + cell_size, cell_p1.Y + cell_size}
+								glyph := font.FindGlyphNoFallback(rune(base + n))
+								col := color.RGBA{255, 255, 255, 100}
+								if glyph != nil {
+									col = color.RGBA{255, 255, 255, 50}
+								}
+								draw_list.AddRect(cell_p1, cell_p2, col)
+								// We use ImFont::RenderChar as a shortcut because we don't have UTF-8 conversion functions available to generate a string.
+								font.RenderChar(draw_list, cell_size, cell_p1, im.GetColorFromStyle(imgui.ColText), rune(base+n))
+								if glyph != nil && im.IsMouseHoveringRect(cell_p1, cell_p2) {
+									im.BeginTooltip()
+									im.Text("Codepoint: U+%04X", base+n)
+									im.Separator()
+									im.Text("AdvanceX: %.1f", glyph.AdvanceX)
+									im.Text("Pos: (%.2f,%.2f)->(%.2f,%.2f)", glyph.X0, glyph.Y0, glyph.X1, glyph.Y1)
+									im.Text("UV: (%.3f,%.3f)->(%.3f,%.3f)", glyph.U0, glyph.V0, glyph.U1, glyph.V1)
+									im.EndTooltip()
+								}
+							}
+							im.Dummy(f64.Vec2{(cell_size + cell_spacing) * 16, (cell_size + cell_spacing) * 16})
+							im.TreePop()
+						}
+					}
+					im.TreePop()
+				}
+				im.TreePop()
+			}
+			im.PopID()
+		}
 		window_scale := &ui.StyleEditor.Fonts.WindowScale
 		im.SetWindowFontScale(*window_scale)
 		im.TreePop()

@@ -3,6 +3,7 @@ package imgui
 import (
 	"image/color"
 	"math"
+	"math/rand"
 	"unicode/utf8"
 
 	"github.com/qeedquan/go-media/image/chroma"
@@ -11,6 +12,8 @@ import (
 )
 
 type Font struct {
+	ID ID
+
 	// Members: Hot ~62/78 bytes
 	FontSize         float64     // <user set>   // Height of characters, set during loading (don't change after loading)
 	Scale            float64     // = 1.f        // Base font scale, multiplied by the per-window font scale which you can adjust with SetFontScale()
@@ -23,10 +26,10 @@ type Font struct {
 	FallbackChar     rune        // = '?'        // Replacement glyph if one isn't found. Only set via SetFallbackChar()
 
 	// Members: Cold ~18/26 bytes
-	ConfigDataCount     int         // ~ 1          // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
-	ConfigData          *FontConfig //              // Pointer within ContainerAtlas->ConfigData
-	ContainerAtlas      *FontAtlas  //              // What we has been loaded into
-	Ascent, Descent     float64     //              // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
+	ConfigDataCount     int          // ~ 1          // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
+	ConfigData          []FontConfig //              // Pointer within ContainerAtlas->ConfigData
+	ContainerAtlas      *FontAtlas   //              // What we has been loaded into
+	Ascent, Descent     float64      //              // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
 	DirtyLookupTables   bool
 	MetricsTotalSurface int //              // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
 }
@@ -69,6 +72,7 @@ func (f *Font) Init() {
 	f.FallbackChar = '?'
 	f.DisplayOffset = f64.Vec2{0, 0}
 	f.ClearOutputData()
+	f.ID = ID(rand.Int())
 }
 
 func (f *Font) ClearOutputData() {
@@ -432,8 +436,8 @@ func (f *Font) AddGlyph(codepoint rune, x0, y0, x1, y1, u0, v0, u1, v1, advance_
 	glyph.V0 = v0
 	glyph.U1 = u1
 	glyph.V1 = v1
-	glyph.AdvanceX = advance_x + f.ConfigData.GlyphExtraSpacing.X // Bake spacing into AdvanceX
-	if f.ConfigData.PixelSnapH {
+	glyph.AdvanceX = advance_x + f.ConfigData[0].GlyphExtraSpacing.X // Bake spacing into AdvanceX
+	if f.ConfigData[0].PixelSnapH {
 		glyph.AdvanceX = float64(int(glyph.AdvanceX + 0.5))
 	}
 	f.Glyphs = append(f.Glyphs, glyph)
@@ -670,7 +674,31 @@ func (c *Context) GetFontTexUvWhitePixel() f64.Vec2 {
 
 func (f *Font) GetDebugName() string {
 	if f.ConfigData != nil {
-		return f.ConfigData.Name
+		return f.ConfigData[0].Name
 	}
 	return "<unknown>"
+}
+
+func (f *Font) RenderChar(draw_list *DrawList, size float64, pos f64.Vec2, col color.RGBA, c rune) {
+	// Match behavior of RenderText(), those 4 codepoints are hard-coded.
+	if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+		return
+	}
+	glyph := f.FindGlyph(c)
+	if glyph != nil {
+		scale := 1.0
+		if size >= 0.0 {
+			scale = size / f.FontSize
+		}
+		pos.X = float64(int(pos.X + f.DisplayOffset.X))
+		pos.Y = float64(int(pos.Y + f.DisplayOffset.Y))
+		draw_list.PrimReserve(6, 4)
+		draw_list.PrimRectUV(
+			f64.Vec2{pos.X + glyph.X0*scale, pos.Y + glyph.Y0*scale},
+			f64.Vec2{pos.X + glyph.X1*scale, pos.Y + glyph.Y1*scale},
+			f64.Vec2{glyph.U0, glyph.V0},
+			f64.Vec2{glyph.U1, glyph.V1},
+			col,
+		)
+	}
 }

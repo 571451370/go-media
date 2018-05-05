@@ -447,7 +447,7 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 		}
 		descent := math.Floor(float64(unscaled_descent)*font_scale + sign)
 
-		f.BuildSetupFont(dst_font, cfg, ascent, descent)
+		f.BuildSetupFont(dst_font, f.ConfigData[input_i:], ascent, descent)
 		off_x := cfg.GlyphOffset.X
 		off_y := cfg.GlyphOffset.Y + float64(int(dst_font.Ascent+0.5))
 		for i := range tmp.Ranges {
@@ -477,10 +477,10 @@ func (f *FontAtlas) BuildWithStbTruetype() error {
 	return nil
 }
 
-func (f *FontAtlas) BuildSetupFont(font *Font, font_config *FontConfig, ascent, descent float64) {
-	if !font_config.MergeMode {
+func (f *FontAtlas) BuildSetupFont(font *Font, font_config []FontConfig, ascent, descent float64) {
+	if !font_config[0].MergeMode {
 		font.ClearOutputData()
-		font.FontSize = font_config.SizePixels
+		font.FontSize = font_config[0].SizePixels
 		font.ConfigData = font_config
 		font.ContainerAtlas = f
 		font.Ascent = ascent
