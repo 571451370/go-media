@@ -256,7 +256,7 @@ func (c *Context) Init(shared_font_atlas *FontAtlas) {
 
 	c.ModalWindowDarkeningRatio = 0.0
 	c.OverlayDrawList._Data = &c.DrawListSharedData
-	c.OverlayDrawList._OwnerName = "##Overlay" // Give it a name for debugging
+	c.OverlayDrawList.OwnerName = "##Overlay" // Give it a name for debugging
 	c.MouseCursor = MouseCursorArrow
 
 	c.DragDropActive = false

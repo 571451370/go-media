@@ -507,6 +507,15 @@ func (p Vec4) Normalize3() Vec4 {
 	}
 }
 
+func (p Vec4) Floor() Vec4 {
+	return Vec4{
+		math.Floor(p.X),
+		math.Floor(p.Y),
+		math.Floor(p.Z),
+		math.Floor(p.W),
+	}
+}
+
 func (p Vec4) ToRGBA() color.RGBA {
 	if 0 <= p.X && p.X <= 1 {
 		p.X *= 255
@@ -1214,6 +1223,13 @@ func (r Rectangle) Size() Vec2 {
 	return Vec2{
 		r.Max.X - r.Min.X,
 		r.Max.Y - r.Min.Y,
+	}
+}
+
+func (r Rectangle) Floor() Rectangle {
+	return Rectangle{
+		r.Min.Floor(),
+		r.Max.Floor(),
 	}
 }
 

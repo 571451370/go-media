@@ -1275,7 +1275,7 @@ func (w *Window) Init(ctx *Context, name string) {
 
 	w.DrawListInst.Init(&w.Ctx.DrawListSharedData)
 	w.DrawList = &w.DrawListInst
-	w.DrawList._OwnerName = w.Name
+	w.DrawList.OwnerName = w.Name
 	w.ParentWindow = nil
 	w.RootWindow = nil
 	w.RootWindowForTitleBarHighlight = nil

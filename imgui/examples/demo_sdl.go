@@ -326,6 +326,10 @@ type UI struct {
 		}
 	}
 
+	Filtering struct {
+		Filter imgui.TextFilter
+	}
+
 	Colors struct {
 		OutputOnlyModified bool
 		OutputDest         int
@@ -613,6 +617,15 @@ func initIM() {
 	ui.PopupsModal.Modals.Color = color.RGBA{102, 179, 0, 128}
 
 	ui.Columns.Basic.Selected = -1
+	ui.Columns.Borders.Horizontal = true
+	ui.Columns.Borders.Vertical = true
+	ui.Filtering.Filter.Init(im, "")
+
+	ui.Input.Tabbing.Buf = []byte("dummy")
+	ui.Input.Focus.Buf = []byte("click on a button to set focus")
+	ui.Input.Focus.F3 = [3]float64{}
+
+	ui.Input.FocusHovered.EmbedAllInsideAChildWindow = false
 
 	ui.MenuOptions.Enabled = true
 	ui.MenuOptions.Float = 0.5
@@ -3014,15 +3027,19 @@ func ShowDemoWindow() {
 	}
 
 	if im.CollapsingHeader("Filtering") {
+		filter := &ui.Filtering.Filter
 		im.Text("Filter usage:\n" +
 			"  \"\"         display all lines\n" +
 			"  \"xxx\"      display lines containing \"xxx\"\n" +
 			"  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n" +
 			"  \"-xxx\"     hide lines containing \"xxx\"",
 		)
+		filter.Draw()
 		lines := []string{"aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp", "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"}
 		for i := range lines {
-			im.BulletText(lines[i])
+			if filter.PassFilter(lines[i]) {
+				im.BulletText(lines[i])
+			}
 		}
 	}
 	if im.CollapsingHeader("Inputs, Navigation & Focus") {
@@ -4277,6 +4294,184 @@ func ShowHelpMarker(desc string) {
 	}
 }
 
+type Funcs struct{}
+
+func (f *Funcs) NodeDrawList(window *imgui.Window, draw_list *imgui.DrawList, label string) {
+	owner_name := draw_list.OwnerName
+	node_open := im.TreeNodeID(draw_list.ID, "%s: '%s' %d vtx, %d indices, %d cmds", label, owner_name, len(draw_list.VtxBuffer), len(draw_list.IdxBuffer), len(draw_list.CmdBuffer))
+	if draw_list == im.GetWindowDrawList() {
+		im.SameLine()
+		// Can't display stats for active draw list! (we don't have the data double-buffered)
+		im.TextColored(color.RGBA{255, 100, 100, 255}, "CURRENTLY APPENDING")
+		if node_open {
+			im.TreePop()
+		}
+		return
+	}
+	// Render additional visuals into the top-most draw list
+	overlay_draw_list := im.GetOverlayDrawList()
+	if window != nil && im.IsItemHovered() {
+		overlay_draw_list.AddRect(window.Pos, window.Pos.Add(window.Size), color.RGBA{255, 255, 0, 255})
+	}
+	if !node_open {
+		return
+	}
+
+	elem_offset := 0
+	for idx, pcmd := range draw_list.CmdBuffer {
+		if pcmd.UserCallback == nil && pcmd.ElemCount == 0 {
+			continue
+		}
+		if pcmd.UserCallback != nil {
+			im.BulletText("Callback %p", pcmd.UserCallback)
+			continue
+		}
+		var idx_buffer []imgui.DrawIdx
+		if len(draw_list.IdxBuffer) > 0 {
+			idx_buffer = draw_list.IdxBuffer
+		}
+
+		idx_str := "non-indexed"
+		if len(draw_list.IdxBuffer) > 0 {
+			idx_str = "indexed"
+		}
+		pcmd_node_open := im.TreeNodeID(imgui.ID(idx), "Draw %4d %s vtx, tex 0x%p, clip_rect (%4.0f,%4.0f)-(%4.0f,%4.0f)",
+			pcmd.ElemCount, idx_str, pcmd.TextureId, pcmd.ClipRect.X, pcmd.ClipRect.Y, pcmd.ClipRect.Z, pcmd.ClipRect.W)
+		show_clip_rects := &ui.MetricsWindow.ShowClipRects
+		if *show_clip_rects && im.IsItemHovered() {
+			clip_rect := pcmd.ClipRect
+			var vtxs_rect f64.Rectangle
+			for i := elem_offset; i < elem_offset+pcmd.ElemCount; i++ {
+				vi := i
+				if idx_buffer != nil {
+					vi = int(idx_buffer[i])
+				}
+				pos := draw_list.VtxBuffer[vi].Pos
+				vtxs_rect.Add(f64.Vec2{float64(pos.X), float64(pos.Y)})
+				clip_rect = clip_rect.Floor()
+				overlay_draw_list.AddRect(f64.Vec2{clip_rect.X, clip_rect.Y}, f64.Vec2{clip_rect.Z, clip_rect.W}, color.RGBA{255, 255, 0, 255})
+				vtxs_rect = vtxs_rect.Floor()
+				overlay_draw_list.AddRect(vtxs_rect.Min, vtxs_rect.Max, color.RGBA{255, 0, 255, 255})
+			}
+		}
+		if !pcmd_node_open {
+			continue
+		}
+
+		// Display individual triangles/vertices. Hover on to get the corresponding triangle highlighted.
+		var clipper imgui.ListClipper
+		clipper.Init(im, pcmd.ElemCount/3, -1)
+		for clipper.Step() {
+			vtx_i := elem_offset + clipper.DisplayStart*3
+			var buf string
+			var triangles_pos [3]f64.Vec2
+			for prim := clipper.DisplayStart; prim < clipper.DisplayEnd; prim++ {
+				for n := 0; n < 3; n, vtx_i = n+1, vtx_i+1 {
+					vi := vtx_i
+					if idx_buffer != nil {
+						vi = int(idx_buffer[vtx_i])
+					}
+					v := draw_list.VtxBuffer[vi]
+					triangles_pos[n] = f64.Vec2{float64(v.Pos.X), float64(v.Pos.Y)}
+					vtx_str := "   "
+					if n == 0 {
+						vtx_str = "vtx"
+					}
+					buf += fmt.Sprintf("%s %04d: pos (%8.2f,%8.2f), uv (%.6f,%.6f), col %08X\n", vtx_str, vtx_i, v.Pos.X, v.Pos.Y, v.UV.X, v.UV.Y, v.Col)
+				}
+				im.SelectableEx(buf, false, 0, f64.Vec2{})
+				if im.IsItemHovered() {
+					backup_flags := overlay_draw_list.Flags
+					// Disable AA on triangle outlines at is more readable for very large and thin triangles.
+					overlay_draw_list.Flags &^= imgui.DrawListFlagsAntiAliasedLines
+					overlay_draw_list.AddPolyline(triangles_pos[:], color.RGBA{255, 255, 0, 255}, true, 1.0)
+					overlay_draw_list.Flags = backup_flags
+				}
+			}
+		}
+		elem_offset += pcmd.ElemCount
+		im.TreePop()
+	}
+	im.TreePop()
+
+}
+
+func (f *Funcs) NodeWindows(windows []*imgui.Window, label string) {
+	if !im.TreeNodeStringIDEx(label, 0, "%s (%d)", label, len(windows)) {
+		return
+	}
+	for i := range windows {
+		f.NodeWindow(windows[i], "Window")
+	}
+	im.TreePop()
+}
+
+func (f *Funcs) NodeWindow(window *imgui.Window, label string) {
+	if !im.TreeNodeStringIDEx(window.Name, 0, "%s '%s', %v @ 0x%p", label, window.Name, window.Active || window.WasActive, window) {
+		return
+	}
+	flags := window.Flags
+	f.NodeDrawList(window, window.DrawList, "DrawList")
+	im.BulletText("Pos: (%.1f,%.1f), Size: (%.1f,%.1f), SizeContents (%.1f,%.1f)", window.Pos.X, window.Pos.Y, window.Size.X, window.Size.Y, window.SizeContents.X, window.SizeContents.Y)
+
+	var child_str, tooltip_str, popup_str string
+	var modal_str, child_menu_str, no_saved_settings_str string
+	if flags&imgui.WindowFlagsChildWindow != 0 {
+		child_str = "Child "
+	}
+	if flags&imgui.WindowFlagsTooltip != 0 {
+		tooltip_str = "Tooltip "
+	}
+	if flags&imgui.WindowFlagsPopup != 0 {
+		popup_str = "Popup "
+	}
+	if flags&imgui.WindowFlagsModal != 0 {
+		modal_str = "Modal "
+	}
+	if flags&imgui.WindowFlagsChildMenu != 0 {
+		child_menu_str = "ChildMenu "
+	}
+	if flags&imgui.WindowFlagsNoSavedSettings != 0 {
+		no_saved_settings_str = "NoSavedSettings "
+	}
+	im.BulletText("Flags: 0x%08X (%s%s%s%s%s%s..)", flags,
+		child_str, tooltip_str, popup_str,
+		modal_str, child_menu_str, no_saved_settings_str)
+	im.BulletText("Scroll: (%.2f/%.2f,%.2f/%.2f)", window.Scroll.X, im.GetWindowScrollMaxX(window), window.Scroll.Y, im.GetWindowScrollMaxY(window))
+	im.BulletText("Active: %d, WriteAccessed: %d", window.Active, window.WriteAccessed)
+	im.BulletText("NavLastIds: 0x%08X,0x%08X, NavLayerActiveMask: %X", window.NavLastIds[0], window.NavLastIds[1], window.DC.NavLayerActiveMask)
+	child_nav_window_name := "NULL"
+	if window.NavLastChildNavWindow != nil {
+		child_nav_window_name = window.NavLastChildNavWindow.Name
+	}
+	im.BulletText("NavLastChildNavWindow: %s", child_nav_window_name)
+	im.BulletText("NavRectRel[0]: (%.1f,%.1f)(%.1f,%.1f)", window.NavRectRel[0].Min.X, window.NavRectRel[0].Min.Y, window.NavRectRel[0].Max.X, window.NavRectRel[0].Max.Y)
+	if window.RootWindow != window {
+		f.NodeWindow(window.RootWindow, "RootWindow")
+	}
+	if window.ParentWindow != nil {
+		f.NodeWindow(window.ParentWindow, "ParentWindow")
+	}
+	if len(window.DC.ChildWindows) > 0 {
+		f.NodeWindows(window.DC.ChildWindows, "ChildWindows")
+	}
+	if len(window.ColumnsStorage) > 0 && im.TreeNodeStringIDEx("Columns", 0, "Columns sets (%d)", len(window.ColumnsStorage)) {
+		for n := range window.ColumnsStorage {
+			columns := &window.ColumnsStorage[n]
+			if im.TreeNodeID(columns.ID, "Columns Id: 0x%08X, Count: %d, Flags: 0x%04X", columns.ID, columns.Count, columns.Flags) {
+				im.BulletText("Width: %.1f (MinX: %.1f, MaxX: %.1f)", columns.MaxX-columns.MinX, columns.MinX, columns.MaxX)
+				for column_n := range columns.Columns {
+					im.BulletText("Column %02d: OffsetNorm %.3f (= %.1f px)", column_n, columns.Columns[column_n].OffsetNorm, im.OffsetNormToPixels(columns, columns.Columns[column_n].OffsetNorm))
+				}
+				im.TreePop()
+			}
+		}
+		im.TreePop()
+	}
+	im.BulletText("Storage: %d bytes", len(window.StateStorage))
+	im.TreePop()
+}
+
 func ShowMetricsWindow() {
 	p_open := &ui.ShowAppMetrics
 	if im.BeginEx("ImGui Metrics", p_open, 0) {
@@ -4288,9 +4483,11 @@ func ShowMetricsWindow() {
 		im.Separator()
 
 		// Access private state, we are going to display the draw lists from last frame
+		var funcs Funcs
+		funcs.NodeWindows(im.Windows, "Window")
 		if im.TreeNodeStringIDEx("DrawList", 0, "Active DrawLists (%d)", len(im.DrawDataBuilder.Layers[0])) {
 			for i := range im.DrawDataBuilder.Layers[0] {
-				_ = im.DrawDataBuilder.Layers[0][i]
+				funcs.NodeDrawList(nil, im.DrawDataBuilder.Layers[0][i], "DrawList")
 			}
 			im.TreePop()
 		}

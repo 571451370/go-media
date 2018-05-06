@@ -3,6 +3,7 @@ package imgui
 import (
 	"image/color"
 	"math"
+	"math/rand"
 
 	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f32"
@@ -36,6 +37,8 @@ type DrawListSharedData struct {
 }
 
 type DrawList struct {
+	ID ID
+
 	// This is what you have to render
 	CmdBuffer []DrawCmd  // Draw commands. Typically 1 command = 1 GPU draw call, unless the command is a callback.
 	IdxBuffer []DrawIdx  // Index buffer. Each command consume ImDrawCmd::ElemCount of those
@@ -44,7 +47,7 @@ type DrawList struct {
 	// [Internal, used while building lists]
 	Flags            DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
 	_Data            *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
-	_OwnerName       string              // Pointer to owner window's name for debugging
+	OwnerName        string              // Pointer to owner window's name for debugging
 	_VtxCurrentIdx   int                 // [Internal] == VtxBuffer.Size
 	_VtxWritePtr     int                 // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
 	_IdxWritePtr     int                 // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
@@ -3070,8 +3073,9 @@ func NewDrawList(shared_data *DrawListSharedData) *DrawList {
 }
 
 func (d *DrawList) Init(shared_data *DrawListSharedData) {
+	d.ID = ID(rand.Int())
 	d._Data = shared_data
-	d._OwnerName = ""
+	d.OwnerName = ""
 	d.Clear()
 }
 
