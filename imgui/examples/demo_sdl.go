@@ -146,6 +146,7 @@ type UI struct {
 
 		Trees struct {
 			AlignLabelWithCurrentXPosition bool
+			SelectionMask                  uint
 		}
 
 		CollapsingHeader struct {
@@ -211,6 +212,7 @@ type UI struct {
 
 		Plots struct {
 			Animate      bool
+			Arr          []float64
 			Values       [90]float64
 			ValuesOffset int
 			RefreshTime  float64
@@ -297,6 +299,7 @@ type UI struct {
 	PopupsModal struct {
 		Popups struct {
 			SelectedFish int
+			Toggles      []bool
 		}
 		ContextMenus struct {
 			Value float64
@@ -310,6 +313,9 @@ type UI struct {
 	}
 
 	Columns struct {
+		Basic struct {
+			Selected int
+		}
 		MixedItems struct {
 			Foo float64
 			Bar float64
@@ -477,7 +483,136 @@ func initIM() {
 
 	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
 
+	ui.Widgets.Basic.Clicked = 0
+	ui.Widgets.Basic.Check = true
+	ui.Widgets.Basic.E = 0
 	ui.Widgets.Basic.Arr = []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+	ui.Widgets.Basic.ItemsCurrent = 0
+	ui.Widgets.Basic.Input.Str0 = []byte("Hello, world!")
+	ui.Widgets.Basic.Input.I0 = 123
+	ui.Widgets.Basic.Input.F0 = 0.001
+	ui.Widgets.Basic.Input.D0 = 999999.000001
+	ui.Widgets.Basic.Input.F1 = 1.e10
+	ui.Widgets.Basic.Input.Vec4a = [4]float64{0.10, 0.20, 0.30, 0.44}
+	ui.Widgets.Basic.Drag.I1 = 50
+	ui.Widgets.Basic.Drag.I2 = 42
+	ui.Widgets.Basic.Drag.F1 = 1.00
+	ui.Widgets.Basic.Drag.F2 = 0.0067
+	ui.Widgets.Basic.Slider.I1 = 0
+	ui.Widgets.Basic.Slider.F1 = 0.123
+	ui.Widgets.Basic.Slider.F2 = 0.0
+	ui.Widgets.Basic.Slider.Angle = 0.0
+	ui.Widgets.Basic.ColorEdit.Col1 = color.RGBA{255, 0, 51, 255}
+	ui.Widgets.Basic.ColorEdit.Col2 = color.RGBA{102, 179, 0, 128}
+	ui.Widgets.Basic.ListBox.ItemCurrent = 1
+	ui.Widgets.Trees.AlignLabelWithCurrentXPosition = false
+	ui.Widgets.Trees.SelectionMask = 1 << 2
+	ui.Widgets.CollapsingHeader.ClosableGroup = true
+	ui.Widgets.Text.WordWrapping.WrapWidth = 200.0
+	ui.Widgets.Text.UTF8.Buf = []byte("\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e")
+
+	ui.Widgets.Combo.Flags = 0
+	ui.Widgets.Combo.ItemCurrent = 0
+	ui.Widgets.Combo.ItemCurrent2 = 0
+	ui.Widgets.Combo.ItemCurrent3 = -1
+	ui.Widgets.Combo.ItemCurrent4 = 0
+
+	ui.Widgets.Selectables.Basic.Selection = [5]bool{false, true, false, false, false}
+	ui.Widgets.Selectables.Single.Selected = -1
+	ui.Widgets.Selectables.Multiple.Selection = [5]bool{false, true, false, false, false}
+	ui.Widgets.Selectables.Rendering.Selected = [3]bool{false, false, false}
+	ui.Widgets.Selectables.Columns.Selected = [16]bool{}
+	ui.Widgets.Selectables.Grid.Selected = [16]bool{true, false, false, false, false, true, false, false, false, false, true, false, false, false, false, true}
+
+	ui.Widgets.FilteredTextInput.Buf1 = []byte{}
+	ui.Widgets.FilteredTextInput.Buf2 = []byte{}
+	ui.Widgets.FilteredTextInput.Buf3 = []byte{}
+	ui.Widgets.FilteredTextInput.Buf4 = []byte{}
+	ui.Widgets.FilteredTextInput.Buf5 = []byte{}
+	ui.Widgets.FilteredTextInput.Buf6 = []byte{}
+	ui.Widgets.FilteredTextInput.Bufpass = []byte("password123")
+
+	ui.Widgets.MultilineTextInput.ReadOnly = false
+	ui.Widgets.MultilineTextInput.Text = []byte("/*\n" +
+		" The Pentium F00F bug, shorthand for F0 0F C7 C8,\n" +
+		" the hexadecimal encoding of one offending instruction,\n" +
+		" more formally, the invalid operand with locked CMPXCHG8B\n" +
+		" instruction bug, is a design flaw in the majority of\n" +
+		" Intel Pentium, Pentium MMX, and Pentium OverDrive\n" +
+		" processors (all in the P5 microarchitecture).\n" +
+		"*/\n\n" +
+		"label:\n" +
+		"\tlock cmpxchg8b eax\n")
+
+	ui.Widgets.Plots.Animate = true
+	ui.Widgets.Plots.Arr = []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+	ui.Widgets.Plots.Values = [90]float64{}
+	ui.Widgets.Plots.ValuesOffset = 0
+	ui.Widgets.Plots.RefreshTime = 0.0
+	ui.Widgets.Plots.Phase = 0.0
+	ui.Widgets.Plots.FuncType = 0
+	ui.Widgets.Plots.DisplayCount = 70
+	ui.Widgets.Plots.Progress = 0.0
+	ui.Widgets.Plots.ProgressDir = 1.0
+
+	ui.Widgets.ColorPicker.Color = color.RGBA{114, 144, 154, 200}
+	ui.Widgets.ColorPicker.AlphaPreview = true
+	ui.Widgets.ColorPicker.AlphaHalfPreview = false
+	ui.Widgets.ColorPicker.OptionsMenu = true
+	ui.Widgets.ColorPicker.Hdr = false
+	ui.Widgets.ColorPicker.SavedPaletteInited = false
+	ui.Widgets.ColorPicker.SavedPalette = [32]color.RGBA{}
+	ui.Widgets.ColorPicker.BackupColor = color.RGBA{}
+	ui.Widgets.ColorPicker.Alpha = true
+	ui.Widgets.ColorPicker.AlphaBar = true
+	ui.Widgets.ColorPicker.SidePreview = true
+	ui.Widgets.ColorPicker.RefColor = false
+	ui.Widgets.ColorPicker.RefColorV = color.RGBA{255, 0, 255, 128}
+	ui.Widgets.ColorPicker.InputsMode = 2
+	ui.Widgets.ColorPicker.PickerMode = 0
+
+	ui.Widgets.Range.Begin = 10
+	ui.Widgets.Range.End = 90
+	ui.Widgets.Range.BeginI = 100
+	ui.Widgets.Range.EndI = 1000
+
+	ui.Widgets.MultiComponents.Vec4f = [4]float64{0.10, 0.20, 0.30, 0.44}
+	ui.Widgets.MultiComponents.Vec4i = [4]int{1, 5, 100, 255}
+
+	ui.Widgets.VerticalSliders.Spacing = 4
+	ui.Widgets.VerticalSliders.IntValue = 0
+	ui.Widgets.VerticalSliders.Values = []float64{0.0, 0.60, 0.35, 0.9, 0.70, 0.20, 0.0}
+	ui.Widgets.VerticalSliders.Values2 = []float64{0.20, 0.80, 0.40, 0.25}
+
+	ui.Layout.ChildRegion.DisableMouseWheel = false
+	ui.Layout.ChildRegion.DisableMenu = false
+	ui.Layout.ChildRegion.Line = 50
+	ui.Layout.WidgetsWidth.F = 0.0
+	ui.Layout.Horizontal.C1 = false
+	ui.Layout.Horizontal.C2 = false
+	ui.Layout.Horizontal.C3 = false
+	ui.Layout.Horizontal.C4 = false
+	ui.Layout.Horizontal.F0 = 1.0
+	ui.Layout.Horizontal.F1 = 2.0
+	ui.Layout.Horizontal.F2 = 3.0
+	ui.Layout.Horizontal.Item = -1
+	ui.Layout.Horizontal.Selection = [4]int{0, 1, 2, 3}
+	ui.Layout.Scrolling.Track = true
+	ui.Layout.Scrolling.TrackLine = 50
+	ui.Layout.Scrolling.ScrollToPx = 200
+	ui.Layout.HorizontalScrolling.Lines = 7
+	ui.Layout.Clipping.Size = f64.Vec2{100, 100}
+	ui.Layout.Clipping.Offset = f64.Vec2{50, 20}
+
+	ui.PopupsModal.Popups.SelectedFish = -1
+	ui.PopupsModal.Popups.Toggles = []bool{true, false, false, false, false}
+	ui.PopupsModal.ContextMenus.Value = 0.5
+	ui.PopupsModal.ContextMenus.Name = []byte("Label1")
+	ui.PopupsModal.Modals.DontAskMeNextTime = false
+	ui.PopupsModal.Modals.Item = 1
+	ui.PopupsModal.Modals.Color = color.RGBA{102, 179, 0, 128}
+
+	ui.Columns.Basic.Selected = -1
 
 	ui.MenuOptions.Enabled = true
 	ui.MenuOptions.Float = 0.5
@@ -488,6 +623,8 @@ func initIM() {
 	ui.StyleEditor.Colors.OutputDest = 0
 	ui.StyleEditor.Colors.OutputOnlyModified = true
 	ui.StyleEditor.Fonts.WindowScale = 1.0
+
+	ui.AppLog.Log.Init()
 }
 
 func evKey(key int, down bool) {
@@ -1259,6 +1396,50 @@ func ShowDemoWindow() {
 				if *align_label_with_current_x_position {
 					im.UnindentEx(im.GetTreeNodeToLabelSpacing())
 				}
+				// Dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
+				selection_mask := &ui.Widgets.Trees.SelectionMask
+				// Temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
+				node_clicked := -1
+				im.PushStyleVar(imgui.StyleVarIndentSpacing, im.GetFontSize()*3)
+				for i := 0; i < 6; i++ {
+					// Disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+					node_flags := imgui.TreeNodeFlagsOpenOnArrow | imgui.TreeNodeFlagsOpenOnDoubleClick
+					if *selection_mask&(1<<uint(i)) != 0 {
+						node_flags |= imgui.TreeNodeFlagsSelected
+					}
+					if i < 3 {
+						// Node
+						node_open := im.TreeNodeIDEx(imgui.ID(i), node_flags, "Selectable Node %d", i)
+						if im.IsItemClicked(0) {
+							node_clicked = i
+						}
+						if node_open {
+							im.Text("Blah blah\nBlah Blah")
+							im.TreePop()
+						}
+					} else {
+						// Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+						node_flags |= imgui.TreeNodeFlagsLeaf | imgui.TreeNodeFlagsNoTreePushOnOpen
+						im.TreeNodeIDEx(imgui.ID(i), node_flags, "Selectable Leaf %d", i)
+						if im.IsItemClicked(0) {
+							node_clicked = i
+						}
+					}
+				}
+				if node_clicked != -1 {
+					// Update selection state. Process outside of tree loop to avoid visual inconsistencies during the clicking-frame.
+					if im.GetIO().KeyCtrl {
+						// CTRL+click to toggle
+						*selection_mask ^= (1 << uint(node_clicked))
+					} else {
+						// Click to single-select
+						*selection_mask = (1 << uint(node_clicked))
+					}
+				}
+				im.PopStyleVar()
+				if *align_label_with_current_x_position {
+					im.IndentEx(im.GetTreeNodeToLabelSpacing())
+				}
 				im.TreePop()
 			}
 
@@ -1624,7 +1805,7 @@ func ShowDemoWindow() {
 			animate := &ui.Widgets.Plots.Animate
 			im.Checkbox("Animate", animate)
 
-			arr := []float64{0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2}
+			arr := ui.Widgets.Plots.Arr[:]
 			im.PlotLines("Frame Times", arr)
 
 			// Create a dummy array of contiguous float values to plot
@@ -2473,7 +2654,7 @@ func ShowDemoWindow() {
 
 			selected_fish := &ui.PopupsModal.Popups.SelectedFish
 			names := []string{"Bream", "Haddock", "Mackerel", "Pollock", "Tilefish"}
-			toggles := []bool{true, false, false, false, false}
+			toggles := ui.PopupsModal.Popups.Toggles[:]
 
 			// Simple selection popup
 			// (If you want to show the current selection inside the Button itself, you may want to build a string using the "###" operator to preserve a constant ID with a variable label)
@@ -2691,11 +2872,11 @@ func ShowDemoWindow() {
 
 			names := []string{"One", "Two", "Three"}
 			paths := []string{"/path/one", "/path/two", "/path/three"}
-			selected := -1
+			selected := &ui.Columns.Basic.Selected
 			for i := range names {
 				label := fmt.Sprintf("%04d", i)
-				if im.SelectableEx(label, selected == i, imgui.SelectableFlagsSpanAllColumns, f64.Vec2{0, 0}) {
-					selected = i
+				if im.SelectableEx(label, *selected == i, imgui.SelectableFlagsSpanAllColumns, f64.Vec2{0, 0}) {
+					*selected = i
 				}
 				hovered := im.IsItemHovered()
 				im.NextColumn()
@@ -4036,6 +4217,11 @@ func ShowStyleEditor(ref *imgui.Style) {
 			im.PopID()
 		}
 		window_scale := &ui.StyleEditor.Fonts.WindowScale
+		// scale only this window
+		im.DragFloatEx("this window scale", window_scale, 0.005, 0.3, 2.0, "%.1f", 1)
+		// scale everything
+		im.DragFloatEx("global scale", &im.GetIO().FontGlobalScale, 0.005, 0.3, 2.0, "%.1f", 1)
+		im.PopItemWidth()
 		im.SetWindowFontScale(*window_scale)
 		im.TreePop()
 	}
@@ -4183,14 +4369,34 @@ func assert(x bool) {
 type ExampleAppLog struct {
 	Buf            strings.Builder
 	Filter         imgui.TextFilter
-	Lines          []string
+	LineOffsets    []int
 	ScrollToBottom bool
 }
 
+func (c *ExampleAppLog) Init() {
+	c.Buf.Reset()
+	c.Filter.Init(im, "")
+	c.LineOffsets = c.LineOffsets[:0]
+	c.ScrollToBottom = false
+}
+
 func (c *ExampleAppLog) AddLog(format string, args ...interface{}) {
+	text := fmt.Sprintf(format, args...)
+	old_size := len(c.Buf.String())
+	c.Buf.WriteString(text)
+	str := c.Buf.String()
+	new_size := len(str)
+	for ; old_size < new_size; old_size++ {
+		if str[old_size] == '\n' {
+			c.LineOffsets = append(c.LineOffsets, old_size)
+		}
+	}
+	c.ScrollToBottom = true
 }
 
 func (c *ExampleAppLog) Clear() {
+	c.Buf.Reset()
+	c.LineOffsets = c.LineOffsets[:0]
 }
 
 func (c *ExampleAppLog) Draw(title string, p_open *bool) {
@@ -4207,8 +4413,23 @@ func (c *ExampleAppLog) Draw(title string, p_open *bool) {
 	if copy {
 		im.LogToClipboard()
 	}
+
 	if c.Filter.IsActive() {
+		buf := c.Buf.String()
+		line_start := 0
+		for lineno := 0; line_start < len(buf); lineno++ {
+			line_end := len(buf)
+			if lineno < len(c.LineOffsets) {
+				line_end = c.LineOffsets[lineno]
+			}
+			line := buf[line_start:line_end]
+			if c.Filter.PassFilter(line) {
+				im.TextUnformatted(line)
+			}
+			line_start = line_end + 1
+		}
 	} else {
+		im.TextUnformatted(c.Buf.String())
 	}
 
 	if c.ScrollToBottom {
