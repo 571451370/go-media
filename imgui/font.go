@@ -502,9 +502,9 @@ func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col c
 	idx_expected_size := len(draw_list.IdxBuffer) + idx_count_max
 	draw_list.PrimReserve(idx_count_max, vtx_count_max)
 
-	vtx_write_idx := draw_list._VtxWritePtr
-	idx_write_idx := draw_list._IdxWritePtr
-	vtx_current_idx := draw_list._VtxCurrentIdx
+	vtx_write_idx := draw_list.VtxWritePtr
+	idx_write_idx := draw_list.IdxWritePtr
+	vtx_current_idx := draw_list.VtxCurrentIdx
 
 	for s < len(text) {
 		if word_wrap_enabled {
@@ -656,9 +656,9 @@ func (f *Font) RenderText(draw_list *DrawList, size float64, pos f64.Vec2, col c
 	draw_list.VtxBuffer = draw_list.VtxBuffer[:vtx_write_idx]
 	draw_list.IdxBuffer = draw_list.IdxBuffer[:idx_write_idx]
 	draw_list.CmdBuffer[len(draw_list.CmdBuffer)-1].ElemCount -= (idx_expected_size - len(draw_list.IdxBuffer))
-	draw_list._VtxWritePtr = vtx_write_idx
-	draw_list._IdxWritePtr = idx_write_idx
-	draw_list._VtxCurrentIdx = len(draw_list.VtxBuffer)
+	draw_list.VtxWritePtr = vtx_write_idx
+	draw_list.IdxWritePtr = idx_write_idx
+	draw_list.VtxCurrentIdx = len(draw_list.VtxBuffer)
 }
 
 func (f *Font) GetCharAdvance(c rune) float64 {

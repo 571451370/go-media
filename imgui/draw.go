@@ -45,18 +45,18 @@ type DrawList struct {
 	VtxBuffer []DrawVert // Vertex buffer.
 
 	// [Internal, used while building lists]
-	Flags            DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
-	_Data            *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
-	OwnerName        string              // Pointer to owner window's name for debugging
-	_VtxCurrentIdx   int                 // [Internal] == VtxBuffer.Size
-	_VtxWritePtr     int                 // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
-	_IdxWritePtr     int                 // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
-	_ClipRectStack   []f64.Vec4          // [Internal]
-	_TextureIdStack  []TextureID         // [Internal]
-	_Path            []f64.Vec2          // [Internal] current path building                   _ChannelsCurrent int   // [Internal] current channel number (0)
-	_ChannelsCurrent int                 // [Internal] current channel number (0)
-	_ChannelsCount   int                 // [Internal] number of active channels (1+)
-	_Channels        []DrawChannel       // [Internal] draw channels for columns API (not resized down so _ChannelsCount may be smaller than _Channels.Size)
+	Flags           DrawListFlags       // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
+	Data            *DrawListSharedData // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context)
+	OwnerName       string              // Pointer to owner window's name for debugging
+	VtxCurrentIdx   int                 // [Internal] == VtxBuffer.Size
+	VtxWritePtr     int                 // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
+	IdxWritePtr     int                 // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much)
+	ClipRectStack   []f64.Vec4          // [Internal]
+	TextureIdStack  []TextureID         // [Internal]
+	Path            []f64.Vec2          // [Internal] current path building                   ChannelsCurrent int   // [Internal] current channel number (0)
+	ChannelsCurrent int                 // [Internal] current channel number (0)
+	ChannelsCount   int                 // [Internal] number of active channels (1+)
+	Channels        []DrawChannel       // [Internal] draw channels for columns API (not resized down so ChannelsCount may be smaller than Channels.Size)
 }
 
 type DrawCmd struct {
@@ -1555,11 +1555,11 @@ func (c *Context) RenderTextClippedEx(pos_min, pos_max f64.Vec2, text string, te
 }
 
 func (d *DrawList) PathClear() {
-	d._Path = d._Path[:0]
+	d.Path = d.Path[:0]
 }
 
 func (d *DrawList) PathLineTo(pos f64.Vec2) {
-	d._Path = append(d._Path, pos)
+	d.Path = append(d.Path, pos)
 }
 
 func (d *DrawList) PathStroke(col color.RGBA, closed bool) {
@@ -1567,7 +1567,7 @@ func (d *DrawList) PathStroke(col color.RGBA, closed bool) {
 }
 
 func (d *DrawList) PathStrokeEx(col color.RGBA, closed bool, thickness float64) {
-	d.AddPolyline(d._Path, col, closed, thickness)
+	d.AddPolyline(d.Path, col, closed, thickness)
 	d.PathClear()
 }
 
@@ -1591,7 +1591,7 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 		return
 	}
 
-	uv := d._Data.TexUvWhitePixel
+	uv := d.Data.TexUvWhitePixel
 	count := points_count
 	if !closed {
 		count = points_count - 1
@@ -1639,12 +1639,12 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			}
 
 			// FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
-			idx1 := d._VtxCurrentIdx
+			idx1 := d.VtxCurrentIdx
 			for i1 := 0; i1 < count; i1++ {
 				i2 := (i1 + 1) % points_count
 				idx2 := idx1 + 3
 				if i1+1 == points_count {
-					idx2 = d._VtxCurrentIdx
+					idx2 = d.VtxCurrentIdx
 				}
 
 				// Average normals
@@ -1662,20 +1662,20 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				temp_points[i2*2+1] = points[i2].Sub(dm)
 
 				// Add indexes
-				_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-				_IdxWritePtr[0] = DrawIdx(idx2 + 0)
-				_IdxWritePtr[1] = DrawIdx(idx1 + 0)
-				_IdxWritePtr[2] = DrawIdx(idx1 + 2)
-				_IdxWritePtr[3] = DrawIdx(idx1 + 2)
-				_IdxWritePtr[4] = DrawIdx(idx2 + 2)
-				_IdxWritePtr[5] = DrawIdx(idx2 + 0)
-				_IdxWritePtr[6] = DrawIdx(idx2 + 1)
-				_IdxWritePtr[7] = DrawIdx(idx1 + 1)
-				_IdxWritePtr[8] = DrawIdx(idx1 + 0)
-				_IdxWritePtr[9] = DrawIdx(idx1 + 0)
-				_IdxWritePtr[10] = DrawIdx(idx2 + 0)
-				_IdxWritePtr[11] = DrawIdx(idx2 + 1)
-				d._IdxWritePtr += 12
+				IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+				IdxWritePtr[0] = DrawIdx(idx2 + 0)
+				IdxWritePtr[1] = DrawIdx(idx1 + 0)
+				IdxWritePtr[2] = DrawIdx(idx1 + 2)
+				IdxWritePtr[3] = DrawIdx(idx1 + 2)
+				IdxWritePtr[4] = DrawIdx(idx2 + 2)
+				IdxWritePtr[5] = DrawIdx(idx2 + 0)
+				IdxWritePtr[6] = DrawIdx(idx2 + 1)
+				IdxWritePtr[7] = DrawIdx(idx1 + 1)
+				IdxWritePtr[8] = DrawIdx(idx1 + 0)
+				IdxWritePtr[9] = DrawIdx(idx1 + 0)
+				IdxWritePtr[10] = DrawIdx(idx2 + 0)
+				IdxWritePtr[11] = DrawIdx(idx2 + 1)
+				d.IdxWritePtr += 12
 
 				idx1 = idx2
 			}
@@ -1687,17 +1687,17 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				p2 := f32.Vec2{float32(temp_points[i*2+1].X), float32(temp_points[i*2+1].Y)}
 				t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 
-				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-				_VtxWritePtr[0].Pos = p0
-				_VtxWritePtr[0].UV = t0
-				_VtxWritePtr[0].Col = chroma.RGBA32(col)
-				_VtxWritePtr[1].Pos = p1
-				_VtxWritePtr[1].UV = t0
-				_VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
-				_VtxWritePtr[2].Pos = p2
-				_VtxWritePtr[2].UV = t0
-				_VtxWritePtr[2].Col = chroma.RGBA32(col_trans)
-				d._VtxWritePtr += 3
+				VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+				VtxWritePtr[0].Pos = p0
+				VtxWritePtr[0].UV = t0
+				VtxWritePtr[0].Col = chroma.RGBA32(col)
+				VtxWritePtr[1].Pos = p1
+				VtxWritePtr[1].UV = t0
+				VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
+				VtxWritePtr[2].Pos = p2
+				VtxWritePtr[2].UV = t0
+				VtxWritePtr[2].Col = chroma.RGBA32(col_trans)
+				d.VtxWritePtr += 3
 			}
 		} else {
 			half_inner_thickness := (thickness - AA_SIZE) * 0.5
@@ -1712,12 +1712,12 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				temp_points[(points_count-1)*4+3] = points[points_count-1].Sub(temp_normals[points_count-1].Scale(half_inner_thickness + AA_SIZE))
 			}
 			// FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
-			idx1 := d._VtxCurrentIdx
+			idx1 := d.VtxCurrentIdx
 			for i1 := 0; i1 < count; i1++ {
 				i2 := (i1 + 1) % points_count
 				idx2 := idx1 + 4
 				if i1+1 == points_count {
-					idx2 = d._VtxCurrentIdx
+					idx2 = d.VtxCurrentIdx
 				}
 
 				// Average normals
@@ -1739,26 +1739,26 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				temp_points[i2*4+3] = points[i2].Sub(dm_out)
 
 				// Add indexes
-				_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-				_IdxWritePtr[0] = DrawIdx(idx2 + 1)
-				_IdxWritePtr[1] = DrawIdx(idx1 + 1)
-				_IdxWritePtr[2] = DrawIdx(idx1 + 2)
-				_IdxWritePtr[3] = DrawIdx(idx1 + 2)
-				_IdxWritePtr[4] = (DrawIdx)(idx2 + 2)
-				_IdxWritePtr[5] = (DrawIdx)(idx2 + 1)
-				_IdxWritePtr[6] = (DrawIdx)(idx2 + 1)
-				_IdxWritePtr[7] = (DrawIdx)(idx1 + 1)
-				_IdxWritePtr[8] = (DrawIdx)(idx1 + 0)
-				_IdxWritePtr[9] = (DrawIdx)(idx1 + 0)
-				_IdxWritePtr[10] = (DrawIdx)(idx2 + 0)
-				_IdxWritePtr[11] = (DrawIdx)(idx2 + 1)
-				_IdxWritePtr[12] = (DrawIdx)(idx2 + 2)
-				_IdxWritePtr[13] = (DrawIdx)(idx1 + 2)
-				_IdxWritePtr[14] = (DrawIdx)(idx1 + 3)
-				_IdxWritePtr[15] = (DrawIdx)(idx1 + 3)
-				_IdxWritePtr[16] = (DrawIdx)(idx2 + 3)
-				_IdxWritePtr[17] = (DrawIdx)(idx2 + 2)
-				d._IdxWritePtr += 18
+				IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+				IdxWritePtr[0] = DrawIdx(idx2 + 1)
+				IdxWritePtr[1] = DrawIdx(idx1 + 1)
+				IdxWritePtr[2] = DrawIdx(idx1 + 2)
+				IdxWritePtr[3] = DrawIdx(idx1 + 2)
+				IdxWritePtr[4] = (DrawIdx)(idx2 + 2)
+				IdxWritePtr[5] = (DrawIdx)(idx2 + 1)
+				IdxWritePtr[6] = (DrawIdx)(idx2 + 1)
+				IdxWritePtr[7] = (DrawIdx)(idx1 + 1)
+				IdxWritePtr[8] = (DrawIdx)(idx1 + 0)
+				IdxWritePtr[9] = (DrawIdx)(idx1 + 0)
+				IdxWritePtr[10] = (DrawIdx)(idx2 + 0)
+				IdxWritePtr[11] = (DrawIdx)(idx2 + 1)
+				IdxWritePtr[12] = (DrawIdx)(idx2 + 2)
+				IdxWritePtr[13] = (DrawIdx)(idx1 + 2)
+				IdxWritePtr[14] = (DrawIdx)(idx1 + 3)
+				IdxWritePtr[15] = (DrawIdx)(idx1 + 3)
+				IdxWritePtr[16] = (DrawIdx)(idx2 + 3)
+				IdxWritePtr[17] = (DrawIdx)(idx2 + 2)
+				d.IdxWritePtr += 18
 
 				idx1 = idx2
 			}
@@ -1773,23 +1773,23 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 				p3 := f32.Vec2{float32(temp_points[i*4+3].X), float32(temp_points[i*4+3].Y)}
 				t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 
-				_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-				_VtxWritePtr[0].Pos = p0
-				_VtxWritePtr[0].UV = t0
-				_VtxWritePtr[0].Col = col_trans_32
-				_VtxWritePtr[1].Pos = p1
-				_VtxWritePtr[1].UV = t0
-				_VtxWritePtr[1].Col = col_32
-				_VtxWritePtr[2].Pos = p2
-				_VtxWritePtr[2].UV = t0
-				_VtxWritePtr[2].Col = col_32
-				_VtxWritePtr[3].Pos = p3
-				_VtxWritePtr[3].UV = t0
-				_VtxWritePtr[3].Col = col_trans_32
-				d._VtxWritePtr += 4
+				VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+				VtxWritePtr[0].Pos = p0
+				VtxWritePtr[0].UV = t0
+				VtxWritePtr[0].Col = col_trans_32
+				VtxWritePtr[1].Pos = p1
+				VtxWritePtr[1].UV = t0
+				VtxWritePtr[1].Col = col_32
+				VtxWritePtr[2].Pos = p2
+				VtxWritePtr[2].UV = t0
+				VtxWritePtr[2].Col = col_32
+				VtxWritePtr[3].Pos = p3
+				VtxWritePtr[3].UV = t0
+				VtxWritePtr[3].Col = col_trans_32
+				d.VtxWritePtr += 4
 			}
 		}
-		d._VtxCurrentIdx += vtx_count
+		d.VtxCurrentIdx += vtx_count
 	} else {
 		// Non Anti-aliased Stroke
 		idx_count := count * 6
@@ -1808,34 +1808,34 @@ func (d *DrawList) AddPolyline(points []f64.Vec2, col color.RGBA, closed bool, t
 			dy := diff.Y * (thickness * 0.5)
 
 			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
-			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-			_VtxWritePtr[0].Pos.X = float32(p1.X + dy)
-			_VtxWritePtr[0].Pos.Y = float32(p1.Y - dx)
-			_VtxWritePtr[0].UV = t0
-			_VtxWritePtr[0].Col = col_32
-			_VtxWritePtr[1].Pos.X = float32(p2.X + dy)
-			_VtxWritePtr[1].Pos.Y = float32(p2.Y - dx)
-			_VtxWritePtr[1].UV = t0
-			_VtxWritePtr[1].Col = col_32
-			_VtxWritePtr[2].Pos.X = float32(p2.X - dy)
-			_VtxWritePtr[2].Pos.Y = float32(p2.Y + dx)
-			_VtxWritePtr[2].UV = t0
-			_VtxWritePtr[2].Col = col_32
-			_VtxWritePtr[3].Pos.X = float32(p1.X - dy)
-			_VtxWritePtr[3].Pos.Y = float32(p1.Y + dx)
-			_VtxWritePtr[3].UV = t0
-			_VtxWritePtr[3].Col = col_32
-			d._VtxWritePtr += 4
+			VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+			VtxWritePtr[0].Pos.X = float32(p1.X + dy)
+			VtxWritePtr[0].Pos.Y = float32(p1.Y - dx)
+			VtxWritePtr[0].UV = t0
+			VtxWritePtr[0].Col = col_32
+			VtxWritePtr[1].Pos.X = float32(p2.X + dy)
+			VtxWritePtr[1].Pos.Y = float32(p2.Y - dx)
+			VtxWritePtr[1].UV = t0
+			VtxWritePtr[1].Col = col_32
+			VtxWritePtr[2].Pos.X = float32(p2.X - dy)
+			VtxWritePtr[2].Pos.Y = float32(p2.Y + dx)
+			VtxWritePtr[2].UV = t0
+			VtxWritePtr[2].Col = col_32
+			VtxWritePtr[3].Pos.X = float32(p1.X - dy)
+			VtxWritePtr[3].Pos.Y = float32(p1.Y + dx)
+			VtxWritePtr[3].UV = t0
+			VtxWritePtr[3].Col = col_32
+			d.VtxWritePtr += 4
 
-			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-			_IdxWritePtr[0] = DrawIdx(d._VtxCurrentIdx)
-			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + 1)
-			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + 2)
-			_IdxWritePtr[3] = DrawIdx(d._VtxCurrentIdx)
-			_IdxWritePtr[4] = DrawIdx(d._VtxCurrentIdx + 2)
-			_IdxWritePtr[5] = DrawIdx(d._VtxCurrentIdx + 3)
-			d._IdxWritePtr += 6
-			d._VtxCurrentIdx += 4
+			IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+			IdxWritePtr[0] = DrawIdx(d.VtxCurrentIdx)
+			IdxWritePtr[1] = DrawIdx(d.VtxCurrentIdx + 1)
+			IdxWritePtr[2] = DrawIdx(d.VtxCurrentIdx + 2)
+			IdxWritePtr[3] = DrawIdx(d.VtxCurrentIdx)
+			IdxWritePtr[4] = DrawIdx(d.VtxCurrentIdx + 2)
+			IdxWritePtr[5] = DrawIdx(d.VtxCurrentIdx + 3)
+			d.IdxWritePtr += 6
+			d.VtxCurrentIdx += 4
 		}
 	}
 }
@@ -1912,7 +1912,7 @@ func (d *DrawList) AddImageEx(user_texture_id TextureID, a, b, uv_a, uv_b f64.Ve
 		return
 	}
 
-	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id == d._TextureIdStack[len(d._TextureIdStack)-1]
+	push_texture_id := len(d.TextureIdStack) == 0 || user_texture_id == d.TextureIdStack[len(d.TextureIdStack)-1]
 	if push_texture_id {
 		d.PushTextureID(user_texture_id)
 	}
@@ -1930,29 +1930,29 @@ func (d *DrawList) Clear() {
 	d.IdxBuffer = d.IdxBuffer[:0]
 	d.VtxBuffer = d.VtxBuffer[:0]
 	d.Flags = DrawListFlagsAntiAliasedLines | DrawListFlagsAntiAliasedFill
-	d._VtxCurrentIdx = 0
-	d._VtxWritePtr = 0
-	d._IdxWritePtr = 0
-	d._ClipRectStack = d._ClipRectStack[:0]
-	d._TextureIdStack = d._TextureIdStack[:0]
-	d._Path = d._Path[:0]
-	d._ChannelsCurrent = 0
-	d._ChannelsCount = 1
+	d.VtxCurrentIdx = 0
+	d.VtxWritePtr = 0
+	d.IdxWritePtr = 0
+	d.ClipRectStack = d.ClipRectStack[:0]
+	d.TextureIdStack = d.TextureIdStack[:0]
+	d.Path = d.Path[:0]
+	d.ChannelsCurrent = 0
+	d.ChannelsCount = 1
 	// NB: Do not clear channels so our allocations are re-used after the first frame.
 }
 
 func (d *DrawList) PopClipRect() {
-	d._ClipRectStack = d._ClipRectStack[:len(d._ClipRectStack)-1]
+	d.ClipRectStack = d.ClipRectStack[:len(d.ClipRectStack)-1]
 	d.UpdateClipRect()
 }
 
 func (d *DrawList) PushTextureID(texture_id TextureID) {
-	d._TextureIdStack = append(d._TextureIdStack, texture_id)
+	d.TextureIdStack = append(d.TextureIdStack, texture_id)
 	d.UpdateTextureID()
 }
 
 func (d *DrawList) PopTextureID() {
-	d._TextureIdStack = d._TextureIdStack[:len(d._TextureIdStack)-1]
+	d.TextureIdStack = d.TextureIdStack[:len(d.TextureIdStack)-1]
 	d.UpdateTextureID()
 }
 
@@ -1982,17 +1982,17 @@ func (d *DrawList) UpdateTextureID() {
 }
 
 func (d *DrawList) ChannelsSetCurrent(idx int) {
-	if d._ChannelsCurrent == idx {
+	if d.ChannelsCurrent == idx {
 		return
 	}
-	d._Channels[d._ChannelsCurrent].CmdBuffer = d.CmdBuffer
-	d._Channels[d._ChannelsCurrent].IdxBuffer = d.IdxBuffer
+	d.Channels[d.ChannelsCurrent].CmdBuffer = d.CmdBuffer
+	d.Channels[d.ChannelsCurrent].IdxBuffer = d.IdxBuffer
 
-	d._ChannelsCurrent = idx
+	d.ChannelsCurrent = idx
 
-	d.CmdBuffer = d._Channels[d._ChannelsCurrent].CmdBuffer
-	d.IdxBuffer = d._Channels[d._ChannelsCurrent].IdxBuffer
-	d._IdxWritePtr = len(d.IdxBuffer)
+	d.CmdBuffer = d.Channels[d.ChannelsCurrent].CmdBuffer
+	d.IdxBuffer = d.Channels[d.ChannelsCurrent].IdxBuffer
+	d.IdxWritePtr = len(d.IdxBuffer)
 }
 
 func (d *DrawList) PushClipRect(cr_min, cr_max f64.Vec2) {
@@ -2001,9 +2001,9 @@ func (d *DrawList) PushClipRect(cr_min, cr_max f64.Vec2) {
 
 func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_current_clip_rect bool) {
 	cr := f64.Vec4{cr_min.X, cr_min.Y, cr_max.X, cr_max.Y}
-	length := len(d._ClipRectStack)
+	length := len(d.ClipRectStack)
 	if intersect_with_current_clip_rect && length > 0 {
-		current := d._ClipRectStack[length-1]
+		current := d.ClipRectStack[length-1]
 		if cr.X < current.X {
 			cr.X = current.X
 		}
@@ -2020,7 +2020,7 @@ func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_curren
 	cr.Z = math.Max(cr.X, cr.Z)
 	cr.W = math.Max(cr.Y, cr.W)
 
-	d._ClipRectStack = append(d._ClipRectStack, cr)
+	d.ClipRectStack = append(d.ClipRectStack, cr)
 	d.UpdateClipRect()
 }
 
@@ -2028,15 +2028,15 @@ func (d *DrawList) PushClipRectEx(cr_min, cr_max f64.Vec2, intersect_with_curren
 func (d *DrawList) PrimRect(a, c f64.Vec2, col color.RGBA) {
 	b := f64.Vec2{c.X, a.Y}
 	d_ := f64.Vec2{a.X, c.Y}
-	uv := d._Data.TexUvWhitePixel
-	idx := d._VtxCurrentIdx
-	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-	_IdxWritePtr[0] = DrawIdx(idx)
-	_IdxWritePtr[1] = DrawIdx(idx + 1)
-	_IdxWritePtr[2] = DrawIdx(idx + 2)
-	_IdxWritePtr[3] = DrawIdx(idx)
-	_IdxWritePtr[4] = DrawIdx(idx + 2)
-	_IdxWritePtr[5] = DrawIdx(idx + 3)
+	uv := d.Data.TexUvWhitePixel
+	idx := d.VtxCurrentIdx
+	IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+	IdxWritePtr[0] = DrawIdx(idx)
+	IdxWritePtr[1] = DrawIdx(idx + 1)
+	IdxWritePtr[2] = DrawIdx(idx + 2)
+	IdxWritePtr[3] = DrawIdx(idx)
+	IdxWritePtr[4] = DrawIdx(idx + 2)
+	IdxWritePtr[5] = DrawIdx(idx + 3)
 
 	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
 	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
@@ -2045,23 +2045,23 @@ func (d *DrawList) PrimRect(a, c f64.Vec2, col color.RGBA) {
 	t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 
 	col32 := chroma.RGBA32(col)
-	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = p0
-	_VtxWritePtr[0].UV = t0
-	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = p1
-	_VtxWritePtr[1].UV = t0
-	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = p2
-	_VtxWritePtr[2].UV = t0
-	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = p3
-	_VtxWritePtr[3].UV = t0
-	_VtxWritePtr[3].Col = col32
+	VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+	VtxWritePtr[0].Pos = p0
+	VtxWritePtr[0].UV = t0
+	VtxWritePtr[0].Col = col32
+	VtxWritePtr[1].Pos = p1
+	VtxWritePtr[1].UV = t0
+	VtxWritePtr[1].Col = col32
+	VtxWritePtr[2].Pos = p2
+	VtxWritePtr[2].UV = t0
+	VtxWritePtr[2].Col = col32
+	VtxWritePtr[3].Pos = p3
+	VtxWritePtr[3].UV = t0
+	VtxWritePtr[3].Col = col32
 
-	d._VtxWritePtr += 4
-	d._VtxCurrentIdx += 4
-	d._IdxWritePtr += 6
+	d.VtxWritePtr += 4
+	d.VtxCurrentIdx += 4
+	d.IdxWritePtr += 6
 }
 
 func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
@@ -2069,14 +2069,14 @@ func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
 	d_ := f64.Vec2{a.X, c.Y}
 	uv_b := f64.Vec2{uv_c.X, uv_a.Y}
 	uv_d := f64.Vec2{uv_a.X, uv_c.Y}
-	idx := DrawIdx(d._VtxCurrentIdx)
-	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-	_IdxWritePtr[0] = idx
-	_IdxWritePtr[1] = idx + 1
-	_IdxWritePtr[2] = idx + 2
-	_IdxWritePtr[3] = idx
-	_IdxWritePtr[4] = idx + 2
-	_IdxWritePtr[5] = idx + 3
+	idx := DrawIdx(d.VtxCurrentIdx)
+	IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+	IdxWritePtr[0] = idx
+	IdxWritePtr[1] = idx + 1
+	IdxWritePtr[2] = idx + 2
+	IdxWritePtr[3] = idx
+	IdxWritePtr[4] = idx + 2
+	IdxWritePtr[5] = idx + 3
 
 	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
 	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
@@ -2088,23 +2088,23 @@ func (d *DrawList) PrimRectUV(a, c, uv_a, uv_c f64.Vec2, col color.RGBA) {
 	t3 := f32.Vec2{float32(uv_d.X), float32(uv_d.Y)}
 
 	col32 := chroma.RGBA32(col)
-	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = p0
-	_VtxWritePtr[0].UV = t0
-	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = p1
-	_VtxWritePtr[1].UV = t1
-	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = p2
-	_VtxWritePtr[2].UV = t2
-	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = p3
-	_VtxWritePtr[3].UV = t3
-	_VtxWritePtr[3].Col = col32
+	VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+	VtxWritePtr[0].Pos = p0
+	VtxWritePtr[0].UV = t0
+	VtxWritePtr[0].Col = col32
+	VtxWritePtr[1].Pos = p1
+	VtxWritePtr[1].UV = t1
+	VtxWritePtr[1].Col = col32
+	VtxWritePtr[2].Pos = p2
+	VtxWritePtr[2].UV = t2
+	VtxWritePtr[2].Col = col32
+	VtxWritePtr[3].Pos = p3
+	VtxWritePtr[3].UV = t3
+	VtxWritePtr[3].Col = col32
 
-	d._VtxWritePtr += 4
-	d._VtxCurrentIdx += 4
-	d._IdxWritePtr += 6
+	d.VtxWritePtr += 4
+	d.VtxCurrentIdx += 4
+	d.IdxWritePtr += 6
 }
 
 func (d *DrawList) AddImageQuad(user_texture_id TextureID, a, b, c, d_ f64.Vec2) {
@@ -2116,7 +2116,7 @@ func (d *DrawList) AddImageQuadEx(user_texture_id TextureID, a, b, c, d_, uv_a, 
 		return
 	}
 
-	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id != d._TextureIdStack[len(d._TextureIdStack)-1]
+	push_texture_id := len(d.TextureIdStack) == 0 || user_texture_id != d.TextureIdStack[len(d.TextureIdStack)-1]
 	if push_texture_id {
 		d.PushTextureID(user_texture_id)
 	}
@@ -2143,7 +2143,7 @@ func (d *DrawList) AddImageRoundedEx(user_texture_id TextureID, a, b, uv_a, uv_b
 		return
 	}
 
-	push_texture_id := len(d._TextureIdStack) == 0 || user_texture_id != d._TextureIdStack[len(d._TextureIdStack)-1]
+	push_texture_id := len(d.TextureIdStack) == 0 || user_texture_id != d.TextureIdStack[len(d.TextureIdStack)-1]
 	if push_texture_id {
 		d.PushTextureID(user_texture_id)
 	}
@@ -2202,14 +2202,14 @@ func (d *DrawList) ShadeVertsLinearUV(vert_start, vert_end int, a, b, uv_a, uv_b
 }
 
 func (d *DrawList) PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col color.RGBA) {
-	idx := DrawIdx(d._VtxCurrentIdx)
-	_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-	_IdxWritePtr[0] = idx
-	_IdxWritePtr[1] = (idx + 1)
-	_IdxWritePtr[2] = (idx + 2)
-	_IdxWritePtr[3] = idx
-	_IdxWritePtr[4] = (idx + 2)
-	_IdxWritePtr[5] = (idx + 3)
+	idx := DrawIdx(d.VtxCurrentIdx)
+	IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+	IdxWritePtr[0] = idx
+	IdxWritePtr[1] = (idx + 1)
+	IdxWritePtr[2] = (idx + 2)
+	IdxWritePtr[3] = idx
+	IdxWritePtr[4] = (idx + 2)
+	IdxWritePtr[5] = (idx + 3)
 
 	p0 := f32.Vec2{float32(a.X), float32(a.Y)}
 	p1 := f32.Vec2{float32(b.X), float32(b.Y)}
@@ -2221,23 +2221,23 @@ func (d *DrawList) PrimQuadUV(a, b, c, d_, uv_a, uv_b, uv_c, uv_d f64.Vec2, col 
 	t3 := f32.Vec2{float32(uv_d.X), float32(uv_d.Y)}
 
 	col32 := chroma.RGBA32(col)
-	_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-	_VtxWritePtr[0].Pos = p0
-	_VtxWritePtr[0].UV = t0
-	_VtxWritePtr[0].Col = col32
-	_VtxWritePtr[1].Pos = p1
-	_VtxWritePtr[1].UV = t1
-	_VtxWritePtr[1].Col = col32
-	_VtxWritePtr[2].Pos = p2
-	_VtxWritePtr[2].UV = t2
-	_VtxWritePtr[2].Col = col32
-	_VtxWritePtr[3].Pos = p3
-	_VtxWritePtr[3].UV = t3
-	_VtxWritePtr[3].Col = col32
+	VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+	VtxWritePtr[0].Pos = p0
+	VtxWritePtr[0].UV = t0
+	VtxWritePtr[0].Col = col32
+	VtxWritePtr[1].Pos = p1
+	VtxWritePtr[1].UV = t1
+	VtxWritePtr[1].Col = col32
+	VtxWritePtr[2].Pos = p2
+	VtxWritePtr[2].UV = t2
+	VtxWritePtr[2].Col = col32
+	VtxWritePtr[3].Pos = p3
+	VtxWritePtr[3].UV = t3
+	VtxWritePtr[3].Col = col32
 
-	d._VtxWritePtr += 4
-	d._VtxCurrentIdx += 4
-	d._IdxWritePtr += 6
+	d.VtxWritePtr += 4
+	d.VtxCurrentIdx += 4
+	d.IdxWritePtr += 6
 }
 
 // Our scheme may appears a bit unusual, basically we want the most-common calls AddLine AddRect etc. to not have to perform any check so we always have a command ready in the stack.
@@ -2268,22 +2268,22 @@ func (d *DrawList) UpdateClipRect() {
 }
 
 func (d *DrawList) PushClipRectFullScreen() {
-	clipRect := d._Data.ClipRectFullscreen
+	clipRect := d.Data.ClipRectFullscreen
 	d.PushClipRect(f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W})
 }
 
 func (d *DrawList) GetCurrentClipRect() f64.Vec4 {
-	length := len(d._ClipRectStack)
+	length := len(d.ClipRectStack)
 	if length > 0 {
-		return d._ClipRectStack[length-1]
+		return d.ClipRectStack[length-1]
 	}
-	return d._Data.ClipRectFullscreen
+	return d.Data.ClipRectFullscreen
 }
 
 func (d *DrawList) GetCurrentTextureId() TextureID {
-	length := len(d._TextureIdStack)
+	length := len(d.TextureIdStack)
 	if length > 0 {
-		return d._TextureIdStack[length-1]
+		return d.TextureIdStack[length-1]
 	}
 	return nil
 }
@@ -2298,23 +2298,23 @@ func (d *DrawList) AddDrawCmd() {
 
 func (d *DrawList) PathArcToFast(centre f64.Vec2, radius float64, a_min_of_12, a_max_of_12 int) {
 	if radius == 0 || a_min_of_12 > a_max_of_12 {
-		d._Path = append(d._Path, centre)
+		d.Path = append(d.Path, centre)
 		return
 	}
 	for a := a_min_of_12; a <= a_max_of_12; a++ {
-		c := d._Data.CircleVtx12[a%len(d._Data.CircleVtx12)]
-		d._Path = append(d._Path, f64.Vec2{centre.X + c.X*radius, centre.Y + c.Y*radius})
+		c := d.Data.CircleVtx12[a%len(d.Data.CircleVtx12)]
+		d.Path = append(d.Path, f64.Vec2{centre.X + c.X*radius, centre.Y + c.Y*radius})
 	}
 }
 
 func (d *DrawList) PathArcTo(centre f64.Vec2, radius, a_min, a_max float64, num_segments int) {
 	if radius == 0 {
-		d._Path = append(d._Path, centre)
+		d.Path = append(d.Path, centre)
 		return
 	}
 	for i := 0; i <= num_segments; i++ {
 		a := a_min + (float64(i)/float64(num_segments))*(a_max-a_min)
-		d._Path = append(d._Path, f64.Vec2{centre.X + math.Cos(a)*radius, centre.Y + math.Sin(a)*radius})
+		d.Path = append(d.Path, f64.Vec2{centre.X + math.Cos(a)*radius, centre.Y + math.Sin(a)*radius})
 	}
 }
 
@@ -2341,13 +2341,13 @@ func (d *DrawList) PathBezierToCasteljau(path *[]f64.Vec2, x1, y1, x2, y2, x3, y
 }
 
 func (d *DrawList) PathFillConvex(col color.RGBA) {
-	d.AddConvexPolyFilled(d._Path, col)
+	d.AddConvexPolyFilled(d.Path, col)
 	d.PathClear()
 }
 
 func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 	points_count := len(points)
-	uv := d._Data.TexUvWhitePixel
+	uv := d.Data.TexUvWhitePixel
 
 	if d.Flags&DrawListFlagsAntiAliasedFill != 0 {
 		// Anti-aliased Fill
@@ -2358,14 +2358,14 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 		d.PrimReserve(idx_count, vtx_count)
 
 		// Add indexes for fill
-		vtx_inner_idx := d._VtxCurrentIdx
-		vtx_outer_idx := d._VtxCurrentIdx + 1
+		vtx_inner_idx := d.VtxCurrentIdx
+		vtx_outer_idx := d.VtxCurrentIdx + 1
 		for i := 2; i < points_count; i++ {
-			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx)
-			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
-			_IdxWritePtr[2] = DrawIdx(vtx_inner_idx + (i << 1))
-			d._IdxWritePtr += 3
+			IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+			IdxWritePtr[0] = DrawIdx(vtx_inner_idx)
+			IdxWritePtr[1] = DrawIdx(vtx_inner_idx + ((i - 1) << 1))
+			IdxWritePtr[2] = DrawIdx(vtx_inner_idx + (i << 1))
+			d.IdxWritePtr += 3
 		}
 
 		// Compute normals
@@ -2405,28 +2405,28 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 			p1 := f32.Vec2{float32(q1.X), float32(q1.Y)}
 			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 
-			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-			_VtxWritePtr[0].Pos = p0
-			_VtxWritePtr[0].UV = t0
-			_VtxWritePtr[0].Col = chroma.RGBA32(col)
+			VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+			VtxWritePtr[0].Pos = p0
+			VtxWritePtr[0].UV = t0
+			VtxWritePtr[0].Col = chroma.RGBA32(col)
 
 			// Outer
-			_VtxWritePtr[1].Pos = p1
-			_VtxWritePtr[1].UV = t0
-			_VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
-			d._VtxWritePtr += 2
+			VtxWritePtr[1].Pos = p1
+			VtxWritePtr[1].UV = t0
+			VtxWritePtr[1].Col = chroma.RGBA32(col_trans)
+			d.VtxWritePtr += 2
 
 			// Add indexes for fringes
-			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-			_IdxWritePtr[0] = DrawIdx(vtx_inner_idx + i1<<1)
-			_IdxWritePtr[1] = DrawIdx(vtx_inner_idx + i0<<1)
-			_IdxWritePtr[2] = DrawIdx(vtx_outer_idx + i0<<1)
-			_IdxWritePtr[3] = DrawIdx(vtx_outer_idx + i0<<1)
-			_IdxWritePtr[4] = DrawIdx(vtx_outer_idx + i1<<1)
-			_IdxWritePtr[5] = DrawIdx(vtx_inner_idx + i1<<1)
-			d._IdxWritePtr += 6
+			IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+			IdxWritePtr[0] = DrawIdx(vtx_inner_idx + i1<<1)
+			IdxWritePtr[1] = DrawIdx(vtx_inner_idx + i0<<1)
+			IdxWritePtr[2] = DrawIdx(vtx_outer_idx + i0<<1)
+			IdxWritePtr[3] = DrawIdx(vtx_outer_idx + i0<<1)
+			IdxWritePtr[4] = DrawIdx(vtx_outer_idx + i1<<1)
+			IdxWritePtr[5] = DrawIdx(vtx_inner_idx + i1<<1)
+			d.IdxWritePtr += 6
 		}
-		d._VtxCurrentIdx += vtx_count
+		d.VtxCurrentIdx += vtx_count
 	} else {
 		// Non Anti-aliased Fill
 		idx_count := (points_count - 2) * 3
@@ -2436,20 +2436,20 @@ func (d *DrawList) AddConvexPolyFilled(points []f64.Vec2, col color.RGBA) {
 			p0 := f32.Vec2{float32(points[i].X), float32(points[i].Y)}
 			t0 := f32.Vec2{float32(uv.X), float32(uv.Y)}
 
-			_VtxWritePtr := d.VtxBuffer[d._VtxWritePtr:]
-			_VtxWritePtr[0].Pos = p0
-			_VtxWritePtr[0].UV = t0
-			_VtxWritePtr[0].Col = chroma.RGBA32(col)
-			d._VtxWritePtr++
+			VtxWritePtr := d.VtxBuffer[d.VtxWritePtr:]
+			VtxWritePtr[0].Pos = p0
+			VtxWritePtr[0].UV = t0
+			VtxWritePtr[0].Col = chroma.RGBA32(col)
+			d.VtxWritePtr++
 		}
 		for i := 2; i < points_count; i++ {
-			_IdxWritePtr := d.IdxBuffer[d._IdxWritePtr:]
-			_IdxWritePtr[0] = DrawIdx(d._VtxCurrentIdx)
-			_IdxWritePtr[1] = DrawIdx(d._VtxCurrentIdx + i - 1)
-			_IdxWritePtr[2] = DrawIdx(d._VtxCurrentIdx + i)
-			d._IdxWritePtr += 3
+			IdxWritePtr := d.IdxBuffer[d.IdxWritePtr:]
+			IdxWritePtr[0] = DrawIdx(d.VtxCurrentIdx)
+			IdxWritePtr[1] = DrawIdx(d.VtxCurrentIdx + i - 1)
+			IdxWritePtr[2] = DrawIdx(d.VtxCurrentIdx + i)
+			d.IdxWritePtr += 3
 		}
-		d._VtxCurrentIdx += vtx_count
+		d.VtxCurrentIdx += vtx_count
 	}
 }
 
@@ -2466,7 +2466,7 @@ func (d *DrawList) PrimReserve(idx_count, vtx_count int) {
 	} else {
 		d.VtxBuffer = d.VtxBuffer[:vtx_buffer_old_size+vtx_count]
 	}
-	d._VtxWritePtr = vtx_buffer_old_size
+	d.VtxWritePtr = vtx_buffer_old_size
 
 	idx_buffer_old_size := len(d.IdxBuffer)
 	if idx_buffer_old_size+idx_count > len(d.IdxBuffer) {
@@ -2476,12 +2476,12 @@ func (d *DrawList) PrimReserve(idx_count, vtx_count int) {
 	} else {
 		d.IdxBuffer = d.IdxBuffer[:idx_buffer_old_size+idx_count]
 	}
-	d._IdxWritePtr = idx_buffer_old_size
+	d.IdxWritePtr = idx_buffer_old_size
 }
 
 func (d *DrawList) ChannelsMerge() {
 	// Note that we never use or rely on channels.Size because it is merely a buffer that we never shrink back to 0 to keep all sub-buffers ready for use.
-	if d._ChannelsCount <= 1 {
+	if d.ChannelsCount <= 1 {
 		return
 	}
 
@@ -2494,8 +2494,8 @@ func (d *DrawList) ChannelsMerge() {
 
 	new_cmd_buffer_count := 0
 	new_idx_buffer_count := 0
-	for i := 1; i < d._ChannelsCount; i++ {
-		ch := &d._Channels[i]
+	for i := 1; i < d.ChannelsCount; i++ {
+		ch := &d.Channels[i]
 		length := len(d.CmdBuffer)
 		if length > 0 && ch.CmdBuffer[length-1].ElemCount == 0 {
 			ch.CmdBuffer = ch.CmdBuffer[:length-1]
@@ -2507,21 +2507,21 @@ func (d *DrawList) ChannelsMerge() {
 	d.CmdBuffer = append(d.CmdBuffer, make([]DrawCmd, new_cmd_buffer_count)...)
 	d.IdxBuffer = append(d.IdxBuffer, make([]DrawIdx, new_idx_buffer_count)...)
 	cmd_write := len(d.CmdBuffer) - new_cmd_buffer_count
-	d._IdxWritePtr = len(d.IdxBuffer) - new_idx_buffer_count
-	for i := 1; i < d._ChannelsCount; i++ {
-		ch := &d._Channels[i]
+	d.IdxWritePtr = len(d.IdxBuffer) - new_idx_buffer_count
+	for i := 1; i < d.ChannelsCount; i++ {
+		ch := &d.Channels[i]
 		if length := len(ch.CmdBuffer); length > 0 {
 			copy(d.CmdBuffer[cmd_write:], ch.CmdBuffer[:])
 			cmd_write += length
 		}
 		if length := len(ch.IdxBuffer); length > 0 {
-			copy(d.IdxBuffer[d._IdxWritePtr:], ch.IdxBuffer[:])
-			d._IdxWritePtr += length
+			copy(d.IdxBuffer[d.IdxWritePtr:], ch.IdxBuffer[:])
+			d.IdxWritePtr += length
 		}
 	}
 
 	d.UpdateClipRect() // We call this instead of AddDrawCmd(), so that empty channels won't produce an extra draw call.
-	d._ChannelsCount = 1
+	d.ChannelsCount = 1
 }
 
 func (d *DrawDataBuilder) FlattenIntoSingleLayer() {
@@ -2563,10 +2563,10 @@ func (c *Context) AddDrawListToDrawData(out_list *[]*DrawList, draw_list *DrawLi
 		}
 	}
 
-	// Draw list sanity check. Detect mismatch between PrimReserve() calls and incrementing _VtxCurrentIdx, _VtxWritePtr etc. May trigger for you if you are using PrimXXX functions incorrectly.
-	assert(len(draw_list.VtxBuffer) == 0 || draw_list._VtxWritePtr == len(draw_list.VtxBuffer))
-	assert(len(draw_list.IdxBuffer) == 0 || draw_list._IdxWritePtr == len(draw_list.IdxBuffer))
-	assert(draw_list._VtxCurrentIdx == len(draw_list.VtxBuffer))
+	// Draw list sanity check. Detect mismatch between PrimReserve() calls and incrementing VtxCurrentIdx, VtxWritePtr etc. May trigger for you if you are using PrimXXX functions incorrectly.
+	assert(len(draw_list.VtxBuffer) == 0 || draw_list.VtxWritePtr == len(draw_list.VtxBuffer))
+	assert(len(draw_list.IdxBuffer) == 0 || draw_list.IdxWritePtr == len(draw_list.IdxBuffer))
+	assert(draw_list.VtxCurrentIdx == len(draw_list.VtxBuffer))
 
 	*out_list = append(*out_list, draw_list)
 }
@@ -3074,7 +3074,7 @@ func NewDrawList(shared_data *DrawListSharedData) *DrawList {
 
 func (d *DrawList) Init(shared_data *DrawListSharedData) {
 	d.ID = ID(rand.Int())
-	d._Data = shared_data
+	d.Data = shared_data
 	d.OwnerName = ""
 	d.Clear()
 }
@@ -3175,16 +3175,16 @@ func (d *DrawList) AddTextEx(font *Font, font_size float64, pos f64.Vec2, col co
 
 	// Pull default font/size from the shared ImDrawListSharedData instance
 	if font == nil {
-		font = d._Data.Font
+		font = d.Data.Font
 	}
 	if font_size == 0 {
-		font_size = d._Data.FontSize
+		font_size = d.Data.FontSize
 	}
 
 	// Use high-level ImGui::PushFont() or low-level ImDrawList::PushTextureId() to change font.
-	assert(font.ContainerAtlas.TexID == d._TextureIdStack[len(d._TextureIdStack)-1])
+	assert(font.ContainerAtlas.TexID == d.TextureIdStack[len(d.TextureIdStack)-1])
 
-	clip_rect := d._ClipRectStack[len(d._ClipRectStack)-1]
+	clip_rect := d.ClipRectStack[len(d.ClipRectStack)-1]
 	if cpu_fine_clip_rect != nil {
 		clip_rect.X = math.Max(clip_rect.X, cpu_fine_clip_rect.X)
 		clip_rect.Y = math.Max(clip_rect.Y, cpu_fine_clip_rect.Y)
@@ -3214,30 +3214,30 @@ func (c *Context) CalcResizePosSizeFromAnyCorner(window *Window, corner_target f
 }
 
 func (d *DrawList) ChannelsSplit(channels_count int) {
-	assert(d._ChannelsCurrent == 0 && d._ChannelsCount == 1)
-	old_channels_count := len(d._Channels)
+	assert(d.ChannelsCurrent == 0 && d.ChannelsCount == 1)
+	old_channels_count := len(d.Channels)
 	if old_channels_count < channels_count {
-		d._Channels = append(d._Channels, make([]DrawChannel, channels_count-old_channels_count)...)
+		d.Channels = append(d.Channels, make([]DrawChannel, channels_count-old_channels_count)...)
 	}
-	d._ChannelsCount = channels_count
+	d.ChannelsCount = channels_count
 
-	// _Channels[] (24/32 bytes each) hold storage that we'll swap with this->_CmdBuffer/_IdxBuffer
-	// The content of _Channels[0] at this point doesn't matter. We clear it to make state tidy in a debugger but we don't strictly need to.
-	// When we switch to the next channel, we'll copy _CmdBuffer/_IdxBuffer into _Channels[0] and then _Channels[1] into _CmdBuffer/_IdxBuffer
-	d._Channels[0] = DrawChannel{}
+	// Channels[] (24/32 bytes each) hold storage that we'll swap with this->_CmdBuffer/_IdxBuffer
+	// The content of Channels[0] at this point doesn't matter. We clear it to make state tidy in a debugger but we don't strictly need to.
+	// When we switch to the next channel, we'll copy _CmdBuffer/_IdxBuffer into Channels[0] and then Channels[1] into _CmdBuffer/_IdxBuffer
+	d.Channels[0] = DrawChannel{}
 	for i := 1; i < channels_count; i++ {
 		if i >= old_channels_count {
-			d._Channels[i].Init()
+			d.Channels[i].Init()
 		} else {
-			d._Channels[i].CmdBuffer = d._Channels[i].CmdBuffer[:0]
-			d._Channels[i].IdxBuffer = d._Channels[i].IdxBuffer[:0]
+			d.Channels[i].CmdBuffer = d.Channels[i].CmdBuffer[:0]
+			d.Channels[i].IdxBuffer = d.Channels[i].IdxBuffer[:0]
 		}
 
-		if len(d._Channels[i].CmdBuffer) == 0 {
+		if len(d.Channels[i].CmdBuffer) == 0 {
 			var draw_cmd DrawCmd
-			draw_cmd.ClipRect = d._ClipRectStack[len(d._ClipRectStack)-1]
-			draw_cmd.TextureId = d._TextureIdStack[len(d._TextureIdStack)-1]
-			d._Channels[i].CmdBuffer = append(d._Channels[i].CmdBuffer, draw_cmd)
+			draw_cmd.ClipRect = d.ClipRectStack[len(d.ClipRectStack)-1]
+			draw_cmd.TextureId = d.TextureIdStack[len(d.TextureIdStack)-1]
+			d.Channels[i].CmdBuffer = append(d.Channels[i].CmdBuffer, draw_cmd)
 		}
 	}
 }
@@ -3437,14 +3437,14 @@ func (d *DrawList) AddRectFilledMultiColor(a, c f64.Vec2, col_upr_left, col_upr_
 		return
 	}
 
-	uv := d._Data.TexUvWhitePixel
+	uv := d.Data.TexUvWhitePixel
 	d.PrimReserve(6, 4)
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 1))
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 2))
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 2))
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx + 3))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx + 1))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx + 2))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx + 2))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx + 3))
 	d.PrimWriteVtx(a, uv, col_upr_left)
 	d.PrimWriteVtx(f64.Vec2{c.X, a.Y}, uv, col_upr_right)
 	d.PrimWriteVtx(c, uv, col_bot_right)
@@ -3452,16 +3452,16 @@ func (d *DrawList) AddRectFilledMultiColor(a, c f64.Vec2, col_upr_left, col_upr_
 }
 
 func (d *DrawList) PrimWriteIdx(idx DrawIdx) {
-	d.IdxBuffer[d._IdxWritePtr] = idx
-	d._IdxWritePtr++
+	d.IdxBuffer[d.IdxWritePtr] = idx
+	d.IdxWritePtr++
 }
 
 func (d *DrawList) PrimWriteVtx(pos, uv f64.Vec2, col color.RGBA) {
-	d.VtxBuffer[d._VtxWritePtr].Pos = f32.Vec2{float32(pos.X), float32(pos.Y)}
-	d.VtxBuffer[d._VtxWritePtr].UV = f32.Vec2{float32(uv.X), float32(uv.Y)}
-	d.VtxBuffer[d._VtxWritePtr].Col = chroma.RGBA32(col)
-	d._VtxWritePtr++
-	d._VtxCurrentIdx++
+	d.VtxBuffer[d.VtxWritePtr].Pos = f32.Vec2{float32(pos.X), float32(pos.Y)}
+	d.VtxBuffer[d.VtxWritePtr].UV = f32.Vec2{float32(uv.X), float32(uv.Y)}
+	d.VtxBuffer[d.VtxWritePtr].Col = chroma.RGBA32(col)
+	d.VtxWritePtr++
+	d.VtxCurrentIdx++
 }
 
 // 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
@@ -3509,7 +3509,7 @@ func (c *Context) ShadeVertsLinearColorGradientKeepAlpha(vtx []DrawVert, vert_st
 }
 
 func (d *DrawList) PrimVtx(pos, uv f64.Vec2, col color.RGBA) {
-	d.PrimWriteIdx(DrawIdx(d._VtxCurrentIdx))
+	d.PrimWriteIdx(DrawIdx(d.VtxCurrentIdx))
 	d.PrimWriteVtx(pos, uv, col)
 }
 
@@ -3543,10 +3543,10 @@ func (d *DrawList) AddBezierCurveEx(pos0, cp0, cp1, pos1 f64.Vec2, col color.RGB
 }
 
 func (d *DrawList) PathBezierCurveTo(p2, p3, p4 f64.Vec2, num_segments int) {
-	p1 := d._Path[len(d._Path)-1]
+	p1 := d.Path[len(d.Path)-1]
 	if num_segments == 0 {
 		// Auto-tessellated
-		d.PathBezierToCasteljau(&d._Path, p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, p4.X, p4.Y, d._Data.CurveTessellationTol, 0)
+		d.PathBezierToCasteljau(&d.Path, p1.X, p1.Y, p2.X, p2.Y, p3.X, p3.Y, p4.X, p4.Y, d.Data.CurveTessellationTol, 0)
 	} else {
 		t_step := 1.0 / float64(num_segments)
 		for i_step := 1; i_step <= num_segments; i_step++ {
@@ -3556,7 +3556,7 @@ func (d *DrawList) PathBezierCurveTo(p2, p3, p4 f64.Vec2, num_segments int) {
 			w2 := 3 * u * u * t
 			w3 := 3 * u * t * t
 			w4 := t * t * t
-			d._Path = append(d._Path, f64.Vec2{w1*p1.X + w2*p2.X + w3*p3.X + w4*p4.X, w1*p1.Y + w2*p2.Y + w3*p3.Y + w4*p4.Y})
+			d.Path = append(d.Path, f64.Vec2{w1*p1.X + w2*p2.X + w3*p3.X + w4*p4.X, w1*p1.Y + w2*p2.Y + w3*p3.Y + w4*p4.Y})
 		}
 	}
 }

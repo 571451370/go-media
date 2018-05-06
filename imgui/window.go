@@ -481,8 +481,8 @@ func (c *Context) PushColumnClipRectEx(column_index int) {
 func (c *Context) PushClipRect(clip_rect_min, clip_rect_max f64.Vec2, intersect_with_current_clip_rect bool) {
 	window := c.GetCurrentWindow()
 	window.DrawList.PushClipRectEx(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect)
-	length := len(window.DrawList._ClipRectStack)
-	clipRect := window.DrawList._ClipRectStack[length-1]
+	length := len(window.DrawList.ClipRectStack)
+	clipRect := window.DrawList.ClipRectStack[length-1]
 	window.ClipRect = f64.Rectangle{f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W}}
 }
 
@@ -620,8 +620,8 @@ func (c *Context) CalcItemWidth() float64 {
 func (c *Context) PopClipRect() {
 	window := c.GetCurrentWindow()
 	window.DrawList.PopClipRect()
-	length := len(window.DrawList._ClipRectStack)
-	clipRect := window.DrawList._ClipRectStack[length-1]
+	length := len(window.DrawList.ClipRectStack)
+	clipRect := window.DrawList.ClipRectStack[length-1]
 	window.ClipRect = f64.Rectangle{f64.Vec2{clipRect.X, clipRect.Y}, f64.Vec2{clipRect.Z, clipRect.W}}
 }
 
