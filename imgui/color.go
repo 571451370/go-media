@@ -113,7 +113,6 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 	}
 	w_items_all := c.CalcItemWidth() - w_extra
 	label_display_end := c.FindRenderedTextEnd(label)
-	label = label[:label_display_end]
 
 	alpha := (flags & ColorEditFlagsNoAlpha) == 0
 	hdr := (flags & ColorEditFlagsHDR) != 0
@@ -125,6 +124,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 
 	c.BeginGroup()
 	c.PushStringID(label)
+	label = label[:label_display_end]
 
 	// If we're not showing any slider there's no point in doing any HSV conversions
 	if flags&ColorEditFlagsNoInputs != 0 {
@@ -532,7 +532,17 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	// Convert back color to RGB
 	if value_changed_h || value_changed_sv {
-		rgb := chroma.HSV2RGB(hsv)
+		h, s, v := hsv.H, hsv.S, hsv.V
+		if h >= 1.0 {
+			h = 0.995
+		}
+		if s < 0 {
+			s = 10 * 1e-6
+		}
+		if v < 0 {
+			v = 1e-6
+		}
+		rgb := chroma.HSV2RGB(chroma.HSV{h, s, v})
 		*col = color.RGBA{rgb.R, rgb.G, rgb.B, col.A}
 	}
 
