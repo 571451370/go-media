@@ -4335,8 +4335,8 @@ func (f *Funcs) NodeDrawList(window *imgui.Window, draw_list *imgui.DrawList, la
 		if len(draw_list.IdxBuffer) > 0 {
 			idx_str = "indexed"
 		}
-		pcmd_node_open := im.TreeNodeID(imgui.ID(idx), "Draw %4d %s vtx, tex 0x%p, clip_rect (%4.0f,%4.0f)-(%4.0f,%4.0f)",
-			pcmd.ElemCount, idx_str, pcmd.TextureId, pcmd.ClipRect.X, pcmd.ClipRect.Y, pcmd.ClipRect.Z, pcmd.ClipRect.W)
+		pcmd_node_open := im.TreeNodeID(imgui.ID(idx), "Draw %4d %s vtx, tex 0x%x, clip_rect (%4.0f,%4.0f)-(%4.0f,%4.0f)",
+			pcmd.ElemCount, idx_str, pcmd.TextureId.(uint32), pcmd.ClipRect.X, pcmd.ClipRect.Y, pcmd.ClipRect.Z, pcmd.ClipRect.W)
 		show_clip_rects := &ui.MetricsWindow.ShowClipRects
 		if *show_clip_rects && im.IsItemHovered() {
 			clip_rect := pcmd.ClipRect
