@@ -58,10 +58,15 @@ func (c *Context) SetColorEditOptions(flags ColorEditFlags) {
 	c.ColorEditOptions = flags
 }
 
-// Note: only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
 func (c *Context) ColorTooltip(text string, col color.RGBA, flags ColorEditFlags) {
-	cr, cg, cb, ca := col.R, col.G, col.B, col.A
-	fc := chroma.RGBA2VEC4(col)
+	c.ColorTooltipV(text, chroma.RGBA2VEC4(col), flags)
+}
+
+// Note: only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
+func (c *Context) ColorTooltipV(text string, col f64.Vec4, flags ColorEditFlags) {
+	rgba := col.ToRGBA()
+	cr, cg, cb, ca := rgba.R, rgba.G, rgba.B, rgba.A
+	fr, fg, fb, fa := col.X, col.Y, col.Z, col.W
 
 	c.BeginTooltipEx(0, true)
 
@@ -74,32 +79,32 @@ func (c *Context) ColorTooltip(text string, col color.RGBA, flags ColorEditFlags
 		c.FontSize*3 + c.Style.FramePadding.Y*2,
 		c.FontSize*3 + c.Style.FramePadding.Y*2,
 	}
-	c.ColorButtonEx("##preview", col, flags&(ColorEditFlagsNoAlpha|ColorEditFlagsAlphaPreview|ColorEditFlagsAlphaPreviewHalf)|ColorEditFlagsNoTooltip, sz)
+	c.ColorButtonVEx("##preview", col, flags&(ColorEditFlagsNoAlpha|ColorEditFlagsAlphaPreview|ColorEditFlagsAlphaPreviewHalf)|ColorEditFlagsNoTooltip, sz)
 	c.SameLine()
 	if flags&ColorEditFlagsNoAlpha != 0 {
-		c.Text("#%02X%02X%02X\nR: %d, G: %d, B: %d\n(%.3f, %.3f, %.3f)", cr, cg, cb, cr, cg, cb, fc.X, fc.Y, fc.Z)
+		c.Text("#%02X%02X%02X\nR: %d, G: %d, B: %d\n(%.3f, %.3f, %.3f)", cr, cg, cb, cr, cg, cb, fr, fg, fb, fa)
 	} else {
-		c.Text("#%02X%02X%02X%02X\nR:%d, G:%d, B:%d, A:%d\n(%.3f, %.3f, %.3f, %.3f)", cr, cg, cb, ca, cr, cg, cb, ca, fc.X, fc.Y, fc.Z, fc.W)
+		c.Text("#%02X%02X%02X%02X\nR:%d, G:%d, B:%d, A:%d\n(%.3f, %.3f, %.3f, %.3f)", cr, cg, cb, ca, cr, cg, cb, ca, fr, fg, fb, fa)
 	}
 	c.EndTooltip()
 }
 
-func (c *Context) ColorEdit3(label string, col *color.RGBA) bool {
-	return c.ColorEdit4Ex(label, col, ColorEditFlagsNoAlpha)
+func (c *Context) ColorEditV3(label string, col *f64.Vec4) bool {
+	return c.ColorEditV4Ex(label, col, ColorEditFlagsNoAlpha)
 }
 
-func (c *Context) ColorEdit3Ex(label string, col *color.RGBA, flags ColorEditFlags) bool {
-	return c.ColorEdit4Ex(label, col, flags|ColorEditFlagsNoAlpha)
+func (c *Context) ColorEditV3Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
+	return c.ColorEditV4Ex(label, col, flags|ColorEditFlagsNoAlpha)
 }
 
-func (c *Context) ColorEdit4(label string, col *color.RGBA) bool {
-	return c.ColorEdit4Ex(label, col, 0)
+func (c *Context) ColorEditV4(label string, col *f64.Vec4) bool {
+	return c.ColorEditV4Ex(label, col, 0)
 }
 
 // Edit colors components (each component in 0.0f..1.0f range).
 // See enum ImGuiColorEditFlags_ for available options. e.g. Only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
 // With typical options: Left-click on colored square to open color picker. Right-click to open option menu. CTRL-Click over input fields to edit them and TAB to go to next item.
-func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFlags) bool {
+func (c *Context) ColorEditV4Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -133,7 +138,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 
 	// Context menu: display and modify options (before defaults are applied)
 	if flags&ColorEditFlagsNoOptions == 0 {
-		c.ColorEditOptionsPopup(*col, flags)
+		c.ColorEditOptionsPopupV(*col, flags)
 	}
 
 	// Read stored options
@@ -149,10 +154,10 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 	flags |= (c.ColorEditOptions &^ (ColorEditFlags_InputsMask | ColorEditFlags_DataTypeMask | ColorEditFlags_PickerMask))
 
 	// Convert to the formats we need
-	v := chroma.RGBA2VEC4(*col)
+	v := *col
 	f := [4]float64{v.X, v.Y, v.Z, 1}
 	if alpha {
-		f[3] = float64(col.A) / 255.0
+		f[3] = col.Z
 	}
 	if flags&ColorEditFlagsHSV != 0 {
 		hsv := chroma.VEC42HSV(f64.Vec4{f[0], f[1], f[2], f[3]})
@@ -266,7 +271,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 			c.SameLineEx(0, style.ItemInnerSpacing.X)
 		}
 
-		if c.ColorButtonEx("##ColorButton", *col, flags, f64.Vec2{0, 0}) {
+		if c.ColorButtonVEx("##ColorButton", *col, flags, f64.Vec2{0, 0}) {
 			if flags&ColorEditFlagsNoPicker == 0 {
 				// Store current color and open a picker
 				c.ColorPickerRef = *col
@@ -287,7 +292,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 			picker_flags_to_forward := ColorEditFlags_DataTypeMask | ColorEditFlags_PickerMask | ColorEditFlagsHDR | ColorEditFlagsNoAlpha | ColorEditFlagsAlphaBar
 			picker_flags := (flags_untouched & picker_flags_to_forward) | ColorEditFlags_InputsMask | ColorEditFlagsNoLabel | ColorEditFlagsAlphaPreviewHalf
 			c.PushItemWidth(square_sz * 12.0) // Use 256 + bar sizes?
-			if c.ColorPicker4Ex("##picker", col, picker_flags, &c.ColorPickerRef) {
+			if c.ColorPickerV4Ex("##picker", col, picker_flags, &c.ColorPickerRef) {
 				value_changed = true
 			}
 			c.PopItemWidth()
@@ -313,7 +318,7 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 			f[0], f[1], f[2], f[3] = vec.X, vec.Y, vec.Z, vec.W
 		}
 		if value_changed {
-			*col = chroma.VEC42RGBA(f64.Vec4{f[0], f[1], f[2], f[3]})
+			*col = f64.Vec4{f[0], f[1], f[2], f[3]}
 		}
 	}
 
@@ -334,24 +339,59 @@ func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFla
 	return value_changed
 }
 
-func (c *Context) ColorPicker3(label string, col *color.RGBA, flags ColorEditFlags) bool {
-	new_col := *col
-	new_col.A = 255
-	if !c.ColorPicker4Ex(label, &new_col, flags|ColorEditFlagsNoAlpha, nil) {
-		return false
-	}
-	*col = new_col
-	return true
+func (c *Context) ColorPicker3(label string, col *color.RGBA) bool {
+	colv := chroma.RGBA2VEC4(*col)
+	value_changed := c.ColorPickerV3(label, &colv)
+	*col = chroma.VEC42RGBA(colv)
+	return value_changed
 }
 
 func (c *Context) ColorPicker4(label string, col *color.RGBA) bool {
-	return c.ColorPicker4Ex(label, col, 0, nil)
+	colv := chroma.RGBA2VEC4(*col)
+	value_changed := c.ColorPickerV4(label, &colv)
+	*col = chroma.VEC42RGBA(colv)
+	return value_changed
+}
+
+func (c *Context) ColorPicker3Ex(label string, col *color.RGBA, flags ColorEditFlags) bool {
+	colv := chroma.RGBA2VEC4(*col)
+	value_changed := c.ColorPickerV3Ex(label, &colv, flags)
+	*col = chroma.VEC42RGBA(colv)
+	return value_changed
+}
+
+func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditFlags, ref_col *color.RGBA) bool {
+	var ref_colv f64.Vec4
+	var ref_colv_ptr *f64.Vec4
+	if ref_col != nil {
+		ref_colv = chroma.RGBA2VEC4(*col)
+		ref_colv_ptr = &ref_colv
+	}
+	colv := chroma.RGBA2VEC4(*col)
+	value_changed := c.ColorPickerV4Ex(label, &colv, flags, ref_colv_ptr)
+	*col = chroma.VEC42RGBA(colv)
+	if ref_colv_ptr != nil {
+		*ref_col = chroma.VEC42RGBA(ref_colv)
+	}
+	return value_changed
+}
+
+func (c *Context) ColorPickerV3(label string, col *f64.Vec4) bool {
+	return c.ColorPickerV3Ex(label, col, 0)
+}
+
+func (c *Context) ColorPickerV4(label string, col *f64.Vec4) bool {
+	return c.ColorPickerV4Ex(label, col, 0, nil)
+}
+
+func (c *Context) ColorPickerV3Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
+	return c.ColorPickerV4Ex(label, col, flags|ColorEditFlagsNoAlpha, nil)
 }
 
 // ColorPicker
 // Note: only access 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
 // FIXME: we adjust the big color square height based on item width, which may cause a flickering feedback loop (if automatic height makes a vertical scrollbar appears, affecting automatic width..)
-func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditFlags, ref_col *color.RGBA) bool {
+func (c *Context) ColorPickerV4Ex(label string, col *f64.Vec4, flags ColorEditFlags, ref_col *f64.Vec4) bool {
 	window := c.GetCurrentWindow()
 	draw_list := window.DrawList
 	style := &c.Style
@@ -365,7 +405,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	// Context menu: display and store options.
 	if flags&ColorEditFlagsNoOptions == 0 {
-		c.ColorPickerOptionsPopup(flags, col)
+		c.ColorPickerOptionsPopupV(flags, col)
 	}
 
 	// Read stored options
@@ -414,7 +454,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	triangle_pb := f64.Vec2{triangle_r * -0.5, triangle_r * -0.866025} // Black point.
 	triangle_pc := f64.Vec2{triangle_r * -0.5, triangle_r * +0.866025} // White point.
 
-	hsv := chroma.RGB2HSV(*col)
+	hsv := chroma.VEC42HSV(*col)
 	value_changed := false
 	value_changed_h := false
 	value_changed_sv := false
@@ -483,7 +523,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		c.SetCursorScreenPos(f64.Vec2{bar1_pos_x, picker_pos.Y})
 		c.InvisibleButton("alpha", f64.Vec2{bars_width, sv_picker_size})
 		if c.IsItemActive() {
-			col.A = uint8(F32_TO_INT8_UNBOUND(1.0 - f64.Saturate((io.MousePos.Y-picker_pos.Y)/(sv_picker_size-1))))
+			col.W = 1.0 - f64.Saturate((io.MousePos.Y-picker_pos.Y)/(sv_picker_size-1))
 			value_changed = true
 		}
 	}
@@ -512,16 +552,16 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		}
 		col_v4 := *col
 		if flags&ColorEditFlagsNoAlpha != 0 {
-			col_v4.A = 255
+			col_v4.W = 1
 		}
-		c.ColorButtonEx("##current", col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2})
+		c.ColorButtonVEx("##current", col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2})
 		if ref_col != nil {
 			c.Text("Original")
 			ref_col_v4 := *ref_col
 			if flags&ColorEditFlagsNoAlpha != 0 {
-				ref_col_v4.A = 255
+				ref_col_v4.W = 1
 			}
-			if c.ColorButtonEx("##original", ref_col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2}) {
+			if c.ColorButtonVEx("##original", ref_col_v4, (flags & (ColorEditFlagsHDR | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf | ColorEditFlagsNoTooltip)), f64.Vec2{square_sz * 3, square_sz * 2}) {
 				*col = *ref_col
 				value_changed = true
 			}
@@ -534,7 +574,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	if value_changed_h || value_changed_sv {
 		h, s, v := hsv.H, hsv.S, hsv.V
 		if h >= 1.0 {
-			h = 0.995
+			h -= (10 * 1e-6)
 		}
 		if s < 0 {
 			s = 10 * 1e-6
@@ -542,8 +582,8 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		if v < 0 {
 			v = 1e-6
 		}
-		rgb := chroma.HSV2RGB(chroma.HSV{h, s, v})
-		*col = color.RGBA{rgb.R, rgb.G, rgb.B, col.A}
+		rgb := chroma.HSV2VEC4(chroma.HSV{h, s, v})
+		*col = f64.Vec4{rgb.X, rgb.Y, rgb.Z, col.W}
 	}
 
 	// R,G,B and H,S,V slider color editor
@@ -556,17 +596,17 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 		sub_flags_to_forward := ColorEditFlags_DataTypeMask | ColorEditFlagsHDR | ColorEditFlagsNoAlpha | ColorEditFlagsNoOptions | ColorEditFlagsNoSmallPreview | ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf
 		sub_flags := (flags & sub_flags_to_forward) | ColorEditFlagsNoPicker
 		if flags&ColorEditFlagsRGB != 0 || flags&ColorEditFlags_InputsMask == 0 {
-			if c.ColorEdit4Ex("##rgb", col, sub_flags|ColorEditFlagsRGB) {
+			if c.ColorEditV4Ex("##rgb", col, sub_flags|ColorEditFlagsRGB) {
 				value_changed = true
 			}
 		}
 		if flags&ColorEditFlagsHSV != 0 || flags&ColorEditFlags_InputsMask == 0 {
-			if c.ColorEdit4Ex("##hsv", col, sub_flags|ColorEditFlagsHSV) {
+			if c.ColorEditV4Ex("##hsv", col, sub_flags|ColorEditFlagsHSV) {
 				value_changed = true
 			}
 		}
 		if flags&ColorEditFlagsHEX != 0 || flags&ColorEditFlags_InputsMask == 0 {
-			if c.ColorEdit4Ex("##hex", col, sub_flags|ColorEditFlagsHEX) {
+			if c.ColorEditV4Ex("##hex", col, sub_flags|ColorEditFlagsHEX) {
 				value_changed = true
 			}
 		}
@@ -575,7 +615,7 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 
 	// Try to cancel hue wrap (after ColorEdit), if any
 	if value_changed {
-		new_hsv := chroma.RGB2HSV(*col)
+		new_hsv := chroma.VEC42HSV(*col)
 		if new_hsv.V <= 0 && hsv.H > 0 {
 			if new_hsv.V <= 0 && hsv.V != new_hsv.V {
 				if new_hsv.V <= 0 {
@@ -586,13 +626,14 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 					new_hsv.S = hsv.S * 0.5
 				}
 			}
-			*col = chroma.HSV2RGB(new_hsv)
+			*col = chroma.HSV2VEC4(new_hsv)
 		}
 	}
 
-	hue_color32 := chroma.HSV2RGB(chroma.HSV{hsv.H, 1, 1})
+	hue_color32v := chroma.HSV2VEC4(chroma.HSV{hsv.H, 1, 1})
+	hue_color32 := chroma.VEC42RGBA(hue_color32v)
 	col32_no_alpha := *col
-	col32_no_alpha.A = 255
+	col32_no_alpha.W = 1
 
 	hue_colors := [...]color.RGBA{
 		color.RGBA{255, 0, 0, 255},
@@ -689,18 +730,22 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 	if value_changed_sv {
 		sv_cursor_rad = 10
 	}
-	draw_list.AddCircleFilledEx(sv_cursor_pos, sv_cursor_rad, col32_no_alpha, 12)
+	draw_list.AddCircleFilledEx(sv_cursor_pos, sv_cursor_rad, chroma.VEC42RGBA(col32_no_alpha), 12)
 	draw_list.AddCircleEx(sv_cursor_pos, sv_cursor_rad+1, color.RGBA{128, 128, 128, 255}, 12, 1)
 	draw_list.AddCircleEx(sv_cursor_pos, sv_cursor_rad, color.RGBA{255, 255, 255, 255}, 12, 1)
 
 	// Render alpha bar
 	if alpha_bar {
-		alpha := float64(col.A) / 255.0
+		alpha := col.W
 		bar1_bb := f64.Rect(bar1_pos_x, picker_pos.Y, bar1_pos_x+bars_width, picker_pos.Y+sv_picker_size)
 		c.RenderColorRectWithAlphaCheckerboard(bar1_bb.Min, bar1_bb.Max, color.RGBA{}, bar1_bb.Dx()/2.0, f64.Vec2{0.0, 0.0})
 		col32_trans_alpha := col32_no_alpha
-		col32_trans_alpha.A = 0
-		draw_list.AddRectFilledMultiColor(bar1_bb.Min, bar1_bb.Max, col32_no_alpha, col32_no_alpha, col32_trans_alpha, col32_trans_alpha)
+		col32_trans_alpha.W = 0
+
+		rgba32_no_alpha := chroma.VEC42RGBA(col32_no_alpha)
+		rgba32_trans_alpha := chroma.VEC42RGBA(col32_trans_alpha)
+
+		draw_list.AddRectFilledMultiColor(bar1_bb.Min, bar1_bb.Max, rgba32_no_alpha, rgba32_no_alpha, rgba32_trans_alpha, rgba32_trans_alpha)
 		bar1_line_y := float64(int(picker_pos.Y + (1.0-alpha)*sv_picker_size + 0.5))
 		c.RenderFrameBorder(bar1_bb.Min, bar1_bb.Max, 0.0)
 		c.RenderArrowsForVerticalBar(draw_list, f64.Vec2{bar1_pos_x - 1, bar1_line_y}, f64.Vec2{bars_triangles_half_sz + 1, bars_triangles_half_sz}, bars_width+2.0)
@@ -712,6 +757,12 @@ func (c *Context) ColorPicker4Ex(label string, col *color.RGBA, flags ColorEditF
 }
 
 func (c *Context) ColorPickerOptionsPopup(flags ColorEditFlags, ref_col *color.RGBA) {
+	ref_colv := chroma.RGBA2VEC4(*ref_col)
+	c.ColorPickerOptionsPopupV(flags, &ref_colv)
+	*ref_col = chroma.VEC42RGBA(ref_colv)
+}
+
+func (c *Context) ColorPickerOptionsPopupV(flags ColorEditFlags, ref_col *f64.Vec4) {
 	allow_opt_picker := flags&ColorEditFlags_PickerMask == 0
 	allow_opt_alpha_bar := flags&ColorEditFlagsNoAlpha == 0 && flags&ColorEditFlagsAlphaBar == 0
 	if (!allow_opt_picker && !allow_opt_alpha_bar) || !c.BeginPopup("context") {
@@ -744,7 +795,7 @@ func (c *Context) ColorPickerOptionsPopup(flags ColorEditFlags, ref_col *color.R
 			}
 			c.SetCursorScreenPos(backup_pos)
 			dummy_ref_col := *ref_col
-			c.ColorPicker4Ex("##dummypicker", &dummy_ref_col, picker_flags, nil)
+			c.ColorPickerV4Ex("##dummypicker", &dummy_ref_col, picker_flags, nil)
 			c.PopID()
 		}
 		c.PopItemWidth()
@@ -761,6 +812,10 @@ func (c *Context) ColorPickerOptionsPopup(flags ColorEditFlags, ref_col *color.R
 }
 
 func (c *Context) ColorEditOptionsPopup(col color.RGBA, flags ColorEditFlags) {
+	c.ColorEditOptionsPopupV(chroma.RGBA2VEC4(col), flags)
+}
+
+func (c *Context) ColorEditOptionsPopupV(col f64.Vec4, flags ColorEditFlags) {
 	allow_opt_inputs := flags&ColorEditFlags_InputsMask == 0
 	allow_opt_datatype := flags&ColorEditFlags_DataTypeMask == 0
 	if (!allow_opt_inputs && !allow_opt_datatype) || !c.BeginPopup("context") {
@@ -799,21 +854,25 @@ func (c *Context) ColorEditOptionsPopup(col color.RGBA, flags ColorEditFlags) {
 	}
 	if c.BeginPopup("Copy") {
 		if flags&ColorEditFlagsNoAlpha != 0 {
-			col.A = 255
+			col.W = 1
 		}
-		fc := chroma.RGBA2VEC4(col)
-		buf := fmt.Sprintf("(%.3ff, %.3ff, %.3ff, %.3ff)", fc.X, fc.Y, fc.Z, fc.W)
+
+		rgba := chroma.VEC42RGBA(col)
+		cr, cg, cb, ca := rgba.R, rgba.G, rgba.B, rgba.A
+		fr, fg, fb, fa := col.X, col.Y, col.Z, col.W
+
+		buf := fmt.Sprintf("(%.3ff, %.3ff, %.3ff, %.3ff)", fr, fg, fb, fa)
 		if c.Selectable(buf) {
 			c.SetClipboardText(buf)
 		}
-		buf = fmt.Sprintf("(%d,%d,%d,%d)", col.R, col.G, col.B, col.A)
+		buf = fmt.Sprintf("(%d,%d,%d,%d)", cr, cg, cb, ca)
 		if c.Selectable(buf) {
 			c.SetClipboardText(buf)
 		}
 		if flags&ColorEditFlagsNoAlpha != 0 {
-			buf = fmt.Sprintf("0x%02X%02X%02X", col.R, col.G, col.B)
+			buf = fmt.Sprintf("0x%02X%02X%02X", cr, cg, cb, ca)
 		} else {
-			buf = fmt.Sprintf("0x%02X%02X%02X%02X", col.R, col.G, col.B, col.A)
+			buf = fmt.Sprintf("0x%02X%02X%02X%02X", cr, cg, cb, ca)
 		}
 		if c.Selectable(buf) {
 			c.SetClipboardText(buf)
@@ -824,30 +883,21 @@ func (c *Context) ColorEditOptionsPopup(col color.RGBA, flags ColorEditFlags) {
 	c.EndPopup()
 }
 
-func (c *Context) ColorEditV3(label string, col *f64.Vec4) bool {
-	rgba := col.ToRGBA()
-	value_changed := c.ColorEdit3(label, &rgba)
-	*col = chroma.RGBA2VEC4(rgba)
-	return value_changed
+func (c *Context) ColorEdit3(label string, col *color.RGBA) bool {
+	return c.ColorEdit4Ex(label, col, ColorEditFlagsNoAlpha)
 }
 
-func (c *Context) ColorEditV3Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
-	rgba := col.ToRGBA()
-	value_changed := c.ColorEdit3Ex(label, &rgba, flags)
-	*col = chroma.RGBA2VEC4(rgba)
-	return value_changed
+func (c *Context) ColorEdit3Ex(label string, col *color.RGBA, flags ColorEditFlags) bool {
+	return c.ColorEdit4Ex(label, col, flags|ColorEditFlagsNoAlpha)
 }
 
-func (c *Context) ColorEditV4(label string, col *f64.Vec4) bool {
-	rgba := col.ToRGBA()
-	value_changed := c.ColorEdit4(label, &rgba)
-	*col = chroma.RGBA2VEC4(rgba)
-	return value_changed
+func (c *Context) ColorEdit4(label string, col *color.RGBA) bool {
+	return c.ColorEdit4Ex(label, col, 0)
 }
 
-func (c *Context) ColorEditV4Ex(label string, col *f64.Vec4, flags ColorEditFlags) bool {
-	rgba := col.ToRGBA()
-	value_changed := c.ColorEdit4Ex(label, &rgba, flags)
-	*col = chroma.RGBA2VEC4(rgba)
+func (c *Context) ColorEdit4Ex(label string, col *color.RGBA, flags ColorEditFlags) bool {
+	vec := chroma.RGBA2VEC4(*col)
+	value_changed := c.ColorEditV4Ex(label, &vec, flags)
+	*col = chroma.VEC42RGBA(vec)
 	return value_changed
 }

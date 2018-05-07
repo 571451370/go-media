@@ -15,6 +15,7 @@ import (
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/imgui"
+	"github.com/qeedquan/go-media/math/f32"
 	"github.com/qeedquan/go-media/math/f64"
 	"github.com/qeedquan/go-media/sdl"
 )
@@ -68,7 +69,7 @@ type UI struct {
 	NoNav       bool
 	NoClose     bool
 
-	ClearColor color.RGBA
+	ClearColor f64.Vec4
 
 	AppAutoResize struct {
 		Lines int
@@ -485,7 +486,7 @@ func initIM() {
 	ui.ShowSimpleWindow = true
 	ui.ShowDemoWindow = true
 
-	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}.ToRGBA()
+	ui.ClearColor = f64.Vec4{0.45, 0.55, 0.60, 1.00}
 
 	ui.Widgets.Basic.Clicked = 0
 	ui.Widgets.Basic.Check = true
@@ -698,11 +699,11 @@ func render() {
 	ShowSimpleWindow()
 	ShowAnotherWindow()
 	ShowDemoWindow()
-	clearColor := chroma.RGBA2VEC4(ui.ClearColor)
 	// Rendering
 	io := im.GetIO()
+	clearColor := f32.Vec4{float32(ui.ClearColor.X), float32(ui.ClearColor.Y), float32(ui.ClearColor.Z), float32(ui.ClearColor.W)}
 	gl.Viewport(0, 0, int32(io.DisplaySize.X), int32(io.DisplaySize.Y))
-	gl.ClearColor(float32(clearColor.X), float32(clearColor.Y), float32(clearColor.Z), float32(clearColor.W))
+	gl.ClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	im.Render()
 	renderDrawData(im.GetDrawData())
@@ -716,7 +717,7 @@ func ShowSimpleWindow() {
 	im.Text("Hello, world!")
 	im.SliderFloat("float", &ui.SliderValue, 0, 1)
 
-	im.ColorEdit3("clear color", &ui.ClearColor)
+	im.ColorEditV3("clear color", &ui.ClearColor)
 	im.Checkbox("Demo Window", &ui.ShowDemoWindow)
 	im.Checkbox("Another Window", &ui.ShowAnotherWindow)
 	if im.Button("Button") {

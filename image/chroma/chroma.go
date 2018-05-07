@@ -63,7 +63,7 @@ func (h HSL) RGBA() (r, g, b, a uint32) {
 	return c.RGBA()
 }
 
-func HSV2RGB(c HSV) color.RGBA {
+func HSV2VEC4(c HSV) f64.Vec4 {
 	h := c.H * 360
 	s := c.S
 	v := c.V
@@ -89,22 +89,17 @@ func HSV2RGB(c HSV) color.RGBA {
 	case 5:
 		r, g, b = v, p, q
 	}
-	return color.RGBA{
-		uint8(f64.Clamp(r*255, 0, 255)),
-		uint8(f64.Clamp(g*255, 0, 255)),
-		uint8(f64.Clamp(b*255, 0, 255)),
-		255,
-	}
+	return f64.Vec4{r, g, b, 1}
+}
+
+func HSV2RGB(c HSV) color.RGBA {
+	return HSV2VEC4(c).ToRGBA()
 }
 
 func VEC42HSV(c f64.Vec4) HSV {
-	return RGB2HSV(c.ToRGBA())
-}
-
-func RGB2HSV(c color.RGBA) HSV {
-	r := float64(c.R) / 255
-	g := float64(c.G) / 255
-	b := float64(c.B) / 255
+	r := c.X
+	g := c.Y
+	b := c.Z
 
 	max := math.Max(r, math.Max(g, b))
 	min := math.Min(r, math.Min(g, b))
@@ -132,6 +127,10 @@ func RGB2HSV(c color.RGBA) HSV {
 	h /= 360
 
 	return HSV{h, s, v}
+}
+
+func RGB2HSV(c color.RGBA) HSV {
+	return VEC42HSV(RGBA2VEC4(c))
 }
 
 func HSV2HSL(c HSV) HSL {

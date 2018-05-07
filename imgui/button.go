@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -28,10 +29,18 @@ const (
 )
 
 func (c *Context) ColorButton(desc_id string, col color.RGBA) bool {
-	return c.ColorButtonEx(desc_id, col, 0, f64.Vec2{0, 0})
+	return c.ColorButtonV(desc_id, chroma.RGBA2VEC4(col))
 }
 
 func (c *Context) ColorButtonEx(desc_id string, col color.RGBA, flags ColorEditFlags, size f64.Vec2) bool {
+	return c.ColorButtonVEx(desc_id, chroma.RGBA2VEC4(col), flags, size)
+}
+
+func (c *Context) ColorButtonV(desc_id string, colv f64.Vec4) bool {
+	return c.ColorButtonVEx(desc_id, colv, 0, f64.Vec2{0, 0})
+}
+
+func (c *Context) ColorButtonVEx(desc_id string, colv f64.Vec4, flags ColorEditFlags, size f64.Vec2) bool {
 	window := c.GetCurrentWindow()
 	if window.SkipItems {
 		return false
@@ -61,6 +70,7 @@ func (c *Context) ColorButtonEx(desc_id string, col color.RGBA, flags ColorEditF
 		flags &^= ColorEditFlagsAlphaPreview | ColorEditFlagsAlphaPreviewHalf
 	}
 
+	col := chroma.VEC42RGBA(colv)
 	col_without_alpha := col
 	col_without_alpha.A = 255
 	grid_step := math.Min(size.X, size.Y) / 2.99
