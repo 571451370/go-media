@@ -33,19 +33,19 @@ func NewFontInfo() *FontInfo {
 }
 
 func MakePackedChars(n int) []PackedChar {
-	p := C.calloc(C.ulong(n), C.sizeof_stbtt_packedchar)
+	p := C.calloc(C.size_t(n), C.sizeof_stbtt_packedchar)
 	s := ((*[1 << 30]PackedChar)(unsafe.Pointer(p)))[:n:n]
 	return s
 }
 
 func MakeRects(n int) []Rect {
-	p := C.calloc(C.ulong(n), C.sizeof_stbrp_rect)
+	p := C.calloc(C.size_t(n), C.sizeof_stbrp_rect)
 	s := ((*[1 << 30]Rect)(unsafe.Pointer(p)))[:n:n]
 	return s
 }
 
 func MakePackRanges(n int) []PackRange {
-	p := C.calloc(C.ulong(n), C.sizeof_stbtt_pack_range)
+	p := C.calloc(C.size_t(n), C.sizeof_stbtt_pack_range)
 	s := ((*[1 << 30]PackRange)(unsafe.Pointer(p)))[:n:n]
 	return s
 }
@@ -235,19 +235,19 @@ func (r *Rect) H() int {
 }
 
 func (r *Rect) SetX(x int) {
-	r.x = C.int(x)
+	r.x = C.stbrp_coord(x)
 }
 
 func (r *Rect) SetY(y int) {
-	r.y = C.int(y)
+	r.y = C.stbrp_coord(y)
 }
 
 func (r *Rect) SetW(w int) {
-	r.w = C.int(w)
+	r.w = C.stbrp_coord(w)
 }
 
 func (r *Rect) SetH(h int) {
-	r.h = C.int(h)
+	r.h = C.stbrp_coord(h)
 }
 
 func (r *Rect) WasPacked() int {
