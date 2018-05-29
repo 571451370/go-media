@@ -1056,7 +1056,7 @@ func Unlerp(t, a, b float64) float64 {
 }
 
 func LinearRemap(x, a, b, c, d float64) float64 {
-	return Lerp(c, d, Unlerp(x, a, b))
+	return Lerp(Unlerp(x, a, b), c, d)
 }
 
 func Smoothstep(a, b, x float64) float64 {
