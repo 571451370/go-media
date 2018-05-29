@@ -601,9 +601,10 @@ func (m *Mat3) Trace() float32 {
 }
 
 func (m Mat3) String() string {
-	return fmt.Sprintf(`Mat3[% 0.3f, % 0.3f, % 0.3f,
-		     % 0.3f, % 0.3f, % 0.3f,
-			      % 0.3f, % 0.3f, % 0.3f]`,
+	return fmt.Sprintf(`
+Mat3[% 0.3f, % 0.3f, % 0.3f,
+     % 0.3f, % 0.3f, % 0.3f,
+     % 0.3f, % 0.3f, % 0.3f]`,
 		m[0][0], m[0][1], m[0][2],
 		m[1][0], m[1][1], m[1][2],
 		m[2][0], m[2][1], m[2][2])
@@ -837,10 +838,11 @@ func (m *Mat4) Transform3(v Vec3) Vec3 {
 }
 
 func (m Mat4) String() string {
-	return fmt.Sprintf(`Mat4[% 0.3f, % 0.3f, % 0.3f, % 0.3f,
-		     % 0.3f, % 0.3f, % 0.3f, % 0.3f,
-			      % 0.3f, % 0.3f, % 0.3f, % 0.3f,
-				       % 0.3f, % 0.3f, % 0.3f, % 0.3f]`,
+	return fmt.Sprintf(`
+Mat4[% 0.3f, % 0.3f, % 0.3f, % 0.3f,
+     % 0.3f, % 0.3f, % 0.3f, % 0.3f,
+     % 0.3f, % 0.3f, % 0.3f, % 0.3f,
+     % 0.3f, % 0.3f, % 0.3f, % 0.3f]`,
 		m[0][0], m[0][1], m[0][2], m[0][3],
 		m[1][0], m[1][1], m[1][2], m[1][3],
 		m[2][0], m[2][1], m[2][2], m[2][3],
@@ -1421,4 +1423,8 @@ func Pow(x, y float32) float32 {
 
 func Mod(x, y float32) float32 {
 	return float32(math.Mod(float64(x), float64(y)))
+}
+
+func Hypot(x, y float32) float32 {
+	return Sqrt(x*x + y*y)
 }
