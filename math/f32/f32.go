@@ -121,6 +121,12 @@ func (p Vec2) Lerp2(t, q Vec2) Vec2 {
 	}
 }
 
+func (p Vec2) Wrap(s, e float32) Vec2 {
+	p.X = Wrap(p.X, s, e)
+	p.Y = Wrap(p.Y, s, e)
+	return p
+}
+
 func (p Vec2) Distance(q Vec2) float32 {
 	return p.Sub(q).Len()
 }
@@ -1427,4 +1433,14 @@ func Mod(x, y float32) float32 {
 
 func Hypot(x, y float32) float32 {
 	return Sqrt(x*x + y*y)
+}
+
+func Wrap(x, s, e float32) float32 {
+	if x < s {
+		x += e
+	}
+	if x >= e {
+		x -= e
+	}
+	return x
 }

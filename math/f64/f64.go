@@ -121,6 +121,12 @@ func (p Vec2) Lerp2(t, q Vec2) Vec2 {
 	}
 }
 
+func (p Vec2) Wrap(s, e float64) Vec2 {
+	p.X = Wrap(p.X, s, e)
+	p.Y = Wrap(p.Y, s, e)
+	return p
+}
+
 func (p Vec2) Distance(q Vec2) float64 {
 	return p.Sub(q).Len()
 }
@@ -1385,4 +1391,14 @@ func LinearController(curpos *float64, targetpos, acc, deacc, dt float64) {
 
 func Multiple(a, m float64) float64 {
 	return math.Ceil(a/m) * m
+}
+
+func Wrap(x, s, e float64) float64 {
+	if x < s {
+		x += e
+	}
+	if x >= e {
+		x -= e
+	}
+	return x
 }
