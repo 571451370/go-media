@@ -31,6 +31,22 @@ func NextPow2(v int) int {
 	return x
 }
 
+func NearestPow2(v int) int {
+	if v <= 0 {
+		return 0
+	}
+	for i := 1; ; {
+		if v == 1 {
+			return v
+		}
+		if v == 3 {
+			return i * 4
+		}
+		v >>= 1
+		i *= 2
+	}
+}
+
 func Abs(x int) int {
 	if x < 0 {
 		return -x
