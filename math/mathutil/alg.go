@@ -33,17 +33,33 @@ func NextPow2(v int) int {
 
 func NearestPow2(v int) int {
 	if v <= 0 {
-		return 0
+		return -1
 	}
 	for i := 1; ; {
 		if v == 1 {
-			return v
+			return i
 		}
 		if v == 3 {
 			return i * 4
 		}
 		v >>= 1
 		i *= 2
+	}
+}
+
+func Log2(v int) int {
+	if v <= 0 {
+		return -1
+	}
+
+	for i := 0; ; i++ {
+		if v&1 != 0 {
+			if v != 1 {
+				return -1
+			}
+			return i
+		}
+		v >>= 1
 	}
 }
 
