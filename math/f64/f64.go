@@ -205,6 +205,13 @@ func (p Vec2) OnLine(a, b Vec2) bool {
 		sy <= p.Y && p.Y <= ey
 }
 
+func (p Vec2) Angle(q Vec2) float64 {
+	a := p.Len()
+	b := q.Len()
+	d := p.Dot(q)
+	return math.Acos(d / (a * b))
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -426,6 +433,13 @@ func (p Vec3) Clamp3(s, e Vec3) Vec3 {
 	return p
 }
 
+func (p Vec3) Angle(q Vec3) float64 {
+	a := p.Len()
+	b := q.Len()
+	d := p.Dot(q)
+	return math.Acos(d / (a * b))
+}
+
 type Vec4 struct {
 	X, Y, Z, W float64
 }
@@ -547,6 +561,13 @@ func (p Vec4) ToRGBA() color.RGBA {
 func (p Vec4) RGBA() (r, g, b, a uint32) {
 	c := p.ToRGBA()
 	return c.RGBA()
+}
+
+func (p Vec4) Angle(q Vec4) float64 {
+	a := p.Len()
+	b := q.Len()
+	d := p.Dot(q)
+	return math.Acos(d / (a * b))
 }
 
 type Mat3 [3][3]float64
