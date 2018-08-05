@@ -1017,6 +1017,25 @@ func (q Quat) Lerp(t float32, p Quat) Quat {
 	return q.Add(p.Sub(q).Scale(t))
 }
 
+func (Quat) Rotate(pos, center, axis Vec3, theta float32) Vec3 {
+	p := pos.Sub(center)
+	s, c := Sincos(theta)
+	u := axis.Normalize()
+
+	q := Quat{s * u.X, s * u.Y, s * u.Z, c}
+	qi := Quat{-s * u.X, -s * u.Y, -s * u.Z, c}
+	qp := Quat{p.X, p.Y, p.Z, 0}
+
+	qr := q.Mul(qp)
+	qr = qr.Mul(qi)
+
+	return Vec3{
+		qr.X + center.X,
+		qr.Y + center.Y,
+		qr.Z + center.Z,
+	}
+}
+
 type Spherical struct {
 	R, T, P float32
 }
