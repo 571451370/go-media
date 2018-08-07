@@ -627,6 +627,15 @@ func (m *Mat3) Trace() float32 {
 	return m[0][0] + m[1][1] + m[2][2]
 }
 
+func (m *Mat3) Mat4() Mat4 {
+	return Mat4{
+		{m[0][0], m[1][0], m[2][0], 0},
+		{m[0][1], m[1][1], m[2][1], 0},
+		{m[0][2], m[1][2], m[2][2], 0},
+		{0, 0, 0, 1},
+	}
+}
+
 func (m Mat3) String() string {
 	return fmt.Sprintf(`
 Mat3[% 0.3f, % 0.3f, % 0.3f,
@@ -735,7 +744,7 @@ func (m *Mat4) Viewport(x, y, w, h float32) {
 	}
 }
 
-func (m *Mat4) RotX(r float32) *Mat4 {
+func (m *Mat4) RotateX(r float32) *Mat4 {
 	si, co := Sincos(r)
 	*m = Mat4{
 		{1, 0, 0, 0},
@@ -746,7 +755,7 @@ func (m *Mat4) RotX(r float32) *Mat4 {
 	return m
 }
 
-func (m *Mat4) RotY(r float32) *Mat4 {
+func (m *Mat4) RotateY(r float32) *Mat4 {
 	si, co := Sincos(r)
 	*m = Mat4{
 		{co, 0, si, 0},
@@ -757,7 +766,7 @@ func (m *Mat4) RotY(r float32) *Mat4 {
 	return m
 }
 
-func (m *Mat4) RotZ(r float32) *Mat4 {
+func (m *Mat4) RotateZ(r float32) *Mat4 {
 	si, co := Sincos(r)
 	*m = Mat4{
 		{co, -si, 0, 0},
@@ -986,7 +995,7 @@ func (q Quat) FromEuler(pitch, yaw, roll float32) Quat {
 	}.Normalize()
 }
 
-func (q Quat) Matrix() Mat4 {
+func (q Quat) Mat3() Mat3 {
 	x, y, z, w := q.X, q.Y, q.Z, q.W
 	x2 := x * x
 	y2 := y * y
@@ -998,12 +1007,26 @@ func (q Quat) Matrix() Mat4 {
 	wy := w * y
 	wz := w * z
 
-	return Mat4{
-		{1.0 - 2.0*(y2+z2), 2.0 * (xy - wz), 2.0 * (xz + wy), 0.0},
-		{2.0 * (xy + wz), 1.0 - 2.0*(x2+z2), 2.0 * (yz - wx), 0.0},
-		{2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0*(x2+y2), 0.0},
-		{0.0, 0.0, 0.0, 1.0},
+	return Mat3{
+		{1.0 - 2.0*(y2+z2), 2.0 * (xy - wz), 2.0 * (xz + wy)},
+		{2.0 * (xy + wz), 1.0 - 2.0*(x2+z2), 2.0 * (yz - wx)},
+		{2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0*(x2+y2)},
 	}
+}
+
+func (q Quat) Mat4() Mat4 {
+	m := q.Mat3()
+	return m.Mat4()
+}
+
+func (q Quat) Transform3(v Vec3) Vec3 {
+	m := q.Mat3()
+	return m.Transform(v)
+}
+
+func (q Quat) Transform4(v Vec4) Vec4 {
+	m := q.Mat4()
+	return m.Transform(v)
 }
 
 func (q Quat) Axis() (v Vec3, r float32) {
