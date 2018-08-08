@@ -648,6 +648,22 @@ func (m *Mat3) Mat4() Mat4 {
 	}
 }
 
+func (m *Mat3) FromBasis(X, Y, Z Vec3) *Mat3 {
+	*m = Mat3{
+		{X.X, Y.X, Z.X},
+		{X.Y, Y.Y, Z.Y},
+		{X.Z, Y.Z, Z.Z},
+	}
+	return m
+}
+
+func (m *Mat3) Basis() (X, Y, Z, W Vec3) {
+	X = Vec3{m[0][0], m[1][0], m[2][0]}
+	Y = Vec3{m[0][1], m[1][1], m[2][1]}
+	Z = Vec3{m[0][2], m[1][2], m[2][2]}
+	return
+}
+
 func (m Mat3) String() string {
 	return fmt.Sprintf(`
 Mat3[% 0.3f, % 0.3f, % 0.3f,
@@ -885,6 +901,42 @@ func (m *Mat4) Transform3(v Vec3) Vec3 {
 
 }
 
+func (m *Mat4) FromBasis3(X, Y, Z, W Vec3) *Mat4 {
+	*m = Mat4{
+		{X.X, Y.X, Z.X, 0},
+		{X.Y, Y.Y, Z.Y, 0},
+		{X.Z, Y.Z, Z.Z, 0},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
+func (m *Mat4) FromBasis(X, Y, Z, W Vec4) *Mat4 {
+	*m = Mat4{
+		{X.X, Y.X, Z.X, W.X},
+		{X.Y, Y.Y, Z.Y, W.Y},
+		{X.Z, Y.Z, Z.Z, W.Z},
+		{X.W, Y.W, Z.W, W.W},
+	}
+	return m
+}
+
+func (m *Mat4) Basis3() (X, Y, Z, W Vec3) {
+	X = Vec3{m[0][0], m[1][0], m[2][0]}
+	Y = Vec3{m[0][1], m[1][1], m[2][1]}
+	Z = Vec3{m[0][2], m[1][2], m[2][2]}
+	W = Vec3{m[0][3], m[1][3], m[2][3]}
+	return
+}
+
+func (m *Mat4) Basis() (X, Y, Z, W Vec4) {
+	X = Vec4{m[0][0], m[1][0], m[2][0], m[3][0]}
+	Y = Vec4{m[0][1], m[1][1], m[2][1], m[3][1]}
+	Z = Vec4{m[0][2], m[1][2], m[2][2], m[3][2]}
+	W = Vec4{m[0][3], m[1][3], m[2][3], m[3][3]}
+	return
+}
+
 func (m Mat4) String() string {
 	return fmt.Sprintf(`
 Mat4[% 0.3f, % 0.3f, % 0.3f, % 0.3f,
@@ -1036,7 +1088,7 @@ func (q Quat) Transform3(v Vec3) Vec3 {
 	return m.Transform(v)
 }
 
-func (q Quat) Transform4(v Vec4) Vec4 {
+func (q Quat) Transform(v Vec4) Vec4 {
 	m := q.Mat4()
 	return m.Transform(v)
 }
