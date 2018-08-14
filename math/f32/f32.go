@@ -1190,10 +1190,13 @@ func Sign(x float32) float32 {
 	return 1
 }
 
-const (
-	Radians = math.Pi / 180
-	Degrees = 180 / math.Pi
-)
+func Deg2Rad(d float32) float32 {
+	return d * math.Pi / 180
+}
+
+func Rad2Deg(r float32) float32 {
+	return r * 180 / math.Pi
+}
 
 type Circle struct {
 	X, Y, R float32
