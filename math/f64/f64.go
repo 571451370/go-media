@@ -570,6 +570,28 @@ func (p Vec4) Angle(q Vec4) float64 {
 	return math.Acos(d / (a * b))
 }
 
+type Mat2 [2][2]float64
+
+func (m *Mat2) Mul(a, b *Mat2) *Mat2 {
+	var p Mat2
+	for i := range a {
+		for j := range a[i] {
+			for k := range a[j] {
+				p[i][j] += a[i][k] * b[k][j]
+			}
+		}
+	}
+	*m = p
+	return m
+}
+
+func (m *Mat2) Transform(p Vec2) Vec2 {
+	return Vec2{
+		m[0][0]*p.X + m[0][1]*p.Y,
+		m[1][0]*p.X + m[1][1]*p.Y,
+	}
+}
+
 type Mat3 [3][3]float64
 
 func (m *Mat3) Identity() *Mat3 {
@@ -600,15 +622,6 @@ func (m *Mat3) Transform(p Vec3) Vec3 {
 		m[1][0]*p.X + m[1][1]*p.Y + m[1][2]*p.Z,
 		m[2][0]*p.X + m[2][1]*p.Y + m[2][2]*p.Z,
 	}
-}
-
-func (m *Mat3) Transform2(p Vec2) Vec2 {
-	v := m.Transform(Vec3{p.X, p.Y, 1})
-	if v.Z != 0 {
-		v.X /= v.Z
-		v.Y /= v.Z
-	}
-	return Vec2{v.X, v.Y}
 }
 
 func (m *Mat3) Transpose() *Mat3 {
@@ -874,19 +887,12 @@ func (m *Mat4) Transpose() *Mat4 {
 }
 
 func (m *Mat4) Transform(v Vec4) Vec4 {
-	v = Vec4{
+	return Vec4{
 		m[0][0]*v.X + m[0][1]*v.Y + m[0][2]*v.Z + m[0][3]*v.W,
 		m[1][0]*v.X + m[1][1]*v.Y + m[1][2]*v.Z + m[1][3]*v.W,
 		m[2][0]*v.X + m[2][1]*v.Y + m[2][2]*v.Z + m[2][3]*v.W,
 		m[3][0]*v.X + m[3][1]*v.Y + m[3][2]*v.Z + m[3][3]*v.W,
 	}
-	if v.W != 0 {
-		v.X /= v.W
-		v.Y /= v.W
-		v.Z /= v.W
-		v.W = 1
-	}
-	return v
 }
 
 func (m *Mat4) Transform3(v Vec3) Vec3 {
@@ -895,8 +901,9 @@ func (m *Mat4) Transform3(v Vec3) Vec3 {
 	case 0:
 		return Vec3{}
 	default:
+		invs := 1 / s
 		p := m.Transform(Vec4{v.X, v.Y, v.Z, 1})
-		return Vec3{p.X, p.Y, p.Z}
+		return Vec3{p.X * invs, p.Y * invs, p.Z * invs}
 	}
 
 }
