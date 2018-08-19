@@ -1408,6 +1408,18 @@ func (r Rectangle) Inverted() bool {
 	return r.Min.X > r.Max.X || r.Min.Y > r.Max.Y
 }
 
+func (r Rectangle) Expand(x, y float64) Rectangle {
+	r.Min.X -= x
+	r.Min.Y -= y
+	r.Max.X += x
+	r.Max.Y += y
+	return r
+}
+
+func (r Rectangle) Expand2(v Vec2) Rectangle {
+	return r.Expand(v.X, v.Y)
+}
+
 func RoundPrec(v float64, prec int) float64 {
 	if prec < 0 {
 		return v
