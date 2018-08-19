@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"image"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/qeedquan/go-media/image/imageutil"
@@ -29,16 +31,11 @@ type Material struct {
 	Bump     *image.RGBA
 }
 
-func Load(obj string) (*Model, error) {
-	f, err := os.Open(obj)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
+func Load(name string, r io.Reader) (*Model, error) {
+	var err error
 	m := &Model{}
-
-	s := bufio.NewScanner(f)
+	s := bufio.NewScanner(r)
+	dir := filepath.Dir(name)
 	for s.Scan() {
 		line := s.Text()
 		switch {
@@ -51,7 +48,7 @@ func Load(obj string) (*Model, error) {
 		case strings.HasPrefix(line, "f "):
 			m.Faces = addFace(m.Faces, line)
 		case strings.HasPrefix(line, "mtllib "):
-			m.Mats, err = addMat(m.Mats, line)
+			m.Mats, err = addMat(dir, m.Mats, line)
 			if err != nil {
 				return nil, err
 			}
@@ -108,7 +105,7 @@ func addFace(faces [][3][3]int, line string) [][3][3]int {
 	})
 }
 
-func addMat(mat []Material, line string) ([]Material, error) {
+func addMat(dir string, mat []Material, line string) ([]Material, error) {
 	var (
 		t string
 		e string
@@ -147,15 +144,15 @@ func addMat(mat []Material, line string) ([]Material, error) {
 		case strings.HasPrefix(line, "Ks "):
 			fmt.Sscan(line, &t, &m.Colors[2].X, &m.Colors[2].Y, &m.Colors[2].Z)
 		case strings.HasPrefix(line, "map_Ka "):
-			m.Ambient, err = loadTexture(line)
+			m.Ambient, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Kd "):
-			m.Diffuse, err = loadTexture(line)
+			m.Diffuse, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Ks "):
-			m.Specular, err = loadTexture(line)
+			m.Specular, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Ns "):
-			m.Bump, err = loadTexture(line)
+			m.Bump, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_d "):
-			m.Alpha, err = loadTexture(line)
+			m.Alpha, err = loadTexture(dir, line)
 		}
 
 		if err != nil {
@@ -170,7 +167,7 @@ func addMat(mat []Material, line string) ([]Material, error) {
 	return mat, nil
 }
 
-func loadTexture(line string) (*image.RGBA, error) {
+func loadTexture(dir, line string) (*image.RGBA, error) {
 	var (
 		t string
 		s string
@@ -180,5 +177,5 @@ func loadTexture(line string) (*image.RGBA, error) {
 		return nil, fmt.Errorf("no texture file specified")
 	}
 
-	return imageutil.LoadRGBAFile(s)
+	return imageutil.LoadRGBAFile(filepath.Join(s))
 }
