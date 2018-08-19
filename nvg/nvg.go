@@ -118,8 +118,8 @@ func (c *Context) GlobalAlpha(alpha float64) {
 	C.nvgGlobalAlpha((*C.NVGcontext)(c), C.float(alpha))
 }
 
-func (c *Context) BeginFrame(width, height int, aspect float64) {
-	C.nvgBeginFrame((*C.NVGcontext)(c), C.int(width), C.int(height), C.float(aspect))
+func (c *Context) BeginFrame(width, height, aspect float64) {
+	C.nvgBeginFrame((*C.NVGcontext)(c), C.float(width), C.float(height), C.float(aspect))
 }
 
 func (c *Context) EndFrame() {
