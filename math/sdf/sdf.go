@@ -43,6 +43,15 @@ func Plane(p f64.Vec3, n f64.Vec4) float64 {
 	return p.Dot(n.XYZ()) + n.W
 }
 
+func Ellipsoid(p, r f64.Vec3) float64 {
+	v := f64.Vec3{
+		p.X / r.X,
+		p.Y / r.Y,
+		p.Z / r.Z,
+	}
+	return (v.Len() - 1) * math.Min(math.Min(r.X, r.Y), r.Z)
+}
+
 func Triangle(p, a, b, c f64.Vec3) float64 {
 	ba := b.Sub(a)
 	pa := p.Sub(a)
@@ -76,19 +85,19 @@ func Triangle(p, a, b, c f64.Vec3) float64 {
 	return t1 * t1 / t2
 }
 
-func OpS1(d1, d2 float64) float64 {
+func Subtract(d1, d2 float64) float64 {
 	return math.Max(-d2, d1)
 }
 
-func OpU1(d1, d2 float64) float64 {
+func Union(d1, d2 float64) float64 {
 	return math.Min(d1, d2)
 }
 
-func OpI1(d1, d2 float64) float64 {
+func Intersect(d1, d2 float64) float64 {
 	return math.Max(d1, d2)
 }
 
-func OpU2(d1, d2 f64.Vec2) f64.Vec2 {
+func Union2(d1, d2 f64.Vec2) f64.Vec2 {
 	if d1.X < d2.X {
 		return d1
 	}
