@@ -22,13 +22,16 @@ type Model struct {
 }
 
 type Material struct {
-	Name     string
-	Colors   [3]f64.Vec3
-	Diffuse  *image.RGBA
-	Ambient  *image.RGBA
-	Specular *image.RGBA
-	Alpha    *image.RGBA
-	Bump     *image.RGBA
+	Name           string
+	Colors         [3]f64.Vec3
+	SpecularFactor float64
+	DissolveFactor float64
+	Diffuse        *image.RGBA
+	Ambient        *image.RGBA
+	Specular       *image.RGBA
+	Alpha          *image.RGBA
+	Bump           *image.RGBA
+	Dissolve       *image.RGBA
 }
 
 func Load(name string, r io.Reader) (*Model, error) {
@@ -143,6 +146,10 @@ func addMat(dir string, mat []Material, line string) ([]Material, error) {
 			fmt.Sscan(line, &t, &m.Colors[1].X, &m.Colors[1].Y, &m.Colors[1].Z)
 		case strings.HasPrefix(line, "Ks "):
 			fmt.Sscan(line, &t, &m.Colors[2].X, &m.Colors[2].Y, &m.Colors[2].Z)
+		case strings.HasPrefix(line, "Ns"):
+			fmt.Sscan(line, &t, &m.SpecularFactor)
+		case strings.HasPrefix(line, "d"):
+			fmt.Sscan(line, &t, &m.DissolveFactor)
 		case strings.HasPrefix(line, "map_Ka "):
 			m.Ambient, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Kd "):
