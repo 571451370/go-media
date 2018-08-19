@@ -1328,18 +1328,6 @@ func (r Rectangle) Size() Vec2 {
 	}
 }
 
-func (r Rectangle) Expand(x, y float32) Rectangle {
-	r.Min.X -= x
-	r.Min.Y -= y
-	r.Max.X += x
-	r.Max.Y += y
-	return r
-}
-
-func (r Rectangle) Expand2(v Vec2) Rectangle {
-	return r.Expand(v.X, v.Y)
-}
-
 func (r Rectangle) Inset(n float32) Rectangle {
 	if r.Dx() < 2*n {
 		r.Min.X = (r.Min.X + r.Max.X) / 2
@@ -1539,6 +1527,22 @@ func Mod(x, y float32) float32 {
 
 func Hypot(x, y float32) float32 {
 	return Sqrt(x*x + y*y)
+}
+
+func Trunc(x float32) float32 {
+	return float32(math.Trunc(float64(x)))
+}
+
+func Sinh(x float32) float32 {
+	return float32(math.Sinh(float64(x)))
+}
+
+func Cosh(x float32) float32 {
+	return float32(math.Cosh(float64(x)))
+}
+
+func Tanh(x float32) float32 {
+	return float32(math.Tanh(float64(x)))
 }
 
 func Wrap(x, s, e float32) float32 {

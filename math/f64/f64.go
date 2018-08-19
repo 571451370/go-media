@@ -1347,18 +1347,6 @@ func (r Rectangle) Floor() Rectangle {
 	}
 }
 
-func (r Rectangle) Expand(x, y float64) Rectangle {
-	r.Min.X -= x
-	r.Min.Y -= y
-	r.Max.X += x
-	r.Max.Y += y
-	return r
-}
-
-func (r Rectangle) Expand2(v Vec2) Rectangle {
-	return r.Expand(v.X, v.Y)
-}
-
 func (r Rectangle) Inset(n float64) Rectangle {
 	if r.Dx() < 2*n {
 		r.Min.X = (r.Min.X + r.Max.X) / 2
