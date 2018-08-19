@@ -1550,3 +1550,25 @@ func Wrap(x, s, e float32) float32 {
 	}
 	return x
 }
+
+func TriangleBarycentric(p, a, b, c Vec2) Vec3 {
+	x := Vec3{
+		c.X - a.X,
+		b.X - a.X,
+		a.X - p.X,
+	}
+	y := Vec3{
+		c.Y - a.Y,
+		b.Y - a.Y,
+		a.Y - p.Y,
+	}
+	u := x.Cross(y)
+	if Abs(u.Z) > 1e-2 {
+		return Vec3{
+			1 - (u.X+u.Y)/u.Z,
+			u.Y / u.Z,
+			u.X / u.Z,
+		}
+	}
+	return Vec3{-1, -1, -1}
+}
