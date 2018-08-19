@@ -79,7 +79,7 @@ func (c *Context) ColorButtonVEx(desc_id string, colv f64.Vec4, flags ColorEditF
 
 	// The border (using Col_FrameBg) tends to look off when color is near-opaque and rounding is enabled. This offset seemed like a good middle ground to reduce those artifacts.
 	off := -0.75
-	bb_inner = bb_inner.Inset(-off, -off)
+	bb_inner = bb_inner.Expand(off, off)
 	if flags&ColorEditFlagsAlphaPreviewHalf != 0 && col.A < 255 {
 		mid_x := float64(int((bb_inner.Min.X+bb_inner.Max.X)*0.5 + 0.5))
 		c.RenderColorRectWithAlphaCheckerboardEx(
