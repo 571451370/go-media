@@ -1533,6 +1533,14 @@ func Pow(x, y float32) float32 {
 	return float32(math.Pow(float64(x), float64(y)))
 }
 
+func Pow10(x int) float32 {
+	return float32(math.Pow10(x))
+}
+
+func Round(x float32) float32 {
+	return float32(math.Round(float64(x)))
+}
+
 func Mod(x, y float32) float32 {
 	return float32(math.Mod(float64(x), float64(y)))
 }
@@ -1555,6 +1563,30 @@ func Cosh(x float32) float32 {
 
 func Tanh(x float32) float32 {
 	return float32(math.Tanh(float64(x)))
+}
+
+func Exp(x float32) float32 {
+	return float32(math.Exp(float64(x)))
+}
+
+func Log(x float32) float32 {
+	return float32(math.Log(float64(x)))
+}
+
+func Log2(x float32) float32 {
+	return float32(math.Log2(float64(x)))
+}
+
+func Log10(x float32) float32 {
+	return float32(math.Log10(float64(x)))
+}
+
+func Log1p(x float32) float32 {
+	return float32(math.Log1p(float64(x)))
+}
+
+func Log1b(x float32) float32 {
+	return float32(math.Logb(float64(x)))
 }
 
 func Wrap(x, s, e float32) float32 {
