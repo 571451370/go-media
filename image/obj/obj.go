@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"text/scanner"
 
 	"github.com/qeedquan/go-media/image/imageutil"
 	"github.com/qeedquan/go-media/math/f64"
@@ -26,12 +28,29 @@ type Material struct {
 	Colors         [3]f64.Vec3
 	SpecularFactor float64
 	DissolveFactor float64
-	Diffuse        *image.RGBA
-	Ambient        *image.RGBA
-	Specular       *image.RGBA
-	Alpha          *image.RGBA
-	Bump           *image.RGBA
-	Dissolve       *image.RGBA
+	Illumination   int
+	Texture        struct {
+		Displacement    *Texture
+		Diffuse         *Texture
+		Ambient         *Texture
+		SpecularColor   *Texture
+		SpecularHilight *Texture
+		Alpha           *Texture
+		Bump            *Texture
+		Dissolve        *Texture
+	}
+}
+
+type Texture struct {
+	Blend       [2]bool
+	MipmapBoost float64
+	Origin      f64.Vec3
+	Scale       f64.Vec3
+	Turbulence  f64.Vec3
+	Clamp       bool
+	BumpFactor  bool
+	IMF         uint64
+	Map         *image.RGBA
 }
 
 func Load(name string, r io.Reader) (*Model, error) {
@@ -118,7 +137,7 @@ func addMat(dir string, mat []Material, line string) ([]Material, error) {
 		return mat, nil
 	}
 
-	f, err := os.Open(e)
+	f, err := os.Open(filepath.Join(dir, e))
 	if err != nil {
 		return mat, err
 	}
@@ -140,26 +159,32 @@ func addMat(dir string, mat []Material, line string) ([]Material, error) {
 				p = append(p, Material{Name: name})
 				m = &p[len(p)-1]
 			}
+		case strings.HasPrefix(line, "illum "):
+			fmt.Sscan(line, &t, &m.Illumination)
 		case strings.HasPrefix(line, "Ka "):
 			fmt.Sscan(line, &t, &m.Colors[0].X, &m.Colors[0].Y, &m.Colors[0].Z)
 		case strings.HasPrefix(line, "Kd "):
 			fmt.Sscan(line, &t, &m.Colors[1].X, &m.Colors[1].Y, &m.Colors[1].Z)
 		case strings.HasPrefix(line, "Ks "):
 			fmt.Sscan(line, &t, &m.Colors[2].X, &m.Colors[2].Y, &m.Colors[2].Z)
-		case strings.HasPrefix(line, "Ns"):
+		case strings.HasPrefix(line, "Ns "):
 			fmt.Sscan(line, &t, &m.SpecularFactor)
-		case strings.HasPrefix(line, "d"):
+		case strings.HasPrefix(line, "d "):
 			fmt.Sscan(line, &t, &m.DissolveFactor)
+		case strings.HasPrefix(line, "map_disp ") || strings.HasPrefix(line, "disp "):
+			m.Texture.Displacement, err = loadTexture(dir, line)
+		case strings.HasPrefix(line, "map_bump ") || strings.HasPrefix(line, "bump "):
+			m.Texture.Bump, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Ka "):
-			m.Ambient, err = loadTexture(dir, line)
+			m.Texture.Ambient, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Kd "):
-			m.Diffuse, err = loadTexture(dir, line)
+			m.Texture.Diffuse, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Ks "):
-			m.Specular, err = loadTexture(dir, line)
+			m.Texture.SpecularColor, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_Ns "):
-			m.Bump, err = loadTexture(dir, line)
+			m.Texture.SpecularHilight, err = loadTexture(dir, line)
 		case strings.HasPrefix(line, "map_d "):
-			m.Alpha, err = loadTexture(dir, line)
+			m.Texture.Alpha, err = loadTexture(dir, line)
 		}
 
 		if err != nil {
@@ -174,15 +199,72 @@ func addMat(dir string, mat []Material, line string) ([]Material, error) {
 	return mat, nil
 }
 
-func loadTexture(dir, line string) (*image.RGBA, error) {
-	var (
-		t string
-		s string
-	)
-	n, _ := fmt.Sscan(line, &t, &s)
-	if n < 1 {
-		return nil, fmt.Errorf("no texture file specified")
+func loadTexture(dir, line string) (*Texture, error) {
+	t := &Texture{
+		Blend: [2]bool{true, true},
+		Clamp: true,
 	}
 
-	return imageutil.LoadRGBAFile(filepath.Join(s))
+	var (
+		s   scanner.Scanner
+		err error
+	)
+	s.Init(strings.NewReader(line))
+	for {
+		tok := s.Scan()
+		if tok == '-' {
+			tok = s.Scan()
+		}
+		if tok != scanner.Ident {
+			continue
+		}
+
+		v := s.TokenText()
+		switch v {
+		case "bm":
+		case "clamp":
+			t.Clamp = scanBool(&s)
+		case "blendu":
+			t.Blend[0] = scanBool(&s)
+		case "blendv":
+			t.Blend[1] = scanBool(&s)
+		case "imfchan":
+		case "mm":
+		case "o":
+			t.Origin.X = scanFloat(&s)
+			t.Origin.Y = scanFloat(&s)
+			t.Origin.Z = scanFloat(&s)
+		case "s":
+			t.Scale.X = scanFloat(&s)
+			t.Scale.Y = scanFloat(&s)
+			t.Scale.Z = scanFloat(&s)
+		case "t":
+			t.Turbulence.X = scanFloat(&s)
+			t.Turbulence.Y = scanFloat(&s)
+			t.Turbulence.Z = scanFloat(&s)
+		case "texres":
+		default:
+			t.Map, err = imageutil.LoadRGBAFile(filepath.Join(dir, v))
+			if err != nil {
+				return t, fmt.Errorf("%s: failed to load texture file: %v", v, err)
+			}
+		}
+	}
+
+	return t, nil
+}
+
+func scanFloat(s *scanner.Scanner) float64 {
+	s.Scan()
+	n, _ := strconv.ParseFloat(s.TokenText(), 64)
+	return n
+}
+
+func scanBool(s *scanner.Scanner) bool {
+	s.Scan()
+	switch strings.ToLower(s.TokenText()) {
+	case "on", "true", "1":
+		return true
+	}
+	return false
 }
