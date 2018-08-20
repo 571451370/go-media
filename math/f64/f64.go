@@ -818,6 +818,20 @@ func (m *Mat4) RotateZ(r float64) *Mat4 {
 	return m
 }
 
+func (m *Mat4) Frustum(l, r, b, t, n, f float64) *Mat4 {
+	A := (r + l) / (r - l)
+	B := (t + b) / (t - b)
+	C := -(f + n) / (f - n)
+	D := -2 * f * n / (f - n)
+	*m = Mat4{
+		{2 * n / (r - l), 0, A, 0},
+		{0, 2 * n / (t - b), B, 0},
+		{0, 0, C, D},
+		{0, 0, -1, 0},
+	}
+	return m
+}
+
 func (m *Mat4) Perspective(fovy, aspect, near, far float64) *Mat4 {
 	f := math.Tan(fovy / 2)
 	z := near - far
