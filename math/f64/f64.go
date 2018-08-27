@@ -664,16 +664,16 @@ func (m *Mat3) Basis() (X, Y, Z, W Vec3) {
 	return
 }
 
-func (m *Mat3) SetRow(r int, p Vec3) {
-	m[0][r] = p.X
-	m[1][r] = p.Y
-	m[2][r] = p.Z
+func (m *Mat3) SetCol(n int, p Vec3) {
+	m[0][n] = p.X
+	m[1][n] = p.Y
+	m[2][n] = p.Z
 }
 
-func (m *Mat3) SetCol(c int, p Vec3) {
-	m[c][0] = p.X
-	m[c][1] = p.Y
-	m[c][2] = p.Z
+func (m *Mat3) SetRow(n int, p Vec3) {
+	m[n][0] = p.X
+	m[n][1] = p.Y
+	m[n][2] = p.Z
 }
 
 func (m Mat3) String() string {
@@ -957,18 +957,18 @@ func (m *Mat4) Basis() (X, Y, Z, W Vec4) {
 	return
 }
 
-func (m *Mat4) SetRow(r int, p Vec4) {
-	m[0][r] = p.X
-	m[1][r] = p.Y
-	m[2][r] = p.Z
-	m[3][r] = p.W
+func (m *Mat4) SetCol(n int, p Vec4) {
+	m[0][n] = p.X
+	m[1][n] = p.Y
+	m[2][n] = p.Z
+	m[3][n] = p.W
 }
 
-func (m *Mat4) SetCol(c int, p Vec4) {
-	m[c][0] = p.X
-	m[c][1] = p.Y
-	m[c][2] = p.Z
-	m[c][3] = p.W
+func (m *Mat4) SetRow(n int, p Vec4) {
+	m[n][0] = p.X
+	m[n][1] = p.Y
+	m[n][2] = p.Z
+	m[n][3] = p.W
 }
 
 func (m Mat4) String() string {
