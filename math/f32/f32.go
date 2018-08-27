@@ -464,10 +464,6 @@ func (p Vec4) Scale(k float32) Vec4 {
 	return Vec4{p.X * k, p.Y * k, p.Z * k, p.W}
 }
 
-func (p Vec4) Scale3(q Vec3) Vec4 {
-	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W}
-}
-
 func (p Vec4) Scale4(q Vec4) Vec4 {
 	return Vec4{p.X * q.X, p.Y * q.Y, p.Z * q.Z, p.W * q.W}
 }
@@ -488,14 +484,6 @@ func (p Vec4) Len() float32 {
 	return Sqrt(p.Dot(p))
 }
 
-func (p Vec4) Dot3(q Vec4) float32 {
-	return p.X*q.X + p.Y*q.Y + p.Z*q.Z
-}
-
-func (p Vec4) Len3() float32 {
-	return Sqrt(p.Dot3(p))
-}
-
 func (p Vec4) XYZ() Vec3 { return Vec3{p.X, p.Y, p.Z} }
 func (p Vec4) XZY() Vec3 { return Vec3{p.X, p.Z, p.Y} }
 func (p Vec4) YXZ() Vec3 { return Vec3{p.Y, p.X, p.Z} }
@@ -511,19 +499,6 @@ func (p Vec4) Normalize() Vec4 {
 		p.Y / l,
 		p.Z / l,
 		p.W / l,
-	}
-}
-
-func (p Vec4) Normalize3() Vec4 {
-	l := p.Len3()
-	if l == 0 {
-		return Vec4{0, 0, 0, p.W}
-	}
-	return Vec4{
-		p.X / l,
-		p.Y / l,
-		p.Z / l,
-		p.W,
 	}
 }
 
@@ -556,6 +531,18 @@ func (p Vec4) Angle(q Vec4) float32 {
 	b := q.Len()
 	d := p.Dot(q)
 	return float32(math.Acos(float64(d / (a * b))))
+}
+
+func (p Vec4) PerspectiveDivide() Vec4 {
+	if p.W == 0 {
+		return p
+	}
+	return Vec4{
+		p.X / p.W,
+		p.Y / p.W,
+		p.Z / p.W,
+		1,
+	}
 }
 
 type Mat2 [2][2]float32
