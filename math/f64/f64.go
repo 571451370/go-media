@@ -664,6 +664,18 @@ func (m *Mat3) Basis() (X, Y, Z, W Vec3) {
 	return
 }
 
+func (m *Mat3) SetRow(r int, p Vec3) {
+	m[0][r] = p.X
+	m[1][r] = p.Y
+	m[2][r] = p.Z
+}
+
+func (m *Mat3) SetCol(c int, p Vec3) {
+	m[c][0] = p.X
+	m[c][1] = p.Y
+	m[c][2] = p.Z
+}
+
 func (m Mat3) String() string {
 	return fmt.Sprintf(`
 Mat3[% 0.3f, % 0.3f, % 0.3f,
@@ -943,6 +955,20 @@ func (m *Mat4) Basis() (X, Y, Z, W Vec4) {
 	Z = Vec4{m[0][2], m[1][2], m[2][2], m[3][2]}
 	W = Vec4{m[0][3], m[1][3], m[2][3], m[3][3]}
 	return
+}
+
+func (m *Mat4) SetRow(r int, p Vec4) {
+	m[0][r] = p.X
+	m[1][r] = p.Y
+	m[2][r] = p.Z
+	m[3][r] = p.W
+}
+
+func (m *Mat4) SetCol(c int, p Vec4) {
+	m[c][0] = p.X
+	m[c][1] = p.Y
+	m[c][2] = p.Z
+	m[c][3] = p.W
 }
 
 func (m Mat4) String() string {
