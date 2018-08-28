@@ -567,6 +567,54 @@ func (m *Mat2) Transform(p Vec2) Vec2 {
 	}
 }
 
+func (m *Mat2) Transpose() *Mat2 {
+	var p Mat2
+	for i := range m {
+		for j := range m[i] {
+			p[j][i] = m[i][j]
+		}
+	}
+	*m = p
+	return m
+}
+
+func (m *Mat2) Row(n int) Vec2 {
+	return Vec2{m[n][0], m[n][1]}
+}
+
+func (m *Mat2) Col(n int) Vec2 {
+	return Vec2{m[0][n], m[1][n]}
+}
+
+func (m *Mat2) Trace() float32 {
+	return m[0][0] + m[1][1]
+}
+
+func (m *Mat2) Det() float32 {
+	return m[0][0]*m[1][1] - m[0][1]*m[1][0]
+}
+
+func (m *Mat2) Inverse() *Mat2 {
+	invdet := 1 / m.Det()
+	fmt.Println(m.Det())
+	var minv Mat2
+	minv[0][0] = m[1][1] * invdet
+	minv[0][1] = -m[0][1] * invdet
+	minv[1][0] = -m[1][0] * invdet
+	minv[1][1] = m[0][0] * invdet
+
+	*m = minv
+	return m
+}
+
+func (m Mat2) String() string {
+	return fmt.Sprintf(`
+Mat2[% 0.3f, % 0.3f,
+     % 0.3f, % 0.3f]`,
+		m[0][0], m[0][1],
+		m[1][0], m[1][1])
+}
+
 type Mat3 [3][3]float32
 
 func (m *Mat3) Identity() *Mat3 {
@@ -662,6 +710,34 @@ func (m *Mat3) SetRow(n int, p Vec3) {
 	m[n][0] = p.X
 	m[n][1] = p.Y
 	m[n][2] = p.Z
+}
+
+func (m *Mat3) Row(n int) Vec3 {
+	return Vec3{m[n][0], m[n][1], m[n][2]}
+}
+
+func (m *Mat3) Col(n int) Vec3 {
+	return Vec3{m[0][n], m[1][n], m[2][n]}
+}
+
+func (m *Mat3) Inverse() *Mat3 {
+	det := m[0][0]*(m[1][1]*m[2][2]-m[2][1]*m[1][2]) -
+		m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
+		m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0])
+	invdet := 1 / det
+
+	var minv Mat3
+	minv[0][0] = (m[1][1]*m[2][2] - m[2][1]*m[1][2]) * invdet
+	minv[0][1] = (m[0][2]*m[2][1] - m[0][1]*m[2][2]) * invdet
+	minv[0][2] = (m[0][1]*m[1][2] - m[0][2]*m[1][1]) * invdet
+	minv[1][0] = (m[1][2]*m[2][0] - m[1][0]*m[2][2]) * invdet
+	minv[1][1] = (m[0][0]*m[2][2] - m[0][2]*m[2][0]) * invdet
+	minv[1][2] = (m[1][0]*m[0][2] - m[0][0]*m[1][2]) * invdet
+	minv[2][0] = (m[1][0]*m[2][1] - m[2][0]*m[1][1]) * invdet
+	minv[2][1] = (m[2][0]*m[0][1] - m[0][0]*m[2][1]) * invdet
+	minv[2][2] = (m[0][0]*m[1][1] - m[1][0]*m[0][1]) * invdet
+	*m = minv
+	return m
 }
 
 func (m Mat3) String() string {
@@ -957,6 +1033,14 @@ func (m *Mat4) SetRow(n int, p Vec4) {
 	m[n][1] = p.Y
 	m[n][2] = p.Z
 	m[n][3] = p.W
+}
+
+func (m *Mat4) Row(n int) Vec4 {
+	return Vec4{m[n][0], m[n][1], m[n][2], m[n][3]}
+}
+
+func (m *Mat4) Col(n int) Vec4 {
+	return Vec4{m[0][n], m[1][n], m[2][n], m[3][n]}
 }
 
 func (m Mat4) String() string {
