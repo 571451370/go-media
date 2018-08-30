@@ -36,7 +36,17 @@ func LoadRGBAFile(name string) (*image.RGBA, error) {
 	defer f.Close()
 
 	m, err := LoadRGBAReader(f)
+	if err == nil {
+		return m, nil
+	}
+
 	if err != nil {
+		f.Seek(0, io.SeekStart)
+		m, xerr := tga.Decode(f)
+		if xerr == nil {
+			return m.(*image.RGBA), nil
+		}
+
 		return nil, &os.PathError{Op: "decode", Path: name, Err: err}
 	}
 	return m, nil
@@ -45,11 +55,7 @@ func LoadRGBAFile(name string) (*image.RGBA, error) {
 func LoadRGBAReader(rd io.Reader) (*image.RGBA, error) {
 	m, _, err := image.Decode(rd)
 	if err != nil {
-		var xerr error
-		m, xerr = tga.Decode(rd)
-		if xerr != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	if p, _ := m.(*image.RGBA); p != nil {
@@ -79,11 +85,7 @@ func LoadGrayFile(name string) (*image.Gray, error) {
 func LoadGrayReader(rd io.Reader) (*image.Gray, error) {
 	m, _, err := image.Decode(rd)
 	if err != nil {
-		var xerr error
-		m, xerr = tga.Decode(rd)
-		if xerr != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	if p, _ := m.(*image.Gray); p != nil {

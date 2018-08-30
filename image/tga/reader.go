@@ -145,7 +145,6 @@ func (d *decoder) rleUncompress(p []byte) ([]byte, error) {
 			}
 		}
 	}
-
 	return b, nil
 }
 
