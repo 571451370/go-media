@@ -68,7 +68,7 @@ func Decode(r io.Reader) (image.Image, error) {
 		return nil, nil
 	}
 
-	if d.Type&byte(^3&0xFF) != 0 {
+	if d.Type&^byte(3) != 0 {
 		d.pix, err = d.rleUncompress(d.pix)
 		if err != nil {
 			return nil, err
@@ -119,23 +119,24 @@ func (d *decoder) rleUncompress(p []byte) ([]byte, error) {
 	}
 
 	bpp := int(d.Bpp) / 8
-	for i := 0; ; {
-		j := int(p[i] & 0x7F)
+	size := int(d.Width) * int(d.Height) * bpp
+	for i := 0; len(b) < size; {
+		op := int(p[i])
 		if i++; i+bpp >= len(p) {
 			return nil, io.ErrUnexpectedEOF
 		}
-
 		pix := p[i : i+bpp]
-		b = append(b, pix...)
-		i += bpp
 
-		if p[i]&0x80 != 0 {
+		if op&0x80 != 0 {
+			j := op - 0x7f
 			for k := 0; k < j; k++ {
 				b = append(b, pix...)
 			}
+			i += bpp
 		} else {
+			j := op + 1
 			for k := 0; k < j; k++ {
-				if i+bpp > len(p) {
+				if i+bpp >= len(p) {
 					return nil, io.ErrUnexpectedEOF
 				}
 				b = append(b, pix...)
