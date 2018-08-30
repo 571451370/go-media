@@ -36,10 +36,6 @@ func LoadRGBAFile(name string) (*image.RGBA, error) {
 	defer f.Close()
 
 	m, err := LoadRGBAReader(f)
-	if err == nil {
-		return m, nil
-	}
-
 	if err != nil {
 		f.Seek(0, io.SeekStart)
 		m, xerr := tga.Decode(f)
