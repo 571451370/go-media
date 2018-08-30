@@ -77,6 +77,27 @@ func Load(name string, r io.Reader) (*Model, error) {
 		}
 	}
 
+	var mat Material
+	texs := []**Texture{&mat.Texture.Diffuse, &mat.Texture.Bump, &mat.Texture.SpecularColor}
+	files := []string{"diffuse", "nm_tangent", "spec"}
+	exts := []string{".tga", ".png", ".jpg", ".jpeg", ".bmp", ".gif"}
+	found := false
+	for i, file := range files {
+		for _, ext := range exts {
+			base := filepath.Base(name)
+			baseExt := filepath.Ext(base)
+			filename := fmt.Sprintf("%s_%s%s", base[:len(base)-len(baseExt)], file, ext)
+			(*texs[i]), err = loadTexture(dir, filename)
+			if err == nil {
+				found = true
+				break
+			}
+		}
+	}
+	if found {
+		m.Mats = append(m.Mats, mat)
+	}
+
 	return m, nil
 }
 
@@ -210,6 +231,7 @@ func loadTexture(dir, line string) (*Texture, error) {
 		err error
 	)
 	s.Init(strings.NewReader(line))
+loop:
 	for {
 		tok := s.Scan()
 		if tok == '-' {
@@ -244,10 +266,17 @@ func loadTexture(dir, line string) (*Texture, error) {
 			t.Turbulence.Z = scanFloat(&s)
 		case "texres":
 		default:
-			t.Map, err = imageutil.LoadRGBAFile(filepath.Join(dir, v))
-			if err != nil {
-				return t, fmt.Errorf("%s: failed to load texture file: %v", v, err)
-			}
+			line = line[s.Position.Offset:]
+			break loop
+
+		}
+	}
+
+	if len(line) > 0 {
+		filename := filepath.Join(dir, line)
+		t.Map, err = imageutil.LoadRGBAFile(filename)
+		if err != nil {
+			return t, fmt.Errorf("%s: failed to load texture file: %v", line, err)
 		}
 	}
 
