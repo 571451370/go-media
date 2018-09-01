@@ -1210,27 +1210,30 @@ func (q Quat) Lerp(t float32, p Quat) Quat {
 	return q.Add(p.Sub(q).Scale(t))
 }
 
-type Spherical struct {
-	R, T, P float32
-}
-
-func (s Spherical) Euclidean() Vec3 {
-	sint := Sin(s.T)
-	cost := Sin(s.T)
-	sinp := Sin(s.P)
-	cosp := Sin(s.P)
-	r := s.R
-
-	return Vec3{
-		r * sint * cosp,
-		r * sint * sinp,
-		r * cost,
+func (q Quat) Inverse() Quat {
+	l2 := q.X*q.X + q.Y*q.Y + q.Z*q.Z + q.W*q.W
+	return Quat{
+		-q.X / l2,
+		-q.Y / l2,
+		-q.Z / l2,
+		q.W / l2,
 	}
 }
 
-func Slerp(v0, v1 Quat, t float32) Quat {
-	v0 = v0.Normalize()
-	v1 = v1.Normalize()
+func (q Quat) Powu(p float32) Quat {
+	t := Acos(q.W) * p
+	u := Vec3{q.X, q.Y, q.Z}
+	u = u.Normalize()
+	u = u.Scale(Sin(t))
+	w := Cos(t)
+	return Quat{
+		u.X, u.Y, u.Z, w,
+	}
+}
+
+func (q Quat) Slerp(t float32, p Quat) Quat {
+	v0 := q.Normalize()
+	v1 := p.Normalize()
 
 	const threshold = 0.9995
 	dot := v0.Dot(v1)
@@ -1253,6 +1256,24 @@ func Slerp(v0, v1 Quat, t float32) Quat {
 	v3 := v0.Scale(Cos(theta))
 	v4 := v2.Scale(Sin(theta))
 	return v3.Add(v4)
+}
+
+type Spherical struct {
+	R, T, P float32
+}
+
+func (s Spherical) Euclidean() Vec3 {
+	sint := Sin(s.T)
+	cost := Sin(s.T)
+	sinp := Sin(s.P)
+	cosp := Sin(s.P)
+	r := s.R
+
+	return Vec3{
+		r * sint * cosp,
+		r * sint * sinp,
+		r * cost,
+	}
 }
 
 func Lerp(t, a, b float32) float32 {
