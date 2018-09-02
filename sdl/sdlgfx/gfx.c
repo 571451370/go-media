@@ -14,16 +14,6 @@ int
 goPolygon(SDL_Renderer *renderer, const SDL_Point *pts, int n)
 {
 	int result = 0;
-
-	/*
-	* Sanity check 
-	*/
-	if (pts == NULL)
-		return (-1);
-
-	if (n < 3)
-		return (-1);
-
 	/*
 	* Draw 
 	*/
@@ -59,15 +49,6 @@ goAAPolygonRGBA(SDL_Renderer *renderer, const SDL_Point *pts, int n, Uint8 r, Ui
 	int i, result;
 
 	/*
-	* Sanity check 
-	*/
-	if (pts == NULL)
-		return (-1);
-
-	if (n < 3)
-		return (-1);
-
-	/*
 	* Draw 
 	*/
 	result = 0;
@@ -93,15 +74,6 @@ goFilledPolygonRGBAMT(SDL_Renderer *renderer, const SDL_Point *pts, int n, Uint8
 	int *gfxPrimitivesPolyInts = NULL;
 	int *gfxPrimitivesPolyIntsNew = NULL;
 	int gfxPrimitivesPolyAllocated = 0;
-
-	/*
-	* Sanity check number of edges
-	*/
-	if (pts == NULL)
-		return -1;
-
-	if (n < 3)
-		return -1;
 
 	/*
 	* Map polygon cache  
@@ -251,13 +223,6 @@ goTexturedPolygonMT(SDL_Renderer *renderer, const SDL_Point *pts, int n,
 	int *gfxPrimitivesPolyIntsTemp = NULL;
 	int gfxPrimitivesPolyAllocated = 0;
 	SDL_Texture *textureAsTexture = NULL;
-
-	/*
-	* Sanity check number of edges
-	*/
-	if (n < 3) {
-		return -1;
-	}
 
 	/*
 	* Map polygon cache  

@@ -103,6 +103,9 @@ func FilledTrigon(re *sdl.Renderer, x1, y1, x2, y2, x3, y3 int, c sdl.Color) err
 }
 
 func Polygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
+	if len(pts) < 3 {
+		return nil
+	}
 	return ek(C.goPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
@@ -111,10 +114,16 @@ func AAPolygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
 }
 
 func FilledPolygon(re *sdl.Renderer, pts []sdl.Point, c sdl.Color) error {
+	if len(pts) < 3 {
+		return nil
+	}
 	return ek(C.goFilledPolygonRGBA((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), C.Uint8(c.R), C.Uint8(c.G), C.Uint8(c.B), C.Uint8(c.A)))
 }
 
 func TexturedPolygon(re *sdl.Renderer, pts []sdl.Point, texture *sdl.Surface, dx, dy int) error {
+	if len(pts) < 3 {
+		return nil
+	}
 	return ek(C.goTexturedPolygon((*C.SDL_Renderer)(re), (*C.SDL_Point)(unsafe.Pointer(&pts[0])), C.int(len(pts)), (*C.SDL_Surface)(unsafe.Pointer(&texture)), C.int(dx), C.int(dy)))
 }
 
