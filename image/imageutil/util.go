@@ -37,10 +37,12 @@ func LoadRGBAFile(name string) (*image.RGBA, error) {
 
 	m, err := LoadRGBAReader(f)
 	if err != nil {
-		f.Seek(0, io.SeekStart)
-		m, xerr := tga.Decode(f)
-		if xerr == nil {
-			return m.(*image.RGBA), nil
+		if strings.HasSuffix(strings.ToLower(name), "tga") {
+			f.Seek(0, io.SeekStart)
+			m, xerr := tga.Decode(f)
+			if xerr == nil {
+				return m.(*image.RGBA), nil
+			}
 		}
 
 		return nil, &os.PathError{Op: "decode", Path: name, Err: err}

@@ -3,6 +3,7 @@ package tga
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"io"
@@ -39,7 +40,7 @@ func Decode(r io.Reader) (image.Image, error) {
 	d := &decoder{r: r}
 
 	if err := d.checkHeader(); err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	if d.SizeID != 0 {
@@ -65,7 +66,7 @@ func Decode(r io.Reader) (image.Image, error) {
 	var err error
 	d.pix, err = ioutil.ReadAll(d.r)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	if d.Type&^byte(3) != 0 {
@@ -178,7 +179,7 @@ func (d *decoder) decode() error {
 	case 32:
 		dec = decode32
 	default:
-		panic("unimplemented")
+		return fmt.Errorf("unsupported bpp size: %d", d.Bpp)
 	}
 
 	inc = int(d.Bpp / 8)
