@@ -212,6 +212,14 @@ func (p Vec2) Angle(q Vec2) float64 {
 	return math.Acos(d / (a * b))
 }
 
+func (p Vec2) Point3() Vec3 {
+	return Vec3{p.X, p.Y, 1}
+}
+
+func (p Vec2) Vec3() Vec3 {
+	return Vec3{p.X, p.Y, 0}
+}
+
 type Vec3 struct {
 	X, Y, Z float64
 }
@@ -363,6 +371,14 @@ func (p Vec3) Min(q Vec3) Vec3 {
 		math.Min(p.Y, q.Y),
 		math.Min(p.Z, q.Z),
 	}
+}
+
+func (p Vec3) Point4() Vec4 {
+	return Vec4{p.X, p.Y, p.Z, 1}
+}
+
+func (p Vec3) Vec4() Vec4 {
+	return Vec4{p.X, p.Y, p.Z, 0}
 }
 
 func (p Vec3) MinComp() float64 {
