@@ -896,14 +896,9 @@ func (m *Mat4) Frustum(l, r, b, t, n, f float32) *Mat4 {
 }
 
 func (m *Mat4) Perspective(fovy, aspect, near, far float32) *Mat4 {
-	f := Tan(fovy / 2)
-	z := near - far
-	*m = Mat4{
-		{1 / (f * aspect), 0, 0, 0},
-		{0, 1 / f, 0, 0},
-		{0, 0, (-near - far) / z, 2 * far * near / z},
-		{0, 0, 1, 0},
-	}
+	ymax := near * Tan(fovy/2)
+	xmax := ymax * aspect
+	m.Frustum(-xmax, xmax, -ymax, ymax, near, far)
 	return m
 }
 
