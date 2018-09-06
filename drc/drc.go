@@ -94,7 +94,7 @@ func (c *Context) pixel(x, y int, z float64, col color.RGBA) {
 	n := y*r.Dx() + x
 	if n < len(c.zbuffer) && z <= c.zbuffer[n] {
 		c.zbuffer[n] = z
-		fb.Set(x, y, col)
+		fb.SetRGBA(x, y, col)
 	}
 }
 
@@ -247,12 +247,9 @@ loop:
 				}
 				xs := c.min(xm-x, xm+x)
 				xe := c.max(xm-x, xm+x)
-				ys := c.min(ym-y, ym+y)
-				ye := c.max(ym-y, ym+y)
 				for i := xs; i <= xe; i++ {
-					for j := ys; j <= ye; j++ {
-						c.pixel(i, j, 1, s.fill)
-					}
+					c.pixelRegion(i, ym-y, 1, s.fill)
+					c.pixelRegion(i, ym+y, 1, s.fill)
 				}
 			} else if n == 1 {
 				if s.noStroke {
