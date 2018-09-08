@@ -825,6 +825,11 @@ func (m *Mat4) Trace() float64 {
 	return m[0][0] + m[1][1] + m[2][2] + m[3][3]
 }
 
+func (m *Mat4) Translate3(p Vec3) *Mat4 {
+	m.Translate(p.X, p.Y, p.Z)
+	return m
+}
+
 func (m *Mat4) Translate(tx, ty, tz float64) *Mat4 {
 	*m = Mat4{
 		{1, 0, 0, tx},
@@ -832,6 +837,11 @@ func (m *Mat4) Translate(tx, ty, tz float64) *Mat4 {
 		{0, 0, 1, tz},
 		{0, 0, 0, 1},
 	}
+	return m
+}
+
+func (m *Mat4) Scale3(p Vec3) *Mat4 {
+	m.Scale(p.X, p.Y, p.Z)
 	return m
 }
 
