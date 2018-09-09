@@ -936,10 +936,10 @@ func (m *Mat4) Frustum(l, r, b, t, n, f float64) *Mat4 {
 
 func (m *Mat4) InfinitePerspective(fovy, aspect, near float64) *Mat4 {
 	const zp = 0
-	f := 1 / (math.Tan(fovy/2) * aspect)
+	f := 1 / math.Tan(fovy/2)
 	*m = Mat4{
-		{f, 0, 0, 0},
-		{0, f * aspect, 0, 0},
+		{f / aspect, 0, 0, 0},
+		{0, f, 0, 0},
 		{0, 0, -(1 - zp), -near * (1 - zp)},
 		{0, 0, -1, 0},
 	}
