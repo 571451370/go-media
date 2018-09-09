@@ -219,6 +219,10 @@ func (p Vec2) Vec3() Vec3 {
 	return Vec3{p.X, p.Y, 0}
 }
 
+func (p Vec2) String() string {
+	return fmt.Sprintf(`Vec2(%0.3f, %0.3f)`, p.X, p.Y)
+}
+
 type Vec3 struct {
 	X, Y, Z float32
 }
@@ -454,6 +458,10 @@ func (p Vec3) Angle(q Vec3) float32 {
 	return float32(math.Acos(float64(d / (a * b))))
 }
 
+func (p Vec3) String() string {
+	return fmt.Sprintf(`Vec3(%0.3f, %0.3f, %0.3f)`, p.X, p.Y, p.Z)
+}
+
 type Vec4 struct {
 	X, Y, Z, W float32
 }
@@ -557,6 +565,10 @@ func (p Vec4) PerspectiveDivide() Vec4 {
 		p.Z / p.W,
 		1,
 	}
+}
+
+func (p Vec4) String() string {
+	return fmt.Sprintf(`Vec4(%0.3f, %0.3f, %0.3f, %0.3f)`, p.X, p.Y, p.Z, p.W)
 }
 
 type Mat2 [2][2]float32
@@ -1275,6 +1287,10 @@ func (q Quat) Slerp(t float32, p Quat) Quat {
 	v3 := v0.Scale(Cos(theta))
 	v4 := v2.Scale(Sin(theta))
 	return v3.Add(v4)
+}
+
+func (q Quat) String() string {
+	return fmt.Sprintf(`Quat(%0.3f, %0.3f, %0.3f, %0.3f)`, q.X, q.Y, q.Z, q.W)
 }
 
 type Spherical struct {
