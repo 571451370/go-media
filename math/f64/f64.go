@@ -887,15 +887,6 @@ func (m *Mat4) LookAt(eye, center, up Vec3) *Mat4 {
 	return m
 }
 
-func (m *Mat4) Viewport(x, y, w, h float64) {
-	*m = Mat4{
-		{w / 2, 0, 0, w/2 + x},
-		{0, h / 2, 0, h/2 + y},
-		{0, 0, 1, 0},
-		{0, 0, 0, 1},
-	}
-}
-
 func (m *Mat4) RotateX(r float64) *Mat4 {
 	si, co := math.Sincos(r)
 	*m = Mat4{
@@ -943,6 +934,18 @@ func (m *Mat4) Frustum(l, r, b, t, n, f float64) *Mat4 {
 	return m
 }
 
+func (m *Mat4) InfinitePerspective(fovy, aspect, near float64) *Mat4 {
+	const zp = 0
+	f := 1 / (math.Tan(fovy/2) * aspect)
+	*m = Mat4{
+		{f, 0, 0, 0},
+		{0, f * aspect, 0, 0},
+		{0, 0, -(1 - zp), -near * (1 - zp)},
+		{0, 0, -1, 0},
+	}
+	return m
+}
+
 func (m *Mat4) Perspective(fovy, aspect, near, far float64) *Mat4 {
 	ymax := near * math.Tan(fovy/2)
 	xmax := ymax * aspect
@@ -963,6 +966,20 @@ func (m *Mat4) Ortho(l, r, b, t, n, f float64) *Mat4 {
 		{sx, 0, 0, tx},
 		{0, sy, 0, ty},
 		{0, 0, sz, tz},
+		{0, 0, 0, 1},
+	}
+	return m
+}
+
+func (m *Mat4) Viewport(x, y, w, h float64) *Mat4 {
+	l := x
+	b := y
+	r := x + w
+	t := y + h
+	*m = Mat4{
+		{(r - l) / 2, 0, 0, (r + l) / 2},
+		{0, (t - b) / 2, 0, (t + b) / 2},
+		{0, 0, 0.5, 0.5},
 		{0, 0, 0, 1},
 	}
 	return m
