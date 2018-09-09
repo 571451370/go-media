@@ -191,8 +191,7 @@ func (p Vec2) Clamp2(s, e Vec2) Vec2 {
 	return p
 }
 
-func (p Vec2) Equals(q Vec2) bool {
-	const eps = 1e-6
+func (p Vec2) Equals(q Vec2, eps float32) bool {
 	return Abs(p.X-q.X) <= eps && Abs(p.Y-q.Y) <= eps
 }
 
@@ -422,8 +421,7 @@ func (p Vec3) Spherical() Spherical {
 	}
 }
 
-func (p Vec3) Equals(q Vec3) bool {
-	const eps = 1e-6
+func (p Vec3) Equals(q Vec3, eps float32) bool {
 	return Abs(p.X-q.X) <= eps && Abs(p.Y-q.Y) <= eps &&
 		Abs(p.Z-q.Z) <= eps
 }
@@ -1154,7 +1152,7 @@ func (q Quat) Conj() Quat {
 	return Quat{-q.X, -q.Y, -q.Z, q.W}
 }
 
-func (q Quat) FromAxis(v Vec3, r float32) Quat {
+func (q Quat) FromAxisAngle(v Vec3, r float32) Quat {
 	r *= 0.5
 	vn := v.Normalize()
 	si, co := Sincos(r)
@@ -1220,7 +1218,7 @@ func (q Quat) Transform4(v Vec4) Vec4 {
 	return m.Transform(v)
 }
 
-func (q Quat) Axis() (v Vec3, r float32) {
+func (q Quat) AxisAngle() (v Vec3, r float32) {
 	s := Sqrt(q.X*q.X + q.Y*q.Y + q.Z*q.Z)
 	v = Vec3{q.X / s, q.Y / s, q.Z / s}
 	r = Acos(q.W) * 2

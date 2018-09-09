@@ -322,6 +322,10 @@ func (c *Context) abs(x int) int {
 	return x
 }
 
+func (c *Context) Matrix() f64.Mat4 {
+	return c.transforms[len(c.transforms)-1]
+}
+
 func (c *Context) TransformMatrix(m *f64.Mat4) {
 	p := &c.transforms[len(c.transforms)-1]
 	p.Mul(p, m)
