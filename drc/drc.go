@@ -70,7 +70,7 @@ func (c *Context) PopStyle() Style {
 	return s
 }
 
-func (c *Context) Background(col color.RGBA) {
+func (c *Context) SetBackground(col color.RGBA) {
 	s := &c.styles[len(c.styles)-1]
 	s.Background = col
 }
