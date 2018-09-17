@@ -102,6 +102,11 @@ func (c *Context) SetPointSize(sz float64) {
 	s.PointSize = sz
 }
 
+func (c *Context) Background() color.RGBA {
+	s := &c.styles[len(c.styles)-1]
+	return s.Background
+}
+
 func (c *Context) LineWidth() float64 {
 	s := &c.styles[len(c.styles)-1]
 	return s.LineWidth
