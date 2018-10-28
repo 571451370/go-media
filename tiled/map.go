@@ -23,6 +23,7 @@ import (
 const (
 	ORTHOGONAL = iota
 	ISOMETRIC
+	HEXAGONAL
 )
 
 type Map struct {
@@ -130,15 +131,17 @@ func (d *decoder) decode(name string) error {
 		d.m.Orientation = ORTHOGONAL
 	case "isometric":
 		d.m.Orientation = ISOMETRIC
+	case "hexagonal":
+		d.m.Orientation = HEXAGONAL
 	default:
 		return fmt.Errorf("unsupported orientation %q", s)
 	}
 
 	switch s := strings.ToLower(d.tm.RenderOrder); s {
-	case "right-down":
-	case "right-up":
-	case "left-down":
-	case "left-up":
+	case "right-down",
+		"right-up",
+		"left-down",
+		"left-up":
 	default:
 		return fmt.Errorf("unsupported render order %q", s)
 	}
