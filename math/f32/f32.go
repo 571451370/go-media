@@ -1804,3 +1804,14 @@ func TriangleBarycentric(p, a, b, c Vec2) Vec3 {
 	}
 	return Vec3{-1, -1, -1}
 }
+
+func Clamp8(x, a, b float32) uint8 {
+	x = Round(x)
+	if x < a {
+		x = a
+	}
+	if x > b {
+		x = b
+	}
+	return uint8(x)
+}
