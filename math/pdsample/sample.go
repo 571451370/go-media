@@ -175,6 +175,65 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 		panic("internal error, sampler cannot search without grid")
 	}
 
+	candidate := s.Points[index]
+	rangeSquared := 4 * 4 * s.Radius * s.Radius
+	N := int(math.Ceil(4 * s.Radius / s.gridCellSize))
+	if N > s.gridSize>>1 {
+		N = s.gridSize >> 1
+	}
+
+	gx, gy := s.getGridXY(candidate)
+
+	xSide, ySide := 0, 0
+	if (candidate.X - (-1 + float64(gx)*s.gridCellSize)) > s.gridCellSize*.5 {
+		xSide = 1
+	}
+	if (candidate.Y - (-1 + float64(gx)*s.gridCellSize)) > s.gridCellSize*.5 {
+		ySide = 1
+	}
+	iy := 1
+	for j := -N; j <= N; j++ {
+		ix := 1
+		if j == 0 {
+			iy = ySide
+		} else if j == 1 {
+			iy = 0
+		}
+		for i := -N; i <= N; i++ {
+			if i == 0 {
+				ix = xSide
+			} else if i == 1 {
+				ix = 0
+			}
+
+			// offset to closest cell point
+			dx := candidate.X - (-1 + float64(gx+i+ix)*s.gridCellSize)
+			dy := candidate.Y - (-1 + float64(gy+j+iy)*s.gridCellSize)
+			if dx*dx+dy*dy < rangeSquared {
+				cx := (gx + i + s.gridSize) % s.gridSize
+				cy := (gy + j + s.gridSize) % s.gridSize
+				cell := s.grid[cy*s.gridSize+cx]
+
+				for k := range cell {
+					if cell[k] == -1 {
+						break
+					}
+					if cell[k] != index {
+						pt := s.Points[cell[k]]
+						v := s.getTiled(pt.Sub(candidate))
+						distSquared := v.X*v.X + v.Y*v.Y
+						if distSquared < rangeSquared {
+							dist := math.Sqrt(distSquared)
+							angle := math.Atan2(v.Y, v.X)
+							theta := math.Acos(.25 * dist / s.Radius)
+
+							rl.Subtract(angle-theta, angle+theta)
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func (s *Sampler) maximize() {
@@ -205,10 +264,124 @@ type DartThrowing struct {
 }
 
 func NewDartThrowing(radius float64, isTiled bool, minMaxThrows, maxThrowsMult int) *DartThrowing {
-	return &DartThrowing{}
+	return &DartThrowing{
+		Sampler:       NewSampler(radius, isTiled, true),
+		minMaxThrows:  minMaxThrows,
+		maxThrowsMult: maxThrowsMult,
+	}
 }
 
 func (d *DartThrowing) Complete() {
 	for {
+		N := len(d.Points) * d.maxThrowsMult
+		if N < d.minMaxThrows {
+			N = d.minMaxThrows
+		}
+
+		i := 0
+		for ; i < N; i++ {
+			pt := d.randomPoint()
+			d.findNeighbors(pt, 2*d.Radius)
+			if len(d.neighbors) == 0 {
+				d.addPoint(pt)
+				break
+			}
+		}
+
+		if i == N {
+			break
+		}
+	}
+}
+
+type BestCandidate struct {
+	*Sampler
+	multiplier int
+	n          int
+}
+
+func NewBestCandidate(radius float64, isTiled bool, multiplier int) *BestCandidate {
+	return &BestCandidate{
+		Sampler:    NewSampler(radius, isTiled, true),
+		multiplier: multiplier,
+		n:          int(0.7 / (radius * radius)),
+	}
+}
+
+func (b *BestCandidate) Complete() {
+	for i := 0; i < b.n; i++ {
+		best := f64.Vec2{}
+		bestDistance := 0.0
+		count := 1 + len(b.Points)*b.multiplier
+
+		for j := 0; j < count; j++ {
+			pt := b.randomPoint()
+			closest := 2.0
+
+			closest = b.findClosestNeighbor(pt, 4*b.Radius)
+			if j == 0 || closest > bestDistance {
+				bestDistance = closest
+				best = pt
+			}
+		}
+
+		b.addPoint(best)
+	}
+}
+
+type BoundarySampler struct {
+	*Sampler
+}
+
+func NewBoundarySampler(radius float64) *BoundarySampler {
+	return &BoundarySampler{
+		Sampler: NewSampler(radius, false, false),
+	}
+}
+
+func (b *BoundarySampler) Complete() {
+	var candidates []int
+	b.addPoint(b.randomPoint())
+	candidates = append(candidates, len(b.Points)-1)
+	rl := NewRangeList(0, 0)
+
+	for len(candidates) > 0 {
+		c := int(rand.Int31()) % len(candidates)
+		index := candidates[c]
+		candidate := b.Points[index]
+		candidates[c] = candidates[len(candidates)-1]
+		candidates = candidates[:len(candidates)-1]
+
+		rl.Reset(0, 2*math.Pi)
+		b.findNeighborRanges(index, rl)
+		for rl.NumRanges != 0 {
+			re := rl.Ranges[int(rand.Int31())%rl.NumRanges]
+			angle := re.Min + (re.Max-re.Min)*rand.Float64()
+			pt := b.getTiled(f64.Vec2{
+				candidate.X + math.Cos(angle)*2*b.Radius,
+				candidate.Y + math.Sin(angle)*2*b.Radius,
+			})
+			b.addPoint(pt)
+			candidates = append(candidates, len(b.Points)-1)
+
+			rl.Subtract(angle-math.Pi/3, angle+math.Pi/3)
+		}
+	}
+}
+
+type UniformSampler struct {
+	*Sampler
+}
+
+func NewUniformSampler(radius float64) *UniformSampler {
+	return &UniformSampler{
+		Sampler: NewSampler(radius, false, false),
+	}
+}
+
+func (u *UniformSampler) Complete() {
+	N := int(.75 / (u.Radius * u.Radius))
+	for i := 0; i < N; i++ {
+		u.addPoint(u.randomPoint())
 	}
 }
