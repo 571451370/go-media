@@ -178,6 +178,24 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 }
 
 func (s *Sampler) maximize() {
+	rl := NewRangeList(0, 0)
+	N := len(s.Points)
+
+	for i := 0; i < N; i++ {
+		candidate := &s.Points[i]
+		rl.Reset(0, 2*math.Pi)
+		s.findNeighborRanges(i, rl)
+		for rl.NumRanges != 0 {
+			re := rl.Ranges[rand.Intn(rl.NumRanges)]
+			angle := re.Min + (re.Max-re.Min)*rand.Float64()
+			pt := s.getTiled(f64.Vec2{
+				candidate.X + math.Cos(angle)*2*s.Radius,
+				candidate.Y + math.Sin(angle)*2*s.Radius,
+			})
+			s.addPoint(pt)
+			rl.Subtract(angle-math.Pi/3, angle+math.Pi/3)
+		}
+	}
 }
 
 type DartThrowing struct {
