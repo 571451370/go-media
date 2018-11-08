@@ -369,6 +369,10 @@ func (b *BoundarySampler) Complete() {
 	}
 }
 
+type PureSampler struct {
+	*Sampler
+}
+
 type UniformSampler struct {
 	*Sampler
 }
