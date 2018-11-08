@@ -14,8 +14,8 @@ type Sampler struct {
 	gridSize     int
 	gridCellSize float64
 	isTiled      bool
+	radius       float64
 	Points       []f64.Vec2
-	Radius       float64
 }
 
 func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
@@ -28,7 +28,7 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 	)
 	// grid size is chosen so that 4*radius search only
 	// requires search adjacent cells, also determine
-	// max points per cells
+	// max Points per cells
 	if usesGrid {
 		gridSize = int(math.Ceil(2 / (4 * radius)))
 		if gridSize < 2 {
@@ -46,7 +46,7 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 		gridSize:     gridSize,
 		gridCellSize: gridCellSize,
 		isTiled:      isTiled,
-		Radius:       radius,
+		radius:       radius,
 	}
 }
 
@@ -102,7 +102,7 @@ func (s *Sampler) addPoint(pt f64.Vec2) {
 				return
 			}
 		}
-		panic("internal error: overflowed max points per cell")
+		panic("internal error: overflowed max Points per cell")
 	}
 }
 
@@ -176,8 +176,8 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 	}
 
 	candidate := s.Points[index]
-	rangeSquared := 4 * 4 * s.Radius * s.Radius
-	N := int(math.Ceil(4 * s.Radius / s.gridCellSize))
+	rangeSquared := 4 * 4 * s.radius * s.radius
+	N := int(math.Ceil(4 * s.radius / s.gridCellSize))
 	if N > s.gridSize>>1 {
 		N = s.gridSize >> 1
 	}
@@ -225,7 +225,7 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 						if distSquared < rangeSquared {
 							dist := math.Sqrt(distSquared)
 							angle := math.Atan2(v.Y, v.X)
-							theta := math.Acos(.25 * dist / s.Radius)
+							theta := math.Acos(.25 * dist / s.radius)
 
 							rl.Subtract(angle-theta, angle+theta)
 						}
@@ -236,7 +236,7 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 	}
 }
 
-func (s *Sampler) maximize() {
+func (s *Sampler) Maximize() {
 	rl := NewRangeList(0, 0)
 	N := len(s.Points)
 
@@ -248,8 +248,8 @@ func (s *Sampler) maximize() {
 			re := rl.Ranges[rand.Intn(rl.NumRanges)]
 			angle := re.Min + (re.Max-re.Min)*rand.Float64()
 			pt := s.getTiled(f64.Vec2{
-				candidate.X + math.Cos(angle)*2*s.Radius,
-				candidate.Y + math.Sin(angle)*2*s.Radius,
+				candidate.X + math.Cos(angle)*2*s.radius,
+				candidate.Y + math.Sin(angle)*2*s.radius,
 			})
 			s.addPoint(pt)
 			rl.Subtract(angle-math.Pi/3, angle+math.Pi/3)
@@ -281,7 +281,7 @@ func (d *DartThrowing) Complete() {
 		i := 0
 		for ; i < N; i++ {
 			pt := d.randomPoint()
-			d.findNeighbors(pt, 2*d.Radius)
+			d.findNeighbors(pt, 2*d.radius)
 			if len(d.neighbors) == 0 {
 				d.addPoint(pt)
 				break
@@ -318,7 +318,7 @@ func (b *BestCandidate) Complete() {
 			pt := b.randomPoint()
 			closest := 2.0
 
-			closest = b.findClosestNeighbor(pt, 4*b.Radius)
+			closest = b.findClosestNeighbor(pt, 4*b.radius)
 			if j == 0 || closest > bestDistance {
 				bestDistance = closest
 				best = pt
@@ -358,8 +358,8 @@ func (b *BoundarySampler) Complete() {
 			re := rl.Ranges[int(rand.Int31())%rl.NumRanges]
 			angle := re.Min + (re.Max-re.Min)*rand.Float64()
 			pt := b.getTiled(f64.Vec2{
-				candidate.X + math.Cos(angle)*2*b.Radius,
-				candidate.Y + math.Sin(angle)*2*b.Radius,
+				candidate.X + math.Cos(angle)*2*b.radius,
+				candidate.Y + math.Sin(angle)*2*b.radius,
 			})
 			b.addPoint(pt)
 			candidates = append(candidates, len(b.Points)-1)
@@ -380,7 +380,7 @@ func NewUniformSampler(radius float64) *UniformSampler {
 }
 
 func (u *UniformSampler) Complete() {
-	N := int(.75 / (u.Radius * u.Radius))
+	N := int(.75 / (u.radius * u.radius))
 	for i := 0; i < N; i++ {
 		u.addPoint(u.randomPoint())
 	}
