@@ -373,6 +373,71 @@ type PureSampler struct {
 	*Sampler
 }
 
+func NewPureSampler(radius float64) *PureSampler {
+	return &PureSampler{
+		Sampler: NewSampler(radius, true, false),
+	}
+}
+
+func (p *PureSampler) Complete() {
+	pt := p.randomPoint()
+	rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, 0.00000001)
+	regions := make(map[int]*ScallopedRegion)
+	var regionsPDF WDPDF
+
+	p.addPoint(pt)
+	regions[len(p.Points)-1] = rgn
+	regionsPDF.Insert(len(p.Points)-1, rgn.Area)
+
+	for len(regions) > 0 {
+		idx := regionsPDF.Choose(rand.Float64())
+
+		pt := p.getTiled(regions[idx].Sample())
+		rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, 0.00000001)
+
+		p.findNeighbors(pt, p.radius*8)
+		for _, nIdx := range p.neighbors {
+			n := p.Points[nIdx]
+
+			rgn.SubtractDisk(pt.Add(p.getTiled(n.Sub(pt))), p.radius*4)
+
+			nRgn, found := regions[nIdx]
+			if found {
+				nRgn.SubtractDisk(n.Add(p.getTiled(pt.Sub(n))), p.radius*2)
+
+				if nRgn.IsEmpty() {
+					delete(regions, nIdx)
+					regionsPDF.Remove(nIdx)
+				} else {
+					regionsPDF.Update(nIdx, nRgn.Area)
+				}
+			}
+		}
+
+		p.addPoint(pt)
+
+		if !rgn.IsEmpty() {
+			regions[len(p.Points)-1] = rgn
+			regionsPDF.Insert(len(p.Points)-1, rgn.Area)
+		}
+	}
+}
+
+type LinearPureSampler struct {
+	*Sampler
+}
+
+func (l *LinearPureSampler) Complete() {
+
+}
+
+type PenroseSampler struct {
+	*Sampler
+}
+
+func (p *PenroseSampler) Complete() {
+}
+
 type UniformSampler struct {
 	*Sampler
 }

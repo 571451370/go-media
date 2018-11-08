@@ -27,6 +27,9 @@ func (wd *WDPDF) Insert(item int, weight float64) {
 func (wd *WDPDF) Update(item int, newWeight float64) {
 }
 
+func (wd *WDPDF) Remove(item int) {
+}
+
 func (wd *WDPDF) Choose(p float64) int {
 	if p < 0 || p >= 1 {
 		panic("argument(p) outside of valid range")

@@ -225,8 +225,8 @@ func (s *ScallopedSector) SubtractDisk(C f64.Vec2, r float64) (regions []Scallop
 	return
 }
 
-func NewScallopedRegion(P f64.Vec2, r1, r2, minArea float64) ScallopedRegion {
-	r := ScallopedRegion{}
+func NewScallopedRegion(P f64.Vec2, r1, r2, minArea float64) *ScallopedRegion {
+	r := &ScallopedRegion{}
 	r.Regions = append(r.Regions, NewScallopedSector(P, 0, 2*math.Pi, P, r1, 1, P, r2, 1))
 	r.Area = r.Regions[0].Area
 	return r
@@ -275,6 +275,10 @@ func (s *ScallopedRegion) Sample() f64.Vec2 {
 		a -= ss.Area
 	}
 	return ss.Sample()
+}
+
+func (s *ScallopedRegion) IsEmpty() bool {
+	return len(s.Regions) == 0
 }
 
 func integralOfDistToCircle(x, d, r, k float64) float64 {
