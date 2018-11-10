@@ -4,6 +4,7 @@ package pdsample
 import (
 	"math"
 	"math/rand"
+	"sort"
 
 	"github.com/qeedquan/go-media/math/f64"
 )
@@ -453,4 +454,17 @@ func (u *UniformSampler) Complete() {
 	for i := 0; i < N; i++ {
 		u.addPoint(u.randomPoint())
 	}
+}
+
+func WithinRadius(p []f64.Vec2, r float64) bool {
+	sort.Slice(p, func(i, j int) bool {
+		return p[i].Len() < p[j].Len()
+	})
+	for i := 0; i < len(p)-1; i++ {
+		d := math.Abs(p[i].Len() - p[i+1].Len())
+		if d > r {
+			return false
+		}
+	}
+	return true
 }

@@ -34,6 +34,23 @@ func Cone(p f64.Vec3, c f64.Vec2) float64 {
 	return c.Dot(f64.Vec2{q, p.Z})
 }
 
+func RoundCone(p f64.Vec3, r1, r2, h float64) float64 {
+	q := f64.Vec2{p.XZ().Len(), p.Y}
+
+	b := (r1 - r2) / h
+	a := math.Sqrt(1 - b*b)
+	k := q.Dot(f64.Vec2{-b, a})
+
+	if k < 0 {
+		return q.Len() - r1
+	}
+	if k > a*h {
+		return q.Sub(f64.Vec2{0, h}).Len() - r2
+	}
+
+	return q.Dot(f64.Vec2{a, b}) - r1
+}
+
 func HexPrism(p f64.Vec3, h f64.Vec2) float64 {
 	q := p.Abs()
 	return math.Max(q.Z-h.Y, math.Max((q.X*0.866025+q.Y*0.5), q.Y)-h.X)
@@ -102,4 +119,8 @@ func Union2(d1, d2 f64.Vec2) f64.Vec2 {
 		return d1
 	}
 	return d2
+}
+
+func Onion(sdf, thickness float64) float64 {
+	return math.Abs(sdf) - thickness
 }
