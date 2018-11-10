@@ -15,8 +15,8 @@ func NewWDPDFNode(key int, weight float64, parent *WDPDFNode) *WDPDFNode {
 	}
 }
 
-func (n *WDPDFNode) LeftIsBlack() bool  { return n.Left != nil || n.Left.IsBlack() }
-func (n *WDPDFNode) RightIsBlack() bool { return n.Right != nil || n.Right.IsBlack() }
+func (n *WDPDFNode) LeftIsBlack() bool  { return n.Left == nil || n.Left.IsBlack() }
+func (n *WDPDFNode) RightIsBlack() bool { return n.Right == nil || n.Right.IsBlack() }
 
 func (n *WDPDFNode) LeftIsRed() bool  { return !n.LeftIsBlack() }
 func (n *WDPDFNode) RightIsRed() bool { return !n.RightIsBlack() }
@@ -46,6 +46,36 @@ func (n *WDPDFNode) SetSum() {
 
 type WDPDF struct {
 	root *WDPDFNode
+}
+
+func NewWDPDF() *WDPDF {
+	return &WDPDF{}
+}
+
+func (wd *WDPDF) Walk(typ int, f func(n *WDPDFNode)) {
+	wd.walk(typ, wd.root, f)
+}
+
+func (wd *WDPDF) walk(typ int, n *WDPDFNode, f func(*WDPDFNode)) {
+	if n == nil {
+		return
+	}
+	switch typ {
+	case 0:
+		f(n)
+		wd.walk(typ, n.Left, f)
+		wd.walk(typ, n.Right, f)
+
+	case 1:
+		wd.walk(typ, n.Left, f)
+		f(n)
+		wd.walk(typ, n.Right, f)
+
+	case 2:
+		wd.walk(typ, n.Left, f)
+		wd.walk(typ, n.Right, f)
+		f(n)
+	}
 }
 
 func (wd *WDPDF) Insert(item int, weight float64) {
