@@ -103,7 +103,7 @@ func (s *Sampler) addPoint(pt f64.Vec2) {
 				return
 			}
 		}
-		panic("internal error: overflowed max Points per cell")
+		panic("internal error: overflowed max points per cell")
 	}
 }
 
@@ -429,7 +429,6 @@ type LinearPureSampler struct {
 }
 
 func (l *LinearPureSampler) Complete() {
-
 }
 
 type PenroseSampler struct {
