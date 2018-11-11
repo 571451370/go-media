@@ -347,7 +347,7 @@ func (b *BoundarySampler) Complete() {
 	rl := NewRangeList(0, 0)
 
 	for len(candidates) > 0 {
-		c := int(rand.Int31()) % len(candidates)
+		c := rand.Int() % len(candidates)
 		index := candidates[c]
 		candidate := b.Points[index]
 		candidates[c] = candidates[len(candidates)-1]
@@ -356,7 +356,7 @@ func (b *BoundarySampler) Complete() {
 		rl.Reset(0, 2*math.Pi)
 		b.findNeighborRanges(index, rl)
 		for rl.NumRanges != 0 {
-			re := rl.Ranges[int(rand.Int31())%rl.NumRanges]
+			re := rl.Ranges[rand.Int()%rl.NumRanges]
 			angle := re.Min + (re.Max-re.Min)*rand.Float64()
 			pt := b.getTiled(f64.Vec2{
 				candidate.X + math.Cos(angle)*2*b.radius,
@@ -441,7 +441,7 @@ func (l *LinearPureSampler) Complete() {
 	candidates = append(candidates, len(l.Points)-1)
 
 	for len(candidates) > 0 {
-		c := int(rand.Int31()) % len(candidates)
+		c := rand.Int() % len(candidates)
 		index := candidates[c]
 		candidate := l.Points[index]
 		candidates[c] = candidates[len(candidates)-1]
@@ -526,12 +526,12 @@ func (u *UniformSampler) Complete() {
 	}
 }
 
-func WithinRadius(p []f64.Vec2, r float64) bool {
+func OutsideRadius(p []f64.Vec2, r float64) bool {
 	w := true
 	sort.Slice(p, func(i, j int) bool {
 		a := p[i].Len()
 		b := p[j].Len()
-		if math.Abs(a-b) > r {
+		if math.Abs(a-b) < r {
 			w = false
 		}
 		return a < b

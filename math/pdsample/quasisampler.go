@@ -221,12 +221,12 @@ func (t *TileNode) NextNode() *TileNode {
 }
 
 func (t *TileNode) GetDisplacedSamplingPoint(importance int) f64.Vec2 {
-	p := t.p1.Add(t.calcDisplacementVector(importance, t.f_code, t.dir))
+	p := t.p1.Add(calcDisplacementVector(importance, t.f_code, t.dir))
 	p = p.Scale(t.scale)
 	return p
 }
 
-func (t *TileNode) calcDisplacementVector(importance, f_code, dir int) f64.Vec2 {
+func calcDisplacementVector(importance, f_code, dir int) f64.Vec2 {
 	i_s := calcStructuralIndex(f_code)
 	i_v := calcImportanceIndex(importance)
 	return vvect[dir].Scale(lut[i_v][i_s][0]).Add(vvect[(dir+5)%20].Scale(lut[i_v][i_s][1]))
