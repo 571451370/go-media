@@ -1,16 +1,134 @@
 package pdsample
 
-import "github.com/qeedquan/go-media/math/f64"
+import (
+	"math"
+
+	"github.com/qeedquan/go-media/math/f64"
+)
 
 const (
 	LUT_SIZE = 21 // number of importance index entries in the lookup table
+
+	PHI     = 1.6180339887498948482045868343656 // ( 1 + sqrt(5) ) / 2
+	PHI2    = 2.6180339887498948482045868343656 // Phi squared
+	LOG_PHI = 0.48121182505960347               // log(Phi)
+	SQRT5   = 2.2360679774997896964091736687313 // sqrt(5.0)
 )
 
-type QuasiSampler struct {
+// Two-bit sequences.
+const (
+	B00 = iota
+	B10
+	B01
+)
+
+const (
+	TileTypeA = iota
+	TileTypeB
+	TileTypeC
+	TileTypeD
+	TileTypeE
+	TileTypeF
+)
+
+// Individual tile elements, which also serve as nodes for the tile subdivision tree.
+type TileNode struct {
+	level      int // Depth in the tree.
+	tileType   int // Types A through F.
+	dir        int // Tile orientation, 0=North, in Pi/10 increments, CCW.
+	scale      float64
+	p1, p2, p3 f64.Vec2 // Tile orientation, 0=North, in Pi/10 increments, CCW.
+
+	// The F-Code binary sequence.
+	f_code int
+
+	// tiling tree structure
+	parent      *TileNode
+	parent_slot int  // position in parent's list (needed for iterators)
+	terminal    bool // true for leaf nodes
+	children    []*TileNode
 }
 
-func NewQuasiSampler() *QuasiSampler {
-	return &QuasiSampler{}
+// Helper constructor.
+// Creates an initial tile that is certain to contain the ROI.
+// The starting tile is of type F (arbitrary).
+func NewTileROI(roi_width, roi_height float64) *TileNode {
+	side := math.Max(roi_width, roi_height)
+	scale := 2.0 * side
+	offset := f64.Vec2{PHI*PHI/2.0 - 0.25, 0.125}
+	return NewTileNodeEx(nil, TileTypeF, offset.Scale(-scale), 15, 0, 0, scale)
+}
+
+func NewTileNodeEx(parent *TileNode, tileType int, refPt f64.Vec2, dir int, newbits int, parent_slot int, scale float64) *TileNode {
+	t := &TileNode{
+		parent:      parent,
+		tileType:    tileType,
+		p1:          refPt,
+		dir:         dir % 20,
+		parent_slot: parent_slot,
+		scale:       scale,
+	}
+	if parent != nil {
+		t.level = parent.level + 1
+	}
+
+	// Build triangle, according to type.
+	switch tileType {
+	case TileTypeC, TileTypeD:
+		// "Skinny" triangles
+		t.p2 = t.p1.Add(vvect[dir%20].Scale(t.scale))
+		t.p3 = t.p1.Add(vvect[(dir+4)%20].Scale(PHI * scale))
+	case TileTypeE, TileTypeF:
+		// "Fat" triangles
+		t.p2 = t.p1.Add(vvect[dir%20].Scale(PHI2 * scale))
+		t.p3 = t.p1.Add(vvect[(dir+2)%20].Scale(PHI * scale))
+	default:
+		// Pentagonal tiles (triangle undefined)
+		t.p2 = t.p1.Add(vvect[dir%20].Scale(scale))
+		t.p3 = t.p1.Add(vvect[(dir+5)%20].Scale(scale))
+	}
+
+	// Append 2 new bits to the F-Code.
+	if t.parent != nil {
+		t.f_code = (t.parent.f_code << 2) ^ newbits
+	} else {
+		t.f_code = newbits
+	}
+
+	// Set as leaf node
+	t.terminal = true
+	t.children = t.children[:0]
+	return t
+}
+
+type QuasiSampler struct {
+	width  float64
+	height float64
+	root   *TileNode
+}
+
+func NewQuasiSampler(width, height float64) *QuasiSampler {
+	return &QuasiSampler{
+		width:  width,
+		height: height,
+	}
+}
+
+// Builds and collects the point set generated be the sampling system,
+// using the previously defined importance function.
+func (s *QuasiSampler) GetSamplingPoints() []f64.Vec2 {
+	s.buildAdaptiveSubdivision(6)
+	pointlist := s.collectPoints(true)
+	return pointlist
+}
+
+// Generates the hierarchical structure.
+func (s *QuasiSampler) buildAdaptiveSubdivision(minSubdivisionLevel int) {
+}
+
+// Collect the resulting point set.
+func (s *QuasiSampler) collectPoints(filterBounds bool) []f64.Vec2 {
+	return nil
 }
 
 var fiboTable = [32]int{

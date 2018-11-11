@@ -8,6 +8,10 @@ import (
 	"github.com/qeedquan/go-media/math/f64"
 )
 
+const (
+	SCALLOPED_REGION_MIN_AREA = 0.00000001
+)
+
 type ArcData struct {
 	P               f64.Vec2
 	R               float64

@@ -382,7 +382,7 @@ func NewPureSampler(radius float64) *PureSampler {
 
 func (p *PureSampler) Complete() {
 	pt := p.randomPoint()
-	rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, 0.00000001)
+	rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, SCALLOPED_REGION_MIN_AREA)
 	regions := make(map[int]*ScallopedRegion)
 	var regionsPDF WDPDF
 
@@ -394,7 +394,7 @@ func (p *PureSampler) Complete() {
 		idx := regionsPDF.Choose(rand.Float64())
 
 		pt := p.getTiled(regions[idx].Sample())
-		rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, 0.00000001)
+		rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, SCALLOPED_REGION_MIN_AREA)
 
 		p.findNeighbors(pt, p.radius*8)
 		for _, nIdx := range p.neighbors {
@@ -428,7 +428,65 @@ type LinearPureSampler struct {
 	*Sampler
 }
 
+func NewLinearPureSampler(radius float64) *LinearPureSampler {
+	return &LinearPureSampler{
+		Sampler: NewSampler(radius, true, true),
+	}
+}
+
 func (l *LinearPureSampler) Complete() {
+	var candidates []int
+
+	l.addPoint(l.randomPoint())
+	candidates = append(candidates, len(l.Points)-1)
+
+	for len(candidates) > 0 {
+		c := int(rand.Int31()) % len(candidates)
+		index := candidates[c]
+		candidate := l.Points[index]
+		candidates[c] = candidates[len(candidates)-1]
+		candidates = candidates[:len(candidates)-1]
+
+		sr := NewScallopedRegion(candidate, l.radius*2, l.radius*4, SCALLOPED_REGION_MIN_AREA)
+		l.findNeighbors(candidate, l.radius*8)
+
+		for _, nIdx := range l.neighbors {
+			n := &l.Points[nIdx]
+			nClose := candidate.Add(l.getTiled(n.Sub(candidate)))
+
+			if nIdx < index {
+				sr.SubtractDisk(nClose, l.radius*4)
+			} else {
+				sr.SubtractDisk(nClose, l.radius*2)
+			}
+		}
+
+		for !sr.IsEmpty() {
+			p := sr.Sample()
+			pt := l.getTiled(p)
+
+			l.addPoint(pt)
+			candidates = append(candidates, len(l.Points)-1)
+
+			sr.SubtractDisk(p, l.radius*2)
+		}
+	}
+}
+
+type PenroseQuasiSampler struct {
+	*QuasiSampler
+	val int
+}
+
+func NewPenroseQuasiSampler(val int) *PenroseQuasiSampler {
+	return &PenroseQuasiSampler{
+		QuasiSampler: NewQuasiSampler(100, 100),
+		val:          val,
+	}
+}
+
+func (p *PenroseQuasiSampler) GetImportanceAt(pt f64.Vec2) int {
+	return p.val
 }
 
 type PenroseSampler struct {
@@ -436,6 +494,18 @@ type PenroseSampler struct {
 }
 
 func (p *PenroseSampler) Complete() {
+	s := NewPenroseQuasiSampler(int(9.1 / (p.radius * p.radius)))
+	pts := s.GetSamplingPoints()
+
+	for i := range pts {
+		pt := f64.Vec2{
+			pts[i].X/50 - 1,
+			pts[i].Y/50 - 1,
+		}
+		if p.pointInDomain(pt) {
+			p.addPoint(pt)
+		}
+	}
 }
 
 type UniformSampler struct {
@@ -456,14 +526,14 @@ func (u *UniformSampler) Complete() {
 }
 
 func WithinRadius(p []f64.Vec2, r float64) bool {
+	w := true
 	sort.Slice(p, func(i, j int) bool {
-		return p[i].Len() < p[j].Len()
-	})
-	for i := 0; i < len(p)-1; i++ {
-		d := math.Abs(p[i].Len() - p[i+1].Len())
-		if d > r {
-			return false
+		a := p[i].Len()
+		b := p[j].Len()
+		if math.Abs(a-b) > r {
+			w = false
 		}
-	}
-	return true
+		return a < b
+	})
+	return w
 }
