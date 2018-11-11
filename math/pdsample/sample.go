@@ -479,10 +479,11 @@ type PenroseQuasiSampler struct {
 }
 
 func NewPenroseQuasiSampler(val int) *PenroseQuasiSampler {
-	return &PenroseQuasiSampler{
-		QuasiSampler: NewQuasiSampler(100, 100),
-		val:          val,
+	p := &PenroseQuasiSampler{
+		val: val,
 	}
+	p.QuasiSampler = NewQuasiSampler(100, 100, p.GetImportanceAt)
+	return p
 }
 
 func (p *PenroseQuasiSampler) GetImportanceAt(pt f64.Vec2) int {

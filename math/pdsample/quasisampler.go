@@ -7,12 +7,14 @@ import (
 )
 
 const (
-	LUT_SIZE = 21 // number of importance index entries in the lookup table
+	LUT_SIZE              = 21 // number of importance index entries in the lookup table
+	NUM_STRUCT_INDEX_BITS = 6  // Number of significant bits taken from F-Code.
 
-	PHI     = 1.6180339887498948482045868343656 // ( 1 + sqrt(5) ) / 2
-	PHI2    = 2.6180339887498948482045868343656 // Phi squared
-	LOG_PHI = 0.48121182505960347               // log(Phi)
-	SQRT5   = 2.2360679774997896964091736687313 // sqrt(5.0)
+	GOLDEN_RATIO = PHI
+	PHI          = 1.6180339887498948482045868343656 // ( 1 + sqrt(5) ) / 2
+	PHI2         = 2.6180339887498948482045868343656 // Phi squared
+	LOG_PHI      = 0.48121182505960347               // log(Phi)
+	SQRT5        = 2.2360679774997896964091736687313 // sqrt(5.0)
 )
 
 // Two-bit sequences.
@@ -52,7 +54,7 @@ type TileNode struct {
 // Helper constructor.
 // Creates an initial tile that is certain to contain the ROI.
 // The starting tile is of type F (arbitrary).
-func NewTileROI(roi_width, roi_height float64) *TileNode {
+func NewTileNodeROI(roi_width, roi_height float64) *TileNode {
 	side := math.Max(roi_width, roi_height)
 	scale := 2.0 * side
 	offset := f64.Vec2{PHI*PHI/2.0 - 0.25, 0.125}
@@ -101,16 +103,201 @@ func NewTileNodeEx(parent *TileNode, tileType int, refPt f64.Vec2, dir int, newb
 	return t
 }
 
-type QuasiSampler struct {
-	width  float64
-	height float64
-	root   *TileNode
+func (t *TileNode) GetP1() f64.Vec2 { return t.p1 }
+func (t *TileNode) GetP2() f64.Vec2 { return t.p2 }
+func (t *TileNode) GetP3() f64.Vec2 { return t.p3 }
+func (t *TileNode) GetCenter() f64.Vec2 {
+	p := t.p1.Add(t.p2)
+	p = p.Add(t.p3)
+	p = p.Scale(1 / 3.0)
+	return p
 }
 
-func NewQuasiSampler(width, height float64) *QuasiSampler {
+func (t *TileNode) GetLevel() int { return t.level }
+func (t *TileNode) IsSamplingType() bool {
+	return t.tileType == TileTypeA || t.tileType == TileTypeB
+}
+
+func (t *TileNode) GetFCode() int { return t.f_code }
+
+// Splits a tile according to the given subdivision rules.
+func (t *TileNode) Refine() {
+	// Can only subdivide leaf nodes.
+	if !t.terminal {
+		return
+	}
+
+	t.terminal = false                 // The tile now has children.
+	newscale := t.scale / GOLDEN_RATIO // The scale factor between levels is constant.
+
+	switch t.tileType {
+	// Each new tile is created using the following information:
+	// A pointer to its parent, the type of the new tile (a through f),
+	// the origin of the new tile, the change in orientation of the new tile with
+	// respect to the parent's orientation, the two bits to be pre-pended to the F-Code,
+	// the parent's slot (for traversal purposes), and the new linear scale of the tile,
+	// which is always the parent's scale divided by the golden ratio.
+	case TileTypeA:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeB, t.p1, t.dir+0, B00, 0, newscale))
+
+	case TileTypeB:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeA, t.p1, t.dir+10, B00, 0, newscale))
+
+	case TileTypeC:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeF, t.p3, t.dir+14, B00, 0, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeC, t.p2, t.dir+6, B10, 1, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeA, t.children[0].p3, t.dir+1, B10, 2, newscale))
+
+	case TileTypeD:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeE, t.p2, t.dir+6, B00, 0, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeD, t.children[0].p3, t.dir+14, B10, 1, newscale))
+
+	case TileTypeE:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeC, t.p3, t.dir+12, B10, 0, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeE, t.p2, t.dir+8, B01, 1, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeF, t.p1, t.dir+0, B00, 2, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeA, t.children[0].p2, t.dir+7, B10, 3, newscale))
+
+	case TileTypeF:
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeF, t.p3, t.dir+12, B01, 0, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeE, t.children[0].p3, t.dir+0, B00, 1, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeD, t.children[1].p3, t.dir+8, B10, 2, newscale))
+		t.children = append(t.children, NewTileNodeEx(t, TileTypeA, t.children[0].p2, t.dir+15, B01, 3, newscale))
+	}
+}
+
+func (t *TileNode) IsTerminal() bool {
+	return t.terminal
+}
+
+func (t *TileNode) GetChild(i int) *TileNode {
+	return t.children[i]
+}
+
+// Returns the next closest leaf to a node.
+// Returns NULL if it's the last leaf.
+func (t *TileNode) NextLeaf() *TileNode {
+	tmp := t
+	for {
+		tmp = tmp.NextNode()
+		if tmp == nil {
+			return nil
+		}
+		if tmp.IsTerminal() {
+			return tmp
+		}
+	}
+}
+
+// Returns the next node of the tree, in depth-first traversal.
+// Returns NULL if it is at the last node.
+func (t *TileNode) NextNode() *TileNode {
+	if !t.terminal {
+		return t.children[0]
+	}
+	// single node case
+	if t.level == 0 {
+		return nil
+	}
+
+	if t.parent_slot < len(t.parent.children)-1 {
+		return t.parent.children[t.parent_slot+1]
+	}
+
+	// last child case
+	tmp := t
+	for {
+		tmp = tmp.parent
+		if !((tmp.level != 0) && (tmp.parent_slot == len(tmp.parent.children)-1)) {
+			break
+		}
+	}
+
+	// last node
+	if tmp.level == 0 {
+		return nil
+	}
+	return tmp.parent.children[tmp.parent_slot+1]
+}
+
+func (t *TileNode) GetDisplacedSamplingPoint(importance int) f64.Vec2 {
+	p := t.p1.Add(t.calcDisplacementVector(importance, t.f_code, t.dir))
+	p = p.Scale(t.scale)
+	return p
+}
+
+func (t *TileNode) calcDisplacementVector(importance, f_code, dir int) f64.Vec2 {
+	i_s := calcStructuralIndex(f_code)
+	i_v := calcImportanceIndex(importance)
+	return vvect[dir].Scale(lut[i_v][i_s][0]).Add(vvect[(dir+5)%20].Scale(lut[i_v][i_s][1]))
+}
+
+func calcStructuralIndex(bitsequence int) int {
+	return calcFCodeValue(bitsequence, NUM_STRUCT_INDEX_BITS)
+}
+
+func calcImportanceIndex(importance int) int {
+	t := math.Log(1.0+math.Sqrt(5.0)*float64(importance)) / math.Log(PHI2)
+	t -= math.Floor(t) // modulo 1.0
+	return int(LUT_SIZE * t)
+}
+
+type TileLeafIterator struct {
+	shape *TileNode
+}
+
+func NewTileLeafIterator(s *TileNode) *TileLeafIterator {
+	t := &TileLeafIterator{}
+	t.begin(s)
+	return t
+}
+
+func (t *TileLeafIterator) begin(s *TileNode) {
+	tmp := s
+	for !tmp.IsTerminal() {
+		tmp = tmp.GetChild(0)
+	}
+	t.shape = tmp
+}
+
+func (t *TileLeafIterator) GetShape() *TileNode {
+	return t.shape
+}
+
+// Moves to the next node in the subdivision tree, in depth-first traversal.
+// Returns false iff there is no such node.
+func (t *TileLeafIterator) Next() bool {
+	s := t.shape.NextLeaf()
+	t.shape = s
+	if s != nil {
+		return true
+	}
+	return false
+}
+
+// Checks if there is a next tile, in depth-first traversal.
+func (t *TileLeafIterator) HasNext() bool {
+	s := t.shape.NextLeaf()
+	return s != nil
+}
+
+func (t *TileLeafIterator) Refine() {
+	t.shape.Refine()
+	t.shape = t.shape.GetChild(0)
+}
+
+type QuasiSampler struct {
+	width           float64
+	height          float64
+	root            *TileNode
+	GetImportanceAt func(f64.Vec2) int
+}
+
+func NewQuasiSampler(width, height float64, getImportanceAt func(f64.Vec2) int) *QuasiSampler {
 	return &QuasiSampler{
-		width:  width,
-		height: height,
+		width:           width,
+		height:          height,
+		GetImportanceAt: getImportanceAt,
 	}
 }
 
@@ -124,11 +311,131 @@ func (s *QuasiSampler) GetSamplingPoints() []f64.Vec2 {
 
 // Generates the hierarchical structure.
 func (s *QuasiSampler) buildAdaptiveSubdivision(minSubdivisionLevel int) {
+	s.root = NewTileNodeROI(s.width, s.height)
+
+	// Since we are approximating the MAX within each tile by the values at
+	// a few key points, we must provide a sufficiently dense initial
+	// tiling. This would not be necessary with a more thorough scan of each
+	// tile.
+	s.subdivideAll(minSubdivisionLevel)
+
+	it := NewTileLeafIterator(s.root)
+	// Recursively subdivide all triangles until each triangle's
+	// required level is reached.
+	for {
+		level := it.GetShape().GetLevel()
+		// Sampling tiles are infinitesimal
+		if it.GetShape().IsSamplingType() {
+			if level < s.GetReqSubdivisionLevel(s.GetImportanceAt_bounded(it.GetShape().GetP1())) {
+				tmp := it.GetShape()
+				tmp.Refine()
+			}
+		} else {
+			if (level < s.GetReqSubdivisionLevel(s.GetImportanceAt_bounded(it.GetShape().GetP1()))) ||
+				(level < s.GetReqSubdivisionLevel(s.GetImportanceAt_bounded(it.GetShape().GetP2()))) ||
+				(level < s.GetReqSubdivisionLevel(s.GetImportanceAt_bounded(it.GetShape().GetP3()))) ||
+				(level < s.GetReqSubdivisionLevel(s.GetImportanceAt_bounded(it.GetShape().GetCenter()))) {
+				tmp := it.GetShape()
+				tmp.Refine()
+			}
+		}
+
+		if !it.Next() {
+			break
+		}
+	}
+}
+
+// Returns the required level of subdivision for a given importance value.
+// The value returned is \f$ \lceil{\log_{\phi^2}(importance)}\rceil \f$,
+// where \f$ \phi=\frac{1 + {\sqrt{5}}}{2}\f$  is the Golden Ratio.
+func (s *QuasiSampler) GetReqSubdivisionLevel(importance int) int {
+	if importance == 0 {
+		return 0
+	}
+	nbits := math.Log(float64(importance)*SQRT5+1.0) / LOG_PHI
+	if nbits < 1 {
+		nbits = 1
+	}
+	return int(math.Ceil(nbits * 0.5))
+}
+
+// This is a helper function which constrains the incoming points
+// to the region of interest.
+func (s *QuasiSampler) GetImportanceAt_bounded(pt f64.Vec2) int {
+	if pt.X >= 0 && pt.X < s.width && pt.Y >= 0 && pt.Y < s.height {
+		return s.GetImportanceAt(pt)
+	}
+	return 0
+}
+
+// Subdivides all tiles down a level, a given number of times.
+func (s *QuasiSampler) subdivideAll(times int) {
+	if s.root == nil {
+		return
+	}
+	for i := 0; i < times; i++ {
+		it := NewTileLeafIterator(s.root)
+		for {
+			tmp := it.GetShape()
+			it.Next()
+			tmp.Refine()
+			if it == nil {
+				break
+			}
+		}
+	}
 }
 
 // Collect the resulting point set.
 func (s *QuasiSampler) collectPoints(filterBounds bool) []f64.Vec2 {
-	return nil
+	var pointlist []f64.Vec2
+
+	it := NewTileLeafIterator(s.root)
+	for {
+		pt := it.GetShape().GetP1()
+		// Only "pentagonal" tiles generate sampling points.
+		if it.GetShape().IsSamplingType() {
+			importance := s.GetImportanceAt_bounded(pt)
+
+			// Threshold the function against the F-Code value.
+			if importance >= calcFCodeValue(it.GetShape().GetFCode(), it.GetShape().GetLevel()) {
+				// Get the displaced point using the lookup table.
+				pt_displaced := it.GetShape().GetDisplacedSamplingPoint(importance)
+
+				if !filterBounds ||
+					(pt_displaced.X >= 0 && pt_displaced.X < s.width &&
+						pt_displaced.Y >= 0 && pt_displaced.Y < s.height) {
+					pointlist = append(pointlist, pt_displaced)
+				}
+			}
+		}
+
+		if !it.Next() {
+			break
+		}
+	}
+	return pointlist
+}
+
+func calcFCodeValue(bitsequence, nbits int) int {
+	i_s := 0
+	for i := 0; i < nbits; i++ {
+		if bitsequence&(1<<uint(nbits-i-1)) != 0 {
+			i_s += fibonacci(i + 2)
+		}
+	}
+	return i_s
+}
+
+func fibonacci(i int) int {
+	if i < 1 {
+		return 1
+	}
+	if i < len(fiboTable) {
+		return fiboTable[i-1]
+	}
+	return fibonacci(i-1) + fibonacci(i-2)
 }
 
 var fiboTable = [32]int{
