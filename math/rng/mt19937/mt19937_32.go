@@ -103,6 +103,10 @@ func (r *Rand32) Uint32() uint32 {
 	return uint32(y)
 }
 
+func (r *Rand32) Int() int {
+	return int(r.Int31())
+}
+
 func (r *Rand32) Int31() int32 {
 	return int32(r.Uint32() >> 1)
 }

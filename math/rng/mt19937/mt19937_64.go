@@ -97,6 +97,10 @@ func (r *Rand64) Uint64() uint64 {
 	return x
 }
 
+func (r *Rand64) Int() int {
+	return int(r.Int63())
+}
+
 func (r *Rand64) Int63() int64 {
 	return int64(r.Uint64() >> 1)
 }
