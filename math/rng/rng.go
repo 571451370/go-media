@@ -40,3 +40,13 @@ func Poisson(lambda float64) float64 {
 	}
 	return k - 1
 }
+
+// https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+// BoxMuller transforms two uniform sample into two normally distributed samples
+func BoxMuller(u1, u2 float64) (z0, z1 float64) {
+	r := math.Sqrt(-2 * math.Log(u1))
+	t := 2 * math.Pi * u2
+	z0 = r * math.Cos(t)
+	z1 = r * math.Sin(t)
+	return
+}
