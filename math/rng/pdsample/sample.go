@@ -16,7 +16,13 @@ type Sampler struct {
 	gridCellSize float64
 	isTiled      bool
 	radius       float64
-	Points       []f64.Vec2
+	points       []f64.Vec2
+}
+
+type Interface interface {
+	Complete()
+	Maximize()
+	Points() []f64.Vec2
 }
 
 func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
@@ -29,7 +35,7 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 	)
 	// grid size is chosen so that 4*radius search only
 	// requires search adjacent cells, also determine
-	// max Points per cells
+	// max points per cells
 	if usesGrid {
 		gridSize = int(math.Ceil(2 / (4 * radius)))
 		if gridSize < 2 {
@@ -49,6 +55,10 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 		isTiled:      isTiled,
 		radius:       radius,
 	}
+}
+
+func (s *Sampler) Points() []f64.Vec2 {
+	return s.points
 }
 
 func (s *Sampler) pointInDomain(p f64.Vec2) bool {
@@ -93,13 +103,13 @@ func (s *Sampler) getGridXY(v f64.Vec2) (gx, gy int) {
 }
 
 func (s *Sampler) addPoint(pt f64.Vec2) {
-	s.Points = append(s.Points, pt)
+	s.points = append(s.points, pt)
 	if s.grid != nil {
 		gx, gy := s.getGridXY(pt)
 		cell := s.grid[gy*s.gridSize+gx]
 		for i := range cell {
 			if cell[i] == -1 {
-				cell[i] = len(s.Points) - 1
+				cell[i] = len(s.points) - 1
 				return
 			}
 		}
@@ -130,7 +140,7 @@ func (s *Sampler) findNeighbors(pt f64.Vec2, distance float64) int {
 				if cell[k] == -1 {
 					break
 				}
-				if s.getDistanceSquared(pt, s.Points[cell[k]]) < distanceSquared {
+				if s.getDistanceSquared(pt, s.points[cell[k]]) < distanceSquared {
 					s.neighbors = append(s.neighbors, cell[k])
 				}
 			}
@@ -161,7 +171,7 @@ func (s *Sampler) findClosestNeighbor(pt f64.Vec2, distance float64) float64 {
 				if cell[k] == -1 {
 					break
 				}
-				d := s.getDistanceSquared(pt, s.Points[cell[k]])
+				d := s.getDistanceSquared(pt, s.points[cell[k]])
 				if d < closestSquared {
 					closestSquared = d
 				}
@@ -176,7 +186,7 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 		panic("internal error, sampler cannot search without grid")
 	}
 
-	candidate := s.Points[index]
+	candidate := s.points[index]
 	rangeSquared := 4 * 4 * s.radius * s.radius
 	N := int(math.Ceil(4 * s.radius / s.gridCellSize))
 	if N > s.gridSize>>1 {
@@ -220,7 +230,7 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 						break
 					}
 					if cell[k] != index {
-						pt := s.Points[cell[k]]
+						pt := s.points[cell[k]]
 						v := s.getTiled(pt.Sub(candidate))
 						distSquared := v.X*v.X + v.Y*v.Y
 						if distSquared < rangeSquared {
@@ -239,10 +249,10 @@ func (s *Sampler) findNeighborRanges(index int, rl *RangeList) {
 
 func (s *Sampler) Maximize() {
 	rl := NewRangeList(0, 0)
-	N := len(s.Points)
+	N := len(s.points)
 
 	for i := 0; i < N; i++ {
-		candidate := &s.Points[i]
+		candidate := &s.points[i]
 		rl.Reset(0, 2*math.Pi)
 		s.findNeighborRanges(i, rl)
 		for rl.NumRanges != 0 {
@@ -274,7 +284,7 @@ func NewDartThrowing(radius float64, isTiled bool, minMaxThrows, maxThrowsMult i
 
 func (d *DartThrowing) Complete() {
 	for {
-		N := len(d.Points) * d.maxThrowsMult
+		N := len(d.points) * d.maxThrowsMult
 		if N < d.minMaxThrows {
 			N = d.minMaxThrows
 		}
@@ -313,7 +323,7 @@ func (b *BestCandidate) Complete() {
 	for i := 0; i < b.n; i++ {
 		best := f64.Vec2{}
 		bestDistance := 0.0
-		count := 1 + len(b.Points)*b.multiplier
+		count := 1 + len(b.points)*b.multiplier
 
 		for j := 0; j < count; j++ {
 			pt := b.randomPoint()
@@ -334,22 +344,22 @@ type BoundarySampler struct {
 	*Sampler
 }
 
-func NewBoundarySampler(radius float64) *BoundarySampler {
+func NewBoundarySampler(radius float64, isTiled bool) *BoundarySampler {
 	return &BoundarySampler{
-		Sampler: NewSampler(radius, false, false),
+		Sampler: NewSampler(radius, isTiled, true),
 	}
 }
 
 func (b *BoundarySampler) Complete() {
 	var candidates []int
 	b.addPoint(b.randomPoint())
-	candidates = append(candidates, len(b.Points)-1)
+	candidates = append(candidates, len(b.points)-1)
 	rl := NewRangeList(0, 0)
 
 	for len(candidates) > 0 {
 		c := rand.Int() % len(candidates)
 		index := candidates[c]
-		candidate := b.Points[index]
+		candidate := b.points[index]
 		candidates[c] = candidates[len(candidates)-1]
 		candidates = candidates[:len(candidates)-1]
 
@@ -363,7 +373,7 @@ func (b *BoundarySampler) Complete() {
 				candidate.Y + math.Sin(angle)*2*b.radius,
 			})
 			b.addPoint(pt)
-			candidates = append(candidates, len(b.Points)-1)
+			candidates = append(candidates, len(b.points)-1)
 
 			rl.Subtract(angle-math.Pi/3, angle+math.Pi/3)
 		}
@@ -387,8 +397,8 @@ func (p *PureSampler) Complete() {
 	var regionsPDF WDPDF
 
 	p.addPoint(pt)
-	regions[len(p.Points)-1] = rgn
-	regionsPDF.Insert(len(p.Points)-1, rgn.Area)
+	regions[len(p.points)-1] = rgn
+	regionsPDF.Insert(len(p.points)-1, rgn.Area)
 
 	for len(regions) > 0 {
 		idx := regionsPDF.Choose(rand.Float64())
@@ -398,7 +408,7 @@ func (p *PureSampler) Complete() {
 
 		p.findNeighbors(pt, p.radius*8)
 		for _, nIdx := range p.neighbors {
-			n := p.Points[nIdx]
+			n := p.points[nIdx]
 
 			rgn.SubtractDisk(pt.Add(p.getTiled(n.Sub(pt))), p.radius*4)
 
@@ -418,8 +428,8 @@ func (p *PureSampler) Complete() {
 		p.addPoint(pt)
 
 		if !rgn.IsEmpty() {
-			regions[len(p.Points)-1] = rgn
-			regionsPDF.Insert(len(p.Points)-1, rgn.Area)
+			regions[len(p.points)-1] = rgn
+			regionsPDF.Insert(len(p.points)-1, rgn.Area)
 		}
 	}
 }
@@ -438,12 +448,12 @@ func (l *LinearPureSampler) Complete() {
 	var candidates []int
 
 	l.addPoint(l.randomPoint())
-	candidates = append(candidates, len(l.Points)-1)
+	candidates = append(candidates, len(l.points)-1)
 
 	for len(candidates) > 0 {
 		c := rand.Int() % len(candidates)
 		index := candidates[c]
-		candidate := l.Points[index]
+		candidate := l.points[index]
 		candidates[c] = candidates[len(candidates)-1]
 		candidates = candidates[:len(candidates)-1]
 
@@ -451,7 +461,7 @@ func (l *LinearPureSampler) Complete() {
 		l.findNeighbors(candidate, l.radius*8)
 
 		for _, nIdx := range l.neighbors {
-			n := &l.Points[nIdx]
+			n := &l.points[nIdx]
 			nClose := candidate.Add(l.getTiled(n.Sub(candidate)))
 
 			if nIdx < index {
@@ -466,7 +476,7 @@ func (l *LinearPureSampler) Complete() {
 			pt := l.getTiled(p)
 
 			l.addPoint(pt)
-			candidates = append(candidates, len(l.Points)-1)
+			candidates = append(candidates, len(l.points)-1)
 
 			sr.SubtractDisk(p, l.radius*2)
 		}
@@ -492,6 +502,12 @@ func (p *PenroseQuasiSampler) GetImportanceAt(pt f64.Vec2) int {
 
 type PenroseSampler struct {
 	*Sampler
+}
+
+func NewPenroseSampler(radius float64) *PenroseSampler {
+	return &PenroseSampler{
+		Sampler: NewSampler(radius, false, false),
+	}
 }
 
 func (p *PenroseSampler) Complete() {
