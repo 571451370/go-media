@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"math/cmplx"
 )
 
 type Vec2 struct {
@@ -1724,4 +1725,33 @@ func Clamp8(x, a, b float64) uint8 {
 		x = b
 	}
 	return uint8(x)
+}
+
+func ditfft2(x, y []complex128, n, s int) {
+	if n == 1 {
+		y[0] = x[0]
+		return
+	}
+	ditfft2(x, y, n/2, 2*s)
+	ditfft2(x[s:], y[n/2:], n/2, 2*s)
+	for k := 0; k < n/2; k++ {
+		tf := cmplx.Rect(1, -2*math.Pi*float64(k)/float64(n)) * y[k+n/2]
+		y[k], y[k+n/2] = y[k]+tf, y[k]-tf
+	}
+}
+
+func FFT1DC(in, out []complex128) {
+	ditfft2(in, out, len(in), 1)
+}
+
+func IFFT1DC(in, out []complex128) {
+	for i := range in {
+		in[i] = cmplx.Conj(in[i])
+	}
+	FFT1DC(in, out)
+	for i := range out {
+		in[i] = cmplx.Conj(in[i])
+		out[i] = cmplx.Conj(out[i])
+		out[i] /= complex(float64(len(out)), 0)
+	}
 }
