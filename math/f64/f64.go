@@ -1740,18 +1740,33 @@ func ditfft2(x, y []complex128, n, s int) {
 	}
 }
 
-func FFT1DC(in, out []complex128) {
-	ditfft2(in, out, len(in), 1)
+func FFT1DC(dst, src []complex128) {
+	ditfft2(src, dst, len(src), 1)
 }
 
-func IFFT1DC(in, out []complex128) {
-	for i := range in {
-		in[i] = cmplx.Conj(in[i])
+func IFFT1DC(dst, src []complex128) {
+	for i := range src {
+		src[i] = cmplx.Conj(src[i])
 	}
-	FFT1DC(in, out)
-	for i := range out {
-		in[i] = cmplx.Conj(in[i])
-		out[i] = cmplx.Conj(out[i])
-		out[i] /= complex(float64(len(out)), 0)
+	FFT1DC(dst, src)
+	for i := range dst {
+		src[i] = cmplx.Conj(src[i])
+		dst[i] = cmplx.Conj(dst[i])
+		dst[i] /= complex(float64(len(dst)), 0)
 	}
+}
+
+func Simpson1D(f func(x float64) float64, start, end float64, n int) float64 {
+	r := 0.0
+	s := (end - start) / float64(n)
+	i := 0
+
+	r += f(start)
+	for j := 1; j < n; j++ {
+		r += (4 - float64(i<<1)) * f(start+float64(j)*s)
+		i = (i + 1) & 1
+	}
+	r += f(end)
+	r *= s / 3
+	return r
 }
