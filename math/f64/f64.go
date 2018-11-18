@@ -1770,3 +1770,34 @@ func Simpson1D(f func(x float64) float64, start, end float64, n int) float64 {
 	r *= s / 3
 	return r
 }
+
+func simpsonweight(i, n int) float64 {
+	if i == 0 || i == n {
+		return 1
+	}
+	if i%2 != 0 {
+		return 4
+	}
+	return 2
+}
+
+func Simpson2D(f func(x, y float64) float64, x0, x1, y0, y1 float64, m, n int) float64 {
+	if n%2 != 0 || m%2 != 0 {
+		panic("integration range must be even")
+	}
+
+	dx := (x1 - x0) / float64(m)
+	dy := (y1 - y0) / float64(n)
+	r := 0.0
+	for i := 0; i <= n; i++ {
+		y := y0 + float64(i)*dy
+		wy := simpsonweight(i, n)
+		for j := 0; j <= m; j++ {
+			x := x0 + float64(j)*dx
+			wx := simpsonweight(j, m)
+			r += f(x, y) * wx * wy
+		}
+	}
+	r *= dx * dy / (9 * float64(m) * float64(n))
+	return r
+}
