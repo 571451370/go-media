@@ -50,3 +50,19 @@ func BoxMuller(u1, u2 float64) (z0, z1 float64) {
 	z1 = r * math.Sin(t)
 	return
 }
+
+func Complex64() complex64 {
+	return complex(rand.Float32(), rand.Float32())
+}
+
+func Complex64n(n float32) complex64 {
+	return complex(rand.Float32()*n, rand.Float32()*n)
+}
+
+func Complex128() complex128 {
+	return complex(rand.Float64(), rand.Float64())
+}
+
+func Complex128n(n float64) complex128 {
+	return complex(rand.Float64()*n, rand.Float64()*n)
+}
