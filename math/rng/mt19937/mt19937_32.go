@@ -128,3 +128,19 @@ func (r *Rand32) Float64() float64 {
 	b := r.Uint32() >> 6
 	return (float64(a)*67108864.0 + float64(b)) * (1.0 / 9007199254740992.0)
 }
+
+func (r *Rand32) Complex64() complex64 {
+	return complex(r.Float32(), r.Float32())
+}
+
+func (r *Rand32) Complex64n(n float32) complex64 {
+	return complex(r.Float32()*n, r.Float32()*n)
+}
+
+func (r *Rand32) Complex128() complex128 {
+	return complex(r.Float64(), r.Float64())
+}
+
+func (r *Rand32) Complex128n(n float64) complex128 {
+	return complex(r.Float64()*n, r.Float64()*n)
+}

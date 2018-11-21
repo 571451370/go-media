@@ -116,3 +116,19 @@ func (r *Rand64) Real1() float64 {
 func (r *Rand64) Real3() float64 {
 	return (float64(r.Uint64()>>12) + 0.5) * (1.0 / 4503599627370496.0)
 }
+
+func (r *Rand64) Complex64() complex64 {
+	return complex64(complex(r.Float64(), r.Float64()))
+}
+
+func (r *Rand64) Complex64n(n float32) complex64 {
+	return complex64(complex(r.Float64()*float64(n), r.Float64()*float64(n)))
+}
+
+func (r *Rand64) Complex128() complex128 {
+	return complex(r.Float64(), r.Float64())
+}
+
+func (r *Rand64) Complex128n(n float64) complex128 {
+	return complex(r.Float64()*n, r.Float64()*n)
+}
