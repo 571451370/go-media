@@ -1891,3 +1891,32 @@ func Simpson2D(f func(x, y float32) float32, x0, x1, y0, y1 float32, m, n int) f
 	r *= dx * dy / (9 * float32(m) * float32(n))
 	return r
 }
+
+func Convolve1D(dst, src, coeffs []float32, shape int) []float32 {
+	var m, n int
+	switch shape {
+	case 'f':
+		m = len(src) + len(coeffs) - 1
+	case 's':
+		m = len(src)
+		n = len(coeffs) - 2
+	case 'v':
+		m = len(src) - len(coeffs) + 1
+		n = len(coeffs) - 1
+	default:
+		panic("unsupported convolution shape")
+	}
+
+	for k := 0; k < m; k++ {
+		dst[k] = 0
+		for j := range src {
+			l := k + n - j
+			if l < 0 || l >= len(coeffs) {
+				continue
+			}
+			dst[k] += src[j] * coeffs[l]
+		}
+	}
+
+	return dst[:m]
+}
