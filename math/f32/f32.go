@@ -1903,6 +1903,9 @@ func Convolve1D(dst, src, coeffs []float32, shape int) []float32 {
 	case 'v':
 		m = len(src) - len(coeffs) + 1
 		n = len(coeffs) - 1
+		if m < 0 {
+			m = 0
+		}
 	default:
 		panic("unsupported convolution shape")
 	}
