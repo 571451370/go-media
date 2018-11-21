@@ -59,10 +59,42 @@ func Complex64n(n float32) complex64 {
 	return complex(rand.Float32()*n, rand.Float32()*n)
 }
 
+func Complex64v(n int) []complex64 {
+	p := make([]complex64, n)
+	for i := range p {
+		p[i] = Complex64()
+	}
+	return p
+}
+
+func Complex64vn(n int, s float32) []complex64 {
+	p := make([]complex64, n)
+	for i := range p {
+		p[i] = Complex64n(s)
+	}
+	return p
+}
+
 func Complex128() complex128 {
 	return complex(rand.Float64(), rand.Float64())
 }
 
 func Complex128n(n float64) complex128 {
 	return complex(rand.Float64()*n, rand.Float64()*n)
+}
+
+func Complex128v(n int) []complex128 {
+	p := make([]complex128, n)
+	for i := range p {
+		p[i] = Complex128()
+	}
+	return p
+}
+
+func Complex128vn(n int, s float64) []complex128 {
+	p := make([]complex128, n)
+	for i := range p {
+		p[i] = Complex128n(s)
+	}
+	return p
 }
