@@ -1953,25 +1953,25 @@ func Convolve1D(dst, src, coeffs []float32, shape int) []float32 {
 	return dst[:m]
 }
 
-func Sample1D(f func(float32) float32, x0, x1 float32, n int) []float32 {
-	var p []float32
-	s := (x1 - x0) / float32(n)
+func Sample1D(f func(float32) float32, x0, x1 float32, n int) (p []float32, s float32) {
+	p = make([]float32, n)
+	s = (x1 - x0) / float32(n)
 	for i := 0; i < n; i++ {
-		p = append(p, f(x0+float32(i)*s))
+		p[i] = f(x0 + float32(i)*s)
 	}
-	return p
+	return
 }
 
-func Sample2D(f func(x, y float32) float32, x0, x1, y0, y1 float32, nx, ny int) []float32 {
-	p := make([]float32, nx*ny)
-	sx := (x1 - x0) / float32(nx)
-	sy := (y1 - y0) / float32(ny)
+func Sample2D(f func(x, y float32) float32, x0, x1, y0, y1 float32, nx, ny int) (p []float32, sx, sy float32) {
+	p = make([]float32, nx*ny)
+	sx = (x1 - x0) / float32(nx)
+	sy = (y1 - y0) / float32(ny)
 	for y := 0; y < ny; y++ {
 		for x := 0; x < nx; x++ {
 			p[y*nx+x] = f(x0+sx*float32(x), y0+sy*float32(y))
 		}
 	}
-	return p
+	return
 }
 
 func FloatToComplex(v []float32) []complex64 {
