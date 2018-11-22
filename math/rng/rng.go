@@ -51,6 +51,38 @@ func BoxMuller(u1, u2 float64) (z0, z1 float64) {
 	return
 }
 
+func Float32v(n int) []float32 {
+	p := make([]float32, n)
+	for i := range p {
+		p[i] = rand.Float32()
+	}
+	return p
+}
+
+func Float32vn(n int, s float32) []float32 {
+	p := Float32v(n)
+	for i := range p {
+		p[i] *= s
+	}
+	return p
+}
+
+func Float64v(n int) []float64 {
+	p := make([]float64, n)
+	for i := range p {
+		p[i] = rand.Float64()
+	}
+	return p
+}
+
+func Float64vn(n int, s float64) []float64 {
+	p := Float64v(n)
+	for i := range p {
+		p[i] *= s
+	}
+	return p
+}
+
 func Complex64() complex64 {
 	return complex(rand.Float32(), rand.Float32())
 }

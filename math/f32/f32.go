@@ -1817,21 +1817,34 @@ func Clamp8(x, a, b float32) uint8 {
 	return uint8(x)
 }
 
-func ditfft2(x, y []complex64, n, s int) {
+func ditfft2c(x, y []complex64, n, s int) {
 	if n == 1 {
 		y[0] = x[0]
 		return
 	}
-	ditfft2(x, y, n/2, 2*s)
-	ditfft2(x[s:], y[n/2:], n/2, 2*s)
+	ditfft2c(x, y, n/2, 2*s)
+	ditfft2c(x[s:], y[n/2:], n/2, 2*s)
 	for k := 0; k < n/2; k++ {
 		tf := complex64(cmplx.Rect(1, -2*math.Pi*float64(k)/float64(n))) * y[k+n/2]
 		y[k], y[k+n/2] = y[k]+complex64(tf), y[k]-complex64(tf)
 	}
 }
 
+func ditfft2r(x []float32, y []complex64, n, s int) {
+	if n == 1 {
+		y[0] = complex(x[0], 0)
+		return
+	}
+	ditfft2r(x, y, n/2, 2*s)
+	ditfft2r(x[s:], y[n/2:], n/2, 2*s)
+	for k := 0; k < n/2; k++ {
+		tf := complex64(cmplx.Rect(1, float64(-2*math.Pi*float32(k)/float32(n)))) * y[k+n/2]
+		y[k], y[k+n/2] = y[k]+tf, y[k]-tf
+	}
+}
+
 func FFT1DC(dst, src []complex64) {
-	ditfft2(src, dst, len(src), 1)
+	ditfft2c(src, dst, len(src), 1)
 }
 
 func IFFT1DC(dst, src []complex64) {
@@ -1843,6 +1856,22 @@ func IFFT1DC(dst, src []complex64) {
 		src[i] = complex64(cmplx.Conj(complex128(src[i])))
 		dst[i] = complex64(cmplx.Conj(complex128(dst[i])))
 		dst[i] /= complex64(complex(float64(len(dst)), 0))
+	}
+}
+
+func FFT1DR(dst []complex64, src []float32) {
+	ditfft2r(src, dst, len(src), 1)
+}
+
+func IFFT1DR(dst []float32, src []complex64) {
+	for i := range src {
+		src[i] = complex64(cmplx.Conj(complex128(src[i])))
+	}
+	tmp := make([]complex64, len(src))
+	FFT1DC(tmp, src)
+	for i := range dst {
+		src[i] = complex64(cmplx.Conj(complex128(src[i])))
+		dst[i] = real(tmp[i]) / float32(len(dst))
 	}
 }
 
@@ -1949,6 +1978,14 @@ func FloatToComplex(v []float32) []complex64 {
 	p := make([]complex64, len(v))
 	for i := range v {
 		p[i] = complex(v[i], 0)
+	}
+	return p
+}
+
+func ComplexToFloat(v []complex64) []float32 {
+	p := make([]float32, len(v))
+	for i := range v {
+		p[i] = float32(cmplx.Abs(complex128(v[i])))
 	}
 	return p
 }
