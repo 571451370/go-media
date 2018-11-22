@@ -1833,3 +1833,32 @@ func Convolve1D(dst, src, coeffs []float64, shape int) []float64 {
 
 	return dst[:m]
 }
+
+func Sample1D(f func(float64) float64, x0, x1 float64, n int) []float64 {
+	var p []float64
+	s := (x1 - x0) / float64(n)
+	for i := 0; i < n; i++ {
+		p = append(p, f(x0+float64(i)*s))
+	}
+	return p
+}
+
+func Sample2D(f func(x, y float64) float64, x0, x1, y0, y1 float64, nx, ny int) []float64 {
+	p := make([]float64, nx*ny)
+	sx := (x1 - x0) / float64(nx)
+	sy := (y1 - y0) / float64(ny)
+	for y := 0; y < ny; y++ {
+		for x := 0; x < nx; x++ {
+			p[y*nx+x] = f(x0+sx*float64(x), y0+sy*float64(y))
+		}
+	}
+	return p
+}
+
+func FloatToComplex(v []float64) []complex128 {
+	p := make([]complex128, len(v))
+	for i := range v {
+		p[i] = complex(v[i], 0)
+	}
+	return p
+}
