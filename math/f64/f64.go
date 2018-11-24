@@ -1902,3 +1902,20 @@ func ComplexToFloat(v []complex128) []float64 {
 	}
 	return p
 }
+
+func Mean(x []float64) float64 {
+	s := 0.0
+	for i := range x {
+		s += x[i]
+	}
+	return s / float64(len(x))
+}
+
+func Stddev(x []float64) float64 {
+	xm := Mean(x)
+	s := 0.0
+	for i := range x {
+		s += (x[i] - xm) * (x[i] - xm)
+	}
+	return math.Sqrt(s / float64(len(x)-1))
+}

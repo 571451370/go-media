@@ -1992,3 +1992,20 @@ func ComplexToFloat(v []complex64) []float32 {
 	}
 	return p
 }
+
+func Mean(x []float32) float32 {
+	s := float32(0.0)
+	for i := range x {
+		s += x[i]
+	}
+	return s / float32(len(x))
+}
+
+func Stddev(x []float32) float32 {
+	xm := Mean(x)
+	s := float32(0.0)
+	for i := range x {
+		s += (x[i] - xm) * (x[i] - xm)
+	}
+	return Sqrt(s / float32(len(x)-1))
+}
