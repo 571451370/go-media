@@ -1856,8 +1856,7 @@ func IFFT1DC(dst, src []complex64) {
 		src[i] = complex64(cmplx.Conj(complex128(src[i])))
 	}
 	for i := range dst {
-		dst[i] = complex64(cmplx.Conj(complex128(dst[i])))
-		dst[i] /= complex64(complex(float64(len(dst)), 0))
+		dst[i] = complex64(cmplx.Conj(complex128(dst[i]))) / complex64(complex(float64(len(dst)), 0))
 	}
 }
 
@@ -1869,7 +1868,7 @@ func IFFT1DR(dst []float32, src []complex64) {
 	for i := range src {
 		src[i] = complex64(cmplx.Conj(complex128(src[i])))
 	}
-	tmp := make([]complex64, len(src))
+	tmp := make([]complex64, len(dst))
 	FFT1DC(tmp, src)
 	for i := range src {
 		src[i] = complex64(cmplx.Conj(complex128(src[i])))
