@@ -5,8 +5,10 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/qeedquan/go-media/math/f64"
+	"github.com/qeedquan/go-media/math/rng"
 )
 
 type Sampler struct {
@@ -17,6 +19,7 @@ type Sampler struct {
 	isTiled      bool
 	radius       float64
 	points       []f64.Vec2
+	rng          rng.RNG
 }
 
 type Interface interface {
@@ -46,6 +49,11 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 		for i := range grid {
 			grid[i] = make([]int, maxPointsPerCell)
 		}
+		for i := range grid {
+			for j := range grid[i] {
+				grid[i][j] = -1
+			}
+		}
 	}
 
 	return &Sampler{
@@ -54,7 +62,12 @@ func NewSampler(radius float64, isTiled, usesGrid bool) *Sampler {
 		gridCellSize: gridCellSize,
 		isTiled:      isTiled,
 		radius:       radius,
+		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+}
+
+func (s *Sampler) SetRNG(rng rng.RNG) {
+	s.rng = rng
 }
 
 func (s *Sampler) Points() []f64.Vec2 {
@@ -68,8 +81,8 @@ func (s *Sampler) pointInDomain(p f64.Vec2) bool {
 
 func (s *Sampler) randomPoint() f64.Vec2 {
 	return f64.Vec2{
-		2*rand.Float64() - 1,
-		2*rand.Float64() - 1,
+		2*s.rng.Float64() - 1,
+		2*s.rng.Float64() - 1,
 	}
 }
 
@@ -257,7 +270,7 @@ func (s *Sampler) Maximize() {
 		s.findNeighborRanges(i, rl)
 		for rl.NumRanges != 0 {
 			re := rl.Ranges[rand.Intn(rl.NumRanges)]
-			angle := re.Min + (re.Max-re.Min)*rand.Float64()
+			angle := re.Min + (re.Max-re.Min)*s.rng.Float64()
 			pt := s.getTiled(f64.Vec2{
 				candidate.X + math.Cos(angle)*2*s.radius,
 				candidate.Y + math.Sin(angle)*2*s.radius,
@@ -367,7 +380,7 @@ func (b *BoundarySampler) Complete() {
 		b.findNeighborRanges(index, rl)
 		for rl.NumRanges != 0 {
 			re := rl.Ranges[rand.Int()%rl.NumRanges]
-			angle := re.Min + (re.Max-re.Min)*rand.Float64()
+			angle := re.Min + (re.Max-re.Min)*b.rng.Float64()
 			pt := b.getTiled(f64.Vec2{
 				candidate.X + math.Cos(angle)*2*b.radius,
 				candidate.Y + math.Sin(angle)*2*b.radius,
@@ -401,7 +414,7 @@ func (p *PureSampler) Complete() {
 	regionsPDF.Insert(len(p.points)-1, rgn.Area)
 
 	for len(regions) > 0 {
-		idx := regionsPDF.Choose(rand.Float64())
+		idx := regionsPDF.Choose(p.rng.Float64())
 
 		pt := p.getTiled(regions[idx].Sample())
 		rgn := NewScallopedRegion(pt, p.radius*2, p.radius*4, SCALLOPED_REGION_MIN_AREA)
@@ -553,4 +566,17 @@ func OutsideRadius(p []f64.Vec2, r float64) bool {
 		return a < b
 	})
 	return w
+}
+
+func PairDistance(p []f64.Vec2) [][]float64 {
+	d := make([][]float64, len(p))
+	for i := range d {
+		d[i] = make([]float64, len(p))
+	}
+	for i := range d {
+		for j := range d {
+			d[i][j] = p[i].Distance(p[j])
+		}
+	}
+	return d
 }
