@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math"
 	"math/cmplx"
+	"sort"
 )
 
 type Vec2 struct {
@@ -2002,10 +2003,47 @@ func Mean(x []float32) float32 {
 }
 
 func Stddev(x []float32) float32 {
+	if len(x) <= 1 {
+		return 0
+	}
 	xm := Mean(x)
 	s := float32(0.0)
 	for i := range x {
 		s += (x[i] - xm) * (x[i] - xm)
 	}
 	return Sqrt(s / float32(len(x)-1))
+}
+
+func Median(x []float32) float32 {
+	if len(x) == 0 {
+		return 0
+	}
+	sort.Slice(x, func(i, j int) bool {
+		return x[i] < x[j]
+	})
+	return x[len(x)/2]
+}
+
+func Mins(x ...float32) float32 {
+	if len(x) == 0 {
+		return 0
+	}
+
+	n := x[0]
+	for i := range x[1:] {
+		n = Min(n, x[i])
+	}
+	return n
+}
+
+func Maxs(x ...float32) float32 {
+	if len(x) == 0 {
+		return 0
+	}
+
+	n := x[0]
+	for i := range x[1:] {
+		n = Max(n, x[i])
+	}
+	return n
 }
