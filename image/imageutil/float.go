@@ -67,9 +67,8 @@ func (f *Float) SetFloat(x, y int, c [4]float64) {
 
 	n := y*f.Stride + x
 	if 0 <= n && n < len(f.Pix) {
-		return
+		f.Pix[n] = c
 	}
-	f.Pix[n] = c
 }
 
 func (f *Float) ToRGB() *image.RGBA {
@@ -172,7 +171,7 @@ func ImageToFloat(m image.Image) *Float {
 }
 
 func Filter(m image.Image, kr [][]float64, o *FilterOptions) *Float {
-	f := NewFloat(m.Bounds())
+	f := ImageToFloat(m)
 	f.Filter(kr, o)
 	return f
 }
