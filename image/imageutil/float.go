@@ -12,7 +12,13 @@ const (
 	WrapRepeat
 )
 
-type ConvolveOptions struct {
+const (
+	OpConv = iota
+	OpCorr
+)
+
+type FilterOptions struct {
+	Op   int
 	Wrap int
 }
 
@@ -30,7 +36,19 @@ func NewFloat(r image.Rectangle) *Float {
 	}
 }
 
+func (f *Float) Bounds() image.Rectangle {
+	return f.Rect
+}
+
 func (f *Float) FloatAt(x, y int) [4]float64 {
+	r := f.Bounds()
+	if !image.Pt(x, y).In(r) {
+		return [4]float64{}
+	}
+
+	x -= r.Min.X
+	y -= r.Min.Y
+
 	n := y*f.Stride + x
 	if 0 <= n && n < len(f.Pix) {
 		return f.Pix[n]
@@ -39,6 +57,14 @@ func (f *Float) FloatAt(x, y int) [4]float64 {
 }
 
 func (f *Float) SetFloat(x, y int, c [4]float64) {
+	r := f.Bounds()
+	if !image.Pt(x, y).In(r) {
+		return
+	}
+
+	x -= r.Min.X
+	y -= r.Min.Y
+
 	n := y*f.Stride + x
 	if 0 <= n && n < len(f.Pix) {
 		return
@@ -90,7 +116,46 @@ func (f *Float) ToRGBA() *image.RGBA {
 	return m
 }
 
-func (f *Float) Convolve(k [][]float64, o *ConvolveOptions) {
+func (f *Float) Filter(kr [][]float64, o *FilterOptions) {
+	if o == nil {
+		o = &FilterOptions{
+			Op:   OpConv,
+			Wrap: WrapRepeat,
+		}
+	}
+
+	if len(kr) == 0 || len(kr[0]) == 0 {
+		return
+	}
+	a := len(kr)
+	b := len(kr[0])
+	r := f.Bounds()
+	for i := r.Min.Y; i < r.Max.Y; i++ {
+		for j := r.Min.X; j < r.Max.X; j++ {
+			var s [4]float64
+			for k := -a / 2; k <= a/2; k++ {
+				for l := -b / 2; l <= b/2; l++ {
+					y := i - k
+					x := j - l
+					if o.Op == OpCorr {
+						y = i + k
+						x = j + l
+					}
+
+					if o.Wrap == WrapRepeat {
+						x = clamp(x, r.Min.X, r.Max.X-1)
+						y = clamp(y, r.Min.Y, r.Max.Y-1)
+					}
+
+					c := f.FloatAt(x, y)
+					for n := range s {
+						s[n] += c[n] * kr[a/2+k][b/2+l]
+					}
+				}
+			}
+			f.SetFloat(j, i, s)
+		}
+	}
 }
 
 func ImageToFloat(m image.Image) *Float {
@@ -106,8 +171,8 @@ func ImageToFloat(m image.Image) *Float {
 	return f
 }
 
-func Convolve(m image.Image, k [][]float64, o *ConvolveOptions) *Float {
+func Filter(m image.Image, kr [][]float64, o *FilterOptions) *Float {
 	f := NewFloat(m.Bounds())
-	f.Convolve(k, o)
+	f.Filter(kr, o)
 	return f
 }

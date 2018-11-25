@@ -192,3 +192,13 @@ func IsTransparent(m image.Image) bool {
 	}
 	return true
 }
+
+func clamp(x, a, b int) int {
+	if x < a {
+		x = a
+	}
+	if x > b {
+		x = b
+	}
+	return x
+}
