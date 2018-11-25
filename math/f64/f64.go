@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math"
 	"math/cmplx"
+	"sort"
 )
 
 type Vec2 struct {
@@ -1912,10 +1913,45 @@ func Mean(x []float64) float64 {
 }
 
 func Stddev(x []float64) float64 {
+	if len(x) <= 1 {
+		return 0
+	}
 	xm := Mean(x)
 	s := 0.0
 	for i := range x {
 		s += (x[i] - xm) * (x[i] - xm)
 	}
 	return math.Sqrt(s / float64(len(x)-1))
+}
+
+func Median(x []float64) float64 {
+	if len(x) == 0 {
+		return 0
+	}
+	sort.Float64s(x)
+	return x[len(x)/2]
+}
+
+func Mins(x ...float64) float64 {
+	if len(x) == 0 {
+		return 0
+	}
+
+	n := x[0]
+	for i := range x[1:] {
+		n = math.Min(n, x[i])
+	}
+	return n
+}
+
+func Maxs(x ...float64) float64 {
+	if len(x) == 0 {
+		return 0
+	}
+
+	n := x[0]
+	for i := range x[1:] {
+		n = math.Max(n, x[i])
+	}
+	return n
 }
