@@ -96,6 +96,22 @@ func LoadGrayReader(rd io.Reader) (*image.Gray, error) {
 	return p, nil
 }
 
+func LoadFloatFile(name string) (*Float, error) {
+	m, err := LoadRGBAFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return ImageToFloat(m), nil
+}
+
+func LoadFloatReader(rd io.Reader) (*Float, error) {
+	m, err := LoadRGBAReader(rd)
+	if err != nil {
+		return nil, err
+	}
+	return ImageToFloat(m), nil
+}
+
 func WriteRGBAFile(name string, img image.Image) error {
 	f, err := os.Create(name)
 	if err != nil {
