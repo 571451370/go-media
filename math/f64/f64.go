@@ -1868,7 +1868,7 @@ func Convolve1D(dst, src, coeffs []float64, shape int) []float64 {
 
 func Sample1D(f func(float64) float64, x0, x1 float64, n int) (p []float64, s float64) {
 	p = make([]float64, n)
-	s = (x1 - x0) / float64(n)
+	s = (x1 - x0) / float64(n-1)
 	for i := 0; i < n; i++ {
 		p[i] = f(x0 + float64(i)*s)
 	}
@@ -1877,8 +1877,8 @@ func Sample1D(f func(float64) float64, x0, x1 float64, n int) (p []float64, s fl
 
 func Sample2D(f func(x, y float64) float64, x0, x1, y0, y1 float64, nx, ny int) (p []float64, sx, sy float64) {
 	p = make([]float64, nx*ny)
-	sx = (x1 - x0) / float64(nx)
-	sy = (y1 - y0) / float64(ny)
+	sx = (x1 - x0) / float64(nx-1)
+	sy = (y1 - y0) / float64(ny-1)
 	for y := 0; y < ny; y++ {
 		for x := 0; x < nx; x++ {
 			p[y*nx+x] = f(x0+sx*float64(x), y0+sy*float64(y))
