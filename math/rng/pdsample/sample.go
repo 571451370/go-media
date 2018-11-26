@@ -399,7 +399,7 @@ type PureSampler struct {
 
 func NewPureSampler(radius float64) *PureSampler {
 	return &PureSampler{
-		Sampler: NewSampler(radius, true, false),
+		Sampler: NewSampler(radius, true, true),
 	}
 }
 
@@ -544,7 +544,7 @@ type UniformSampler struct {
 
 func NewUniformSampler(radius float64) *UniformSampler {
 	return &UniformSampler{
-		Sampler: NewSampler(radius, false, false),
+		Sampler: NewSampler(radius, false, true),
 	}
 }
 
