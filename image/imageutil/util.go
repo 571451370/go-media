@@ -19,6 +19,22 @@ import (
 	"golang.org/x/image/bmp"
 )
 
+func LoadRGBAGlob(glob string) ([]*image.RGBA, error) {
+	files, err := filepath.Glob(glob)
+	if err != nil {
+		return nil, err
+	}
+
+	var img []*image.RGBA
+	for _, name := range files {
+		m, err := LoadRGBAFile(name)
+		if err == nil {
+			img = append(img, m)
+		}
+	}
+	return img, nil
+}
+
 func LoadRGBAFS(fs xio.FS, name string) (*image.RGBA, error) {
 	f, err := fs.Open(name)
 	if err != nil {
