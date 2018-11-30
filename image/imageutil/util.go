@@ -266,6 +266,7 @@ func CombineRGBA(imgs ...*image.RGBA) *image.RGBA {
 	n := int(math.Ceil(math.Sqrt(float64(len(imgs)))))
 	d = mathutil.NextPow2(d * n)
 
+	mw, mh = 0, 0
 	p := image.NewRGBA(image.Rect(0, 0, d, d))
 	pt := image.ZP
 	for i, m := range imgs {
@@ -273,11 +274,20 @@ func CombineRGBA(imgs ...*image.RGBA) *image.RGBA {
 		r := p.Bounds()
 		r.Min = pt
 		draw.Draw(p, r, m, image.ZP, draw.Src)
+
 		pt.X += s.Dx()
+		mw = mathutil.Max(mw, pt.X)
+
 		if i > 0 && i%n == 0 {
 			pt.Y += s.Dy()
 			pt.X = 0
+			mh = mathutil.Max(mh, pt.Y)
 		}
 	}
+
+	mw = mathutil.NextPow2(mw)
+	mh = mathutil.NextPow2(mh)
+	p = p.SubImage(image.Rect(0, 0, mw, mh)).(*image.RGBA)
+
 	return p
 }
