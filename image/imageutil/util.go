@@ -1,6 +1,7 @@
 package imageutil
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -8,6 +9,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,9 +17,22 @@ import (
 	"github.com/qeedquan/go-media/image/pnm"
 	_ "github.com/qeedquan/go-media/image/psd"
 	"github.com/qeedquan/go-media/image/tga"
+	"github.com/qeedquan/go-media/math/mathutil"
 	"github.com/qeedquan/go-media/xio"
 	"golang.org/x/image/bmp"
 )
+
+func LoadRGBADir(dir string) ([]*image.RGBA, error) {
+	exts := []string{"png", "jpg", "jpeg", "tga", "gif"}
+
+	var m []*image.RGBA
+	for _, ext := range exts {
+		glob := fmt.Sprintf("%v/*.%v", dir, ext)
+		p, _ := LoadRGBAGlob(glob)
+		m = append(m, p...)
+	}
+	return m, nil
+}
 
 func LoadRGBAGlob(glob string) ([]*image.RGBA, error) {
 	files, err := filepath.Glob(glob)
@@ -233,4 +248,36 @@ func clamp(x, a, b int) int {
 		x = b
 	}
 	return x
+}
+
+func CombineRGBA(imgs ...*image.RGBA) *image.RGBA {
+	var mw, mh int
+	for _, m := range imgs {
+		r := m.Bounds()
+		if mw < r.Dx() {
+			mw = r.Dx()
+		}
+		if mh < r.Dy() {
+			mh = r.Dy()
+		}
+	}
+
+	d := mathutil.Max(mw, mh)
+	n := int(math.Ceil(math.Sqrt(float64(len(imgs)))))
+	d = mathutil.NextPow2(d * n)
+
+	p := image.NewRGBA(image.Rect(0, 0, d, d))
+	pt := image.ZP
+	for i, m := range imgs {
+		s := m.Bounds()
+		r := p.Bounds()
+		r.Min = pt
+		draw.Draw(p, r, m, image.ZP, draw.Src)
+		pt.X += s.Dx()
+		if i > 0 && i%n == 0 {
+			pt.Y += s.Dy()
+			pt.X = 0
+		}
+	}
+	return p
 }
