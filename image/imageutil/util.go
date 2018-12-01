@@ -207,7 +207,7 @@ func toBW(c color.RGBA) color.RGBA {
 	if c.R != 0 || c.G != 0 || c.B != 0 {
 		return color.RGBA{255, 255, 255, 255}
 	}
-	return color.RGBA{}
+	return color.RGBA{0, 0, 0, 255}
 }
 
 func Equals(a, b image.Image, o CompareOption) bool {
@@ -305,4 +305,20 @@ func CombineRGBA(imgs ...*image.RGBA) *image.RGBA {
 	p = p.SubImage(image.Rect(0, 0, mw, mh)).(*image.RGBA)
 
 	return p
+}
+
+func SplitRGBA(m *image.RGBA, r image.Rectangle) []*image.RGBA {
+	var imgs []*image.RGBA
+
+	b := m.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; {
+		for x := b.Min.X; x < b.Max.X; {
+			p := image.NewRGBA(r)
+			draw.Draw(p, p.Bounds(), m, image.Pt(x, y), draw.Src)
+			imgs = append(imgs, p)
+			x += r.Dx()
+		}
+		y += r.Dy()
+	}
+	return imgs
 }
