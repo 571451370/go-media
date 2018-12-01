@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/image/pnm"
 	_ "github.com/qeedquan/go-media/image/psd"
 	"github.com/qeedquan/go-media/image/tga"
@@ -200,17 +201,18 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 }
 
 type CompareOption struct {
-	BW bool // black and white compare
+	Distance  func(a, b color.Color) float64
+	Threshold float64
 }
 
-func toBW(c color.RGBA) color.RGBA {
-	if c.R != 0 || c.G != 0 || c.B != 0 {
-		return color.RGBA{255, 255, 255, 255}
+func Equals(a, b image.Image, o *CompareOption) bool {
+	if o == nil {
+		o = &CompareOption{
+			Distance:  chroma.DistanceL2RGB,
+			Threshold: 1e-3,
+		}
 	}
-	return color.RGBA{0, 0, 0, 255}
-}
 
-func Equals(a, b image.Image, o CompareOption) bool {
 	r := a.Bounds()
 	s := b.Bounds()
 
@@ -228,13 +230,7 @@ func Equals(a, b image.Image, o CompareOption) bool {
 			u := a.At(ax, ay)
 			v := b.At(bx, by)
 
-			c := color.RGBAModel.Convert(u).(color.RGBA)
-			d := color.RGBAModel.Convert(v).(color.RGBA)
-			if o.BW {
-				c = toBW(c)
-				d = toBW(d)
-			}
-			if c != d {
+			if o.Distance(u, v) > o.Threshold {
 				return false
 			}
 		}

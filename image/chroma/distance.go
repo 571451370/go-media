@@ -30,3 +30,12 @@ func DistanceWL2RGB(a, b color.Color) float64 {
 	cb := float64(x.B - y.B)
 	return math.Sqrt(((512+rm)*cr*cr)/256 + 4*cg*cg + ((767-rm)*cb*cb)/256)
 }
+
+func DistanceBW(a, b color.Color) float64 {
+	x := color.GrayModel.Convert(a).(color.Gray)
+	y := color.GrayModel.Convert(b).(color.Gray)
+	if x.Y != y.Y {
+		return 1
+	}
+	return 0
+}
