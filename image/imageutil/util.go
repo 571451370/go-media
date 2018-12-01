@@ -199,7 +199,18 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 	return p
 }
 
-func Equals(a, b image.Image) bool {
+type CompareOption struct {
+	BW bool // black and white compare
+}
+
+func toBW(c color.RGBA) color.RGBA {
+	if c.R != 0 || c.G != 0 || c.B != 0 {
+		return color.RGBA{255, 255, 255, 255}
+	}
+	return color.RGBA{}
+}
+
+func Equals(a, b image.Image, o CompareOption) bool {
 	r := a.Bounds()
 	s := b.Bounds()
 
@@ -219,6 +230,10 @@ func Equals(a, b image.Image) bool {
 
 			c := color.RGBAModel.Convert(u).(color.RGBA)
 			d := color.RGBAModel.Convert(v).(color.RGBA)
+			if o.BW {
+				c = toBW(c)
+				d = toBW(d)
+			}
 			if c != d {
 				return false
 			}
