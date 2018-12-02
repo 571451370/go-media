@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 
+	"github.com/qeedquan/go-media/image/chroma"
 	"github.com/qeedquan/go-media/math/f64"
 )
 
@@ -23,14 +24,14 @@ type FilterOptions struct {
 }
 
 type Float struct {
-	Pix    [][4]float64
+	Pix    []chroma.Float4
 	Stride int
 	Rect   image.Rectangle
 }
 
 func NewFloat(r image.Rectangle) *Float {
 	return &Float{
-		Pix:    make([][4]float64, r.Dx()*r.Dy()),
+		Pix:    make([]chroma.Float4, r.Dx()*r.Dy()),
 		Stride: r.Dx(),
 		Rect:   r,
 	}
@@ -91,7 +92,7 @@ func (f *Float) ToRGB() *image.RGBA {
 
 func (f *Float) ToFloat() *Float {
 	return &Float{
-		Pix:    append([][4]float64{}, f.Pix...),
+		Pix:    append([]chroma.Float4{}, f.Pix...),
 		Stride: f.Stride,
 		Rect:   f.Rect,
 	}
