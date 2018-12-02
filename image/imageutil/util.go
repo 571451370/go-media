@@ -317,12 +317,12 @@ func CombineRGBA(imgs ...*image.RGBA) *image.RGBA {
 	return p
 }
 
-func SplitRGBA(m *image.RGBA, r image.Rectangle) []*image.RGBA {
+func SplitRGBA(m *image.RGBA, r image.Rectangle, sp image.Point) []*image.RGBA {
 	var imgs []*image.RGBA
 
 	b := m.Bounds()
-	for y := b.Min.Y; y < b.Max.Y; {
-		for x := b.Min.X; x < b.Max.X; {
+	for y := b.Min.Y + sp.Y; y < b.Max.Y; {
+		for x := b.Min.X + sp.X; x < b.Max.X; {
 			p := image.NewRGBA(r)
 			draw.Draw(p, p.Bounds(), m, image.Pt(x, y), draw.Src)
 			imgs = append(imgs, p)
