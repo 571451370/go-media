@@ -17,12 +17,30 @@ type HSV struct {
 	H, S, V float64
 }
 
+type Float4 [4]float64
+
+func (f Float4) RGBA() (r, g, b, a uint32) {
+	c := color.RGBA{uint8(f[0]), uint8(f[1]), uint8(f[2]), uint8(f[3])}
+	return c.RGBA()
+}
+
 var (
-	HSVModel   = color.ModelFunc(hsvModel)
-	HSLModel   = color.ModelFunc(hslModel)
-	Vec3dModel = color.ModelFunc(vec3dModel)
-	Vec4dModel = color.ModelFunc(vec4dModel)
+	HSVModel    = color.ModelFunc(hsvModel)
+	HSLModel    = color.ModelFunc(hslModel)
+	Vec3dModel  = color.ModelFunc(vec3dModel)
+	Vec4dModel  = color.ModelFunc(vec4dModel)
+	Float4Model = color.ModelFunc(float4Model)
 )
+
+func float4Model(c color.Color) color.Color {
+	n := color.RGBAModel.Convert(c).(color.RGBA)
+	return Float4{
+		float64(n.R),
+		float64(n.G),
+		float64(n.B),
+		float64(n.A),
+	}
+}
 
 func vec3dModel(c color.Color) color.Color {
 	n := color.RGBAModel.Convert(c).(color.RGBA)
