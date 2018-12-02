@@ -201,8 +201,11 @@ func ColorKey(m image.Image, c color.Color) *image.RGBA {
 }
 
 type CompareOption struct {
-	Distance  func(a, b color.Color) float64
-	Threshold float64
+	Distance   func(a, b color.Color) float64
+	Threshold  float64
+	SubRegionA *image.Rectangle
+	SubRegionB *image.Rectangle
+	SameSize   bool
 }
 
 func Equals(a, b image.Image, o *CompareOption) bool {
@@ -216,7 +219,14 @@ func Equals(a, b image.Image, o *CompareOption) bool {
 	r := a.Bounds()
 	s := b.Bounds()
 
-	if r.Dx() != s.Dx() || r.Dy() != s.Dy() {
+	if o.SubRegionA != nil {
+		r = *o.SubRegionA
+	}
+	if o.SubRegionB != nil {
+		s = *o.SubRegionB
+	}
+
+	if o.SameSize && (r.Dx() != s.Dx() || r.Dy() != s.Dy()) {
 		return false
 	}
 
@@ -226,6 +236,10 @@ func Equals(a, b image.Image, o *CompareOption) bool {
 			ay := y + r.Min.Y
 			bx := x + s.Min.X
 			by := y + s.Min.Y
+
+			if !image.Pt(ax, ay).In(r) || !image.Pt(bx, by).In(s) {
+				continue
+			}
 
 			u := a.At(ax, ay)
 			v := b.At(bx, by)
