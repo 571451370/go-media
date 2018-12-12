@@ -1904,6 +1904,20 @@ func ComplexToFloat(v []complex128) []float64 {
 	return p
 }
 
+func PearsonCorrelation1D(x, y []float64) float64 {
+	return Cov1D(x, y, 1) / (Stddev(x, 1) * Stddev(y, 1))
+}
+
+func Cov1D(x, y []float64, ddof float64) float64 {
+	mx := Mean(x)
+	my := Mean(y)
+	s := 0.0
+	for i := range x {
+		s += (x[i] - mx) * (y[i] * my)
+	}
+	return s / (float64(len(x)) - ddof)
+}
+
 func Mean(x []float64) float64 {
 	s := 0.0
 	for i := range x {
@@ -1912,7 +1926,7 @@ func Mean(x []float64) float64 {
 	return s / float64(len(x))
 }
 
-func Stddev(x []float64) float64 {
+func Stddev(x []float64, ddof float64) float64 {
 	if len(x) <= 1 {
 		return 0
 	}
@@ -1921,7 +1935,7 @@ func Stddev(x []float64) float64 {
 	for i := range x {
 		s += (x[i] - xm) * (x[i] - xm)
 	}
-	return math.Sqrt(s / float64(len(x)-1))
+	return math.Sqrt(s / (float64(len(x)) - ddof))
 }
 
 func Median(x []float64) float64 {
