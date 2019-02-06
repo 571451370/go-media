@@ -402,3 +402,13 @@ func (b *Bitmap) print(m *image.RGBA, x, y int, s string) {
 		}
 	}
 }
+
+func (b *Bitmap) StringSize(text string) (width, height float64) {
+	w := float64(0)
+	for _, c := range text {
+		a, _ := b.CodepointHMetrics(c)
+		w += float64(a)
+	}
+	w *= b.ScaleForPixelHeight(b.PixelHeight)
+	return w, b.PixelHeight
+}
