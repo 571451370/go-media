@@ -187,7 +187,7 @@ func (p *PackRange) FirstUnicodepointInRange() int {
 }
 
 func (f *FontInfo) Init(data []byte, offset int) error {
-	rc := C.stbtt_InitFont((*C.stbtt_fontinfo)(f), (*C.uchar)(&data[0]), C.int(offset))
+	rc := C.stbtt_InitFont((*C.stbtt_fontinfo)(f), (*C.uchar)(unsafe.Pointer(&data[0])), C.int(offset))
 	if rc == 0 {
 		return fmt.Errorf("failed to load font")
 	}
@@ -202,10 +202,42 @@ func (f *FontInfo) ScaleForMappingEmToPixels(pixels float64) float64 {
 	return float64(C.stbtt_ScaleForMappingEmToPixels((*C.stbtt_fontinfo)(f), C.float(pixels)))
 }
 
-func (f *FontInfo) GetFontVMetrics() (ascent, descent, lineGap int) {
+func (f *FontInfo) FontVMetrics() (ascent, descent, lineGap int) {
 	var cascent, cdescent, clineGap C.int
 	C.stbtt_GetFontVMetrics((*C.stbtt_fontinfo)(f), &cascent, &cdescent, &clineGap)
 	return int(cascent), int(cdescent), int(clineGap)
+}
+
+func (f *FontInfo) CodepointHMetrics(codepoint rune) (advanceWidth, leftSideBearing int) {
+	var cadvanceWidth, cleftSideBearing C.int
+	C.stbtt_GetCodepointHMetrics((*C.stbtt_fontinfo)(f), C.int(codepoint), &cadvanceWidth, &cleftSideBearing)
+	return int(cadvanceWidth), int(cleftSideBearing)
+}
+
+func (f *FontInfo) CodepointKernAdvance(ch1, ch2 rune) int {
+	return int(C.stbtt_GetCodepointKernAdvance((*C.stbtt_fontinfo)(f), C.int(ch1), C.int(ch2)))
+}
+
+func (f *FontInfo) CodepointBox(codepoint rune) image.Rectangle {
+	var x0, y0, x1, y1 C.int
+	C.stbtt_GetCodepointBox((*C.stbtt_fontinfo)(f), C.int(codepoint), &x0, &y0, &x1, &y1)
+	return image.Rect(int(x0), int(y0), int(x1), int(y1))
+}
+
+func (f *FontInfo) GlyphHMetrics(glyphIndex int) (advanceWidth, leftSideBearing int) {
+	var cadvanceWidth, cleftSideBearing C.int
+	C.stbtt_GetGlyphHMetrics((*C.stbtt_fontinfo)(f), C.int(glyphIndex), &cadvanceWidth, &cleftSideBearing)
+	return int(cadvanceWidth), int(cleftSideBearing)
+}
+
+func (f *FontInfo) GlyphKernAdvance(glyph1, glyph2 rune) int {
+	return int(C.stbtt_GetGlyphKernAdvance((*C.stbtt_fontinfo)(f), C.int(glyph1), C.int(glyph2)))
+}
+
+func (f *FontInfo) BoundingBox() image.Rectangle {
+	var x0, y0, x1, y1 C.int
+	C.stbtt_GetFontBoundingBox((*C.stbtt_fontinfo)(f), &x0, &y0, &x1, &y1)
+	return image.Rect(int(x0), int(y0), int(x1), int(y1))
 }
 
 func GetFontOffsetForIndex(data []byte, index int) int {
@@ -294,11 +326,14 @@ type (
 
 type Bitmap struct {
 	*image.RGBA
-	Chardata []BakedChar
-	FG, BG   color.RGBA
+	*FontInfo
+	Chardata    []BakedChar
+	Firstchar   rune
+	PixelHeight float64
+	FG, BG      color.RGBA
 }
 
-func BakeFontBitmap(data []byte, offset int, pixel_height float64, pw, ph, first_char, num_chars int) (bmp *Bitmap, numfits int) {
+func BakeFontBitmap(data []byte, offset int, pixel_height float64, pw, ph int, first_char rune, num_chars int) (bmp *Bitmap, numfits int, err error) {
 	pixels := make([]byte, pw*ph)
 	chardata := make([]BakedChar, num_chars)
 	numfits = int(C.stbtt_BakeFontBitmap((*C.uchar)(unsafe.Pointer(&data[0])), C.int(offset), C.float(pixel_height), (*C.uchar)(unsafe.Pointer(&pixels[0])), C.int(pw), C.int(ph), C.int(first_char), C.int(num_chars), (*C.stbtt_bakedchar)(unsafe.Pointer(&chardata[0]))))
@@ -311,10 +346,14 @@ func BakeFontBitmap(data []byte, offset int, pixel_height float64, pw, ph, first
 		}
 	}
 	bmp = &Bitmap{
-		RGBA:     img,
-		Chardata: chardata,
-		FG:       color.RGBA{255, 255, 255, 255},
+		RGBA:        img,
+		FontInfo:    &FontInfo{},
+		Chardata:    chardata,
+		Firstchar:   first_char,
+		PixelHeight: pixel_height,
+		FG:          color.RGBA{255, 255, 255, 255},
 	}
+	err = bmp.Init(data, offset)
 	return
 }
 
@@ -336,16 +375,21 @@ func (b *Bitmap) Printf(m *image.RGBA, x, y int, format string, args ...interfac
 
 func (b *Bitmap) print(m *image.RGBA, x, y int, s string) {
 	r := b.Bounds()
-
 	px := float64(x)
 	py := float64(y)
 	for _, c := range s {
+		c -= rune(b.Firstchar)
+
 		var q AlignedQuad
 		BakedQuad(b.Chardata, r.Dx(), r.Dy(), int(c), &px, &py, &q, 1)
+
 		dr := image.Rect(int(q.X0()), int(q.Y0()), int(q.X1()), int(q.Y1()))
+		dr = dr.Add(image.Pt(0, int(b.PixelHeight)))
+
 		s0 := q.S0() * float64(r.Dx())
 		t0 := q.T0() * float64(r.Dy())
 		sp := image.Pt(int(s0), int(t0))
+
 		for y, ty := dr.Min.Y, 0; y < dr.Max.Y; y, ty = y+1, ty+1 {
 			for x, tx := dr.Min.X, 0; x < dr.Max.X; x, tx = x+1, tx+1 {
 				col := b.RGBAAt(sp.X+tx, sp.Y+ty)
