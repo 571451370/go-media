@@ -377,7 +377,13 @@ func (b *Bitmap) print(m *image.RGBA, x, y int, s string) {
 	r := b.Bounds()
 	px := float64(x)
 	py := float64(y)
+	sx := px
 	for _, c := range s {
+		if c == '\n' {
+			px = sx
+			py += b.PixelHeight
+			continue
+		}
 		c -= rune(b.Firstchar)
 
 		var q AlignedQuad
@@ -404,11 +410,21 @@ func (b *Bitmap) print(m *image.RGBA, x, y int, s string) {
 }
 
 func (b *Bitmap) StringSize(text string) (width, height float64) {
-	w := float64(0)
+	w, h := 0.0, b.PixelHeight
+	mw := w
 	for _, c := range text {
+		if c == '\n' {
+			w = 0
+			h += b.PixelHeight
+			continue
+		}
+
 		a, _ := b.CodepointHMetrics(c)
 		w += float64(a)
+		if mw < w {
+			mw = w
+		}
 	}
 	w *= b.ScaleForPixelHeight(b.PixelHeight)
-	return w, b.PixelHeight
+	return mw, h
 }
