@@ -130,7 +130,7 @@ func (f *File) readDataDirectory(index int, v interface{}) *pe.DataDirectory {
 		dirlen = h.NumberOfRvaAndSizes
 		idd = h.DataDirectory[index]
 	}
-	if dirlen < pe.IMAGE_DIRECTORY_ENTRY_EXPORT+1 {
+	if dirlen < uint32(index)+1 {
 		return nil
 	}
 
