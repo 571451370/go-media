@@ -181,7 +181,7 @@ func readStrz(b []byte) string {
 	return string(b)
 }
 
-func Format(w io.Writer) error {
+func Format(f *File, w io.Writer) error {
 	b := bufio.NewWriter(w)
 
 	dh := DOSHeader{Magic: 0x5a4d}
