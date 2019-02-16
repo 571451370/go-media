@@ -1,11 +1,35 @@
 package peutil
 
 import (
+	"bufio"
 	"bytes"
 	"debug/pe"
 	"encoding/binary"
 	"fmt"
+	"io"
 )
+
+type DOSHeader struct {
+	Magic    uint16
+	Cblp     uint16
+	Cp       uint16
+	Crlc     uint16
+	Cparhdr  uint16
+	MinAlloc uint16
+	MaxAlloc uint16
+	SS       uint16
+	SP       uint16
+	Checksum uint16
+	IP       uint16
+	CS       uint16
+	Lfarlc   uint16
+	Ovno     uint16
+	_        [4]uint8
+	OEMID    uint16
+	OEMInfo  uint16
+	_        [10]uint16
+	Lfanew   uint32
+}
 
 type ExportDirectory struct {
 	Characteristics       uint32
@@ -155,4 +179,13 @@ func readStrz(b []byte) string {
 		}
 	}
 	return string(b)
+}
+
+func Format(w io.Writer) error {
+	b := bufio.NewWriter(w)
+
+	dh := DOSHeader{Magic: 0x5a4d}
+	binary.Write(b, binary.LittleEndian, &dh)
+
+	return b.Flush()
 }
