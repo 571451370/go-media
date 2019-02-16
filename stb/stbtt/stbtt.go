@@ -399,8 +399,10 @@ func (b *Bitmap) print(m *image.RGBA, x, y int, s string) {
 		for y, ty := dr.Min.Y, 0; y < dr.Max.Y; y, ty = y+1, ty+1 {
 			for x, tx := dr.Min.X, 0; x < dr.Max.X; x, tx = x+1, tx+1 {
 				col := b.RGBAAt(sp.X+tx, sp.Y+ty)
-				if (col == color.RGBA{}) {
-					m.Set(x, y, b.BG)
+				if col == (color.RGBA{}) {
+					if b.BG != (color.RGBA{}) {
+						m.Set(x, y, b.BG)
+					}
 				} else {
 					m.Set(x, y, b.FG)
 				}

@@ -133,10 +133,60 @@ func Circle(m draw.Image, cx, cy, r int, c color.Color) {
 	}
 }
 
+func FilledCircle(m draw.Image, cx, cy, r int, c color.Color) {
+	for y := -r; y <= r; y++ {
+		for x := -r; x <= r; x++ {
+			if x*x+y*y <= r*r {
+				m.Set(cx+x, cy+y, c)
+			}
+		}
+	}
+}
+
 func Triangle(m draw.Image, x0, y0, x1, y1, x2, y2 int, c color.Color) {
 	Line(m, x0, y0, x1, y1, c)
 	Line(m, x0, y0, x2, y2, c)
 	Line(m, x1, y1, x2, y2, c)
+}
+
+func FilledTriangle(m draw.Image, x0, y0, x1, y1, x2, y2 int, c color.Color) {
+	if y0 > y1 {
+		x0, y0, x1, y1 = x1, y1, x0, y0
+	}
+	if y0 > y2 {
+		x0, y0, x2, y2 = x2, y2, x0, y0
+	}
+	if y1 > y2 {
+		x1, y1, x2, y2 = x2, y2, x1, y1
+	}
+	filledTriangleBottom(m, x0, y0, x1, y1, x2, y2, c)
+	filledTriangleTop(m, x0, y0, x1, y1, x2, y2, c)
+}
+
+func filledTriangleBottom(m draw.Image, x0, y0, x1, y1, x2, y2 int, c color.Color) {
+	i1 := float64(x1-x0) / float64(y1-y0)
+	i2 := float64(x2-x0) / float64(y2-y0)
+
+	cx1 := float64(x0)
+	cx2 := cx1
+	for y := y0; y <= y1; y++ {
+		Line(m, int(cx1), y, int(cx2), y, c)
+		cx1 += i1
+		cx2 += i2
+	}
+}
+
+func filledTriangleTop(m draw.Image, x0, y0, x1, y1, x2, y2 int, c color.Color) {
+	i1 := float64(x2-x0) / float64(y2-y0)
+	i2 := float64(x2-x1) / float64(y2-y1)
+
+	cx1 := float64(x2)
+	cx2 := cx1
+	for y := y2; y > y0; y-- {
+		Line(m, int(cx1), y, int(cx2), y, c)
+		cx1 -= i1
+		cx2 -= i2
+	}
 }
 
 func EllipseRect(m draw.Image, x0, y0, x1, y1 int, c color.Color) {
