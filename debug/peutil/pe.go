@@ -10,25 +10,25 @@ import (
 )
 
 type DOSHeader struct {
-	Magic    uint16
-	Cblp     uint16
-	Cp       uint16
-	Crlc     uint16
-	Cparhdr  uint16
-	MinAlloc uint16
-	MaxAlloc uint16
-	SS       uint16
-	SP       uint16
-	Checksum uint16
-	IP       uint16
-	CS       uint16
-	Lfarlc   uint16
-	Ovno     uint16
-	_        [4]uint8
-	OEMID    uint16
-	OEMInfo  uint16
-	_        [10]uint16
-	Lfanew   uint32
+	Magic      uint16 // MZ
+	LastSize   uint16 // image size mod 512, number of bytes on last page
+	NumBlocks  uint16 // number of 512-byte pages in images
+	NumRelocs  uint16 // count of relocation entries
+	HeaderSize uint16 // size of header in paragraphs
+	MinAlloc   uint16 // min required memory
+	MaxAlloc   uint16 // max required memory
+	SS         uint16 // stack seg offset in load module
+	SP         uint16 // initial sp value
+	Checksum   uint16 // one complement sum of all word in exe file
+	IP         uint16 // initial ip value
+	CS         uint16 // cs offset in load module
+	RelocPos   uint16 // offset of first reloc item
+	NoOverlay  uint16 // overlay number
+	_          [4]uint16
+	OEMID      uint16
+	OEMInfo    uint16
+	_          [10]uint16
+	LFANew     uint32 // offset to pe header in windows
 }
 
 type ExportDirectory struct {
@@ -54,6 +54,31 @@ type Symbol struct {
 type File struct {
 	*pe.File
 	Strings []string
+}
+
+var DOSStub = [...]byte{
+	// push cs
+	0x0E,
+	// pop ds
+	0x1F,
+	// mov dx, 0xe
+	0xBA, 0x0E, 0x00,
+	// mov ah, 0x9
+	0xB4, 0x09,
+	// int 0x21
+	0xCD, 0x21,
+	// mov ax, 0x4c01
+	0xB8, 0x01, 0x4C,
+	// int 0x21
+	0xCD, 0x21,
+	// "This program cannot be run in DOS Mode"
+	0x68, 0x69, 0x73, 0x20, 0x70, 0x72, 0x6F,
+	0x67, 0x72, 0x61, 0x6D, 0x20, 0x63, 0x61,
+	0x6E, 0x6E, 0x6F, 0x74, 0x20, 0x62, 0x65,
+	0x20, 0x72, 0x75, 0x6E, 0x20, 0x69, 0x6E,
+	0x20, 0x44, 0x4F, 0x53, 0x20, 0x6D, 0x6F,
+	0x64, 0x65, 0x2E, 0x0D, 0x0D, 0x0A, 0x24,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 }
 
 func Open(name string) (*File, error) {
@@ -184,8 +209,20 @@ func readStrz(b []byte) string {
 func Format(f *File, w io.Writer) error {
 	b := bufio.NewWriter(w)
 
-	dh := DOSHeader{Magic: 0x5a4d}
+	// these values are common across many exe files
+	dh := DOSHeader{
+		Magic:      0x5a4d,
+		LastSize:   0x90,
+		NumBlocks:  0x03,
+		HeaderSize: 0x04,
+		MaxAlloc:   0xffff,
+	}
 	binary.Write(b, binary.LittleEndian, &dh)
+	binary.Write(b, binary.LittleEndian, &DOSStub)
+
+	peSig := uint16(0x4550)
+	binary.Write(b, binary.LittleEndian, &peSig)
+	binary.Write(b, binary.LittleEndian, &f.FileHeader)
 
 	return b.Flush()
 }
