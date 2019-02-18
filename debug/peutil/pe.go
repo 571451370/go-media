@@ -53,10 +53,11 @@ type Symbol struct {
 
 type File struct {
 	*pe.File
+	Stub    []byte
 	Strings []string
 }
 
-var DOSStub = [...]byte{
+var DOSStub = []byte{
 	// push cs
 	0x0E,
 	// pop ds
@@ -87,7 +88,10 @@ func Open(name string) (*File, error) {
 		return nil, err
 	}
 
-	f := &File{File: p}
+	f := &File{
+		File: p,
+		Stub: DOSStub,
+	}
 	for i := 4; i < len(f.StringTable); {
 		str, err := f.StringTable.String(uint32(i))
 		if err != nil {
@@ -197,6 +201,30 @@ func (f *File) readDataDirectory(index int, v interface{}) *pe.DataDirectory {
 	return &idd
 }
 
+func (f *File) sectionHeader32(s *pe.SectionHeader) pe.SectionHeader32 {
+	h := pe.SectionHeader32{
+		VirtualSize:          s.VirtualSize,
+		VirtualAddress:       s.VirtualAddress,
+		SizeOfRawData:        s.Size,
+		PointerToRawData:     s.Offset,
+		PointerToRelocations: s.PointerToRelocations,
+		PointerToLineNumbers: s.PointerToLineNumbers,
+		NumberOfRelocations:  s.NumberOfRelocations,
+		NumberOfLineNumbers:  s.NumberOfLineNumbers,
+		Characteristics:      s.Characteristics,
+	}
+
+	name := s.Name
+	if len(s.Name) > len(h.Name) {
+		n := bytes.Index(f.StringTable, []byte(s.Name))
+		if n >= 0 {
+			name = fmt.Sprintf("/%d", n+4)
+		}
+	}
+	copy(h.Name[:], name[:])
+	return h
+}
+
 func readStrz(b []byte) string {
 	for i := range b {
 		if b[i] == 0 {
@@ -218,16 +246,31 @@ func Format(f *File, w io.Writer) error {
 		MaxAlloc:   0xffff,
 		SP:         0xb8,
 		RelocPos:   0x40,
-		LFANew:     0x80,
+		LFANew:     0x40 + uint32(len(f.Stub)),
 	}
 	binary.Write(b, binary.LittleEndian, &dh)
-	binary.Write(b, binary.LittleEndian, &DOSStub)
+	b.Write(f.Stub)
 
-	peSig := uint16(0x4550)
-	binary.Write(b, binary.LittleEndian, &peSig)
+	peSig := [...]byte{'P', 'E', 0x00, 0x00}
+	binary.Write(b, binary.LittleEndian, peSig)
 	binary.Write(b, binary.LittleEndian, &f.FileHeader)
+	switch oh := f.OptionalHeader.(type) {
+	case *pe.OptionalHeader32:
+		binary.Write(b, binary.LittleEndian, oh)
+	case *pe.OptionalHeader64:
+		binary.Write(b, binary.LittleEndian, oh)
+	}
+
 	for _, s := range f.Sections {
-		data, _ := s.Data()
+		sh := f.sectionHeader32(&s.SectionHeader)
+		binary.Write(b, binary.LittleEndian, &sh)
+	}
+
+	for _, s := range f.Sections {
+		data, err := s.Data()
+		if err != nil {
+			return err
+		}
 		b.Write(data)
 	}
 
