@@ -8,11 +8,97 @@ package xed
 import "C"
 
 type (
+	OperandMode  C.xed_operand_enum_t
 	MachineMode  C.xed_machine_mode_enum_t
 	AddressWidth C.xed_address_width_enum_t
 	Category     C.xed_category_enum_t
 	Attribute    C.xed_attribute_enum_t
+	Exception    C.xed_exception_enum_t
+	Reg          C.xed_reg_enum_t
+	Chip         C.xed_chip_enum_t
 	Error        C.xed_error_enum_t
+	CpuIDBit     C.xed_cpuid_bit_enum_t
+)
+
+const (
+	CPUID_BIT_INVALID          CpuIDBit = C.XED_CPUID_BIT_INVALID
+	CPUID_BIT_ADOXADCX         CpuIDBit = C.XED_CPUID_BIT_ADOXADCX
+	CPUID_BIT_AES              CpuIDBit = C.XED_CPUID_BIT_AES
+	CPUID_BIT_AVX              CpuIDBit = C.XED_CPUID_BIT_AVX
+	CPUID_BIT_AVX2             CpuIDBit = C.XED_CPUID_BIT_AVX2
+	CPUID_BIT_AVX512BW         CpuIDBit = C.XED_CPUID_BIT_AVX512BW
+	CPUID_BIT_AVX512CD         CpuIDBit = C.XED_CPUID_BIT_AVX512CD
+	CPUID_BIT_AVX512DQ         CpuIDBit = C.XED_CPUID_BIT_AVX512DQ
+	CPUID_BIT_AVX512ER         CpuIDBit = C.XED_CPUID_BIT_AVX512ER
+	CPUID_BIT_AVX512F          CpuIDBit = C.XED_CPUID_BIT_AVX512F
+	CPUID_BIT_AVX512IFMA       CpuIDBit = C.XED_CPUID_BIT_AVX512IFMA
+	CPUID_BIT_AVX512PF         CpuIDBit = C.XED_CPUID_BIT_AVX512PF
+	CPUID_BIT_AVX512VBMI       CpuIDBit = C.XED_CPUID_BIT_AVX512VBMI
+	CPUID_BIT_AVX512VL         CpuIDBit = C.XED_CPUID_BIT_AVX512VL
+	CPUID_BIT_AVX512_4FMAPS    CpuIDBit = C.XED_CPUID_BIT_AVX512_4FMAPS
+	CPUID_BIT_AVX512_4VNNIW    CpuIDBit = C.XED_CPUID_BIT_AVX512_4VNNIW
+	CPUID_BIT_AVX512_BITALG    CpuIDBit = C.XED_CPUID_BIT_AVX512_BITALG
+	CPUID_BIT_AVX512_VBMI2     CpuIDBit = C.XED_CPUID_BIT_AVX512_VBMI2
+	CPUID_BIT_AVX512_VNNI      CpuIDBit = C.XED_CPUID_BIT_AVX512_VNNI
+	CPUID_BIT_AVX512_VPOPCNTDQ CpuIDBit = C.XED_CPUID_BIT_AVX512_VPOPCNTDQ
+	CPUID_BIT_BMI1             CpuIDBit = C.XED_CPUID_BIT_BMI1
+	CPUID_BIT_BMI2             CpuIDBit = C.XED_CPUID_BIT_BMI2
+	CPUID_BIT_CET              CpuIDBit = C.XED_CPUID_BIT_CET
+	CPUID_BIT_CLDEMOTE         CpuIDBit = C.XED_CPUID_BIT_CLDEMOTE
+	CPUID_BIT_CLFLUSH          CpuIDBit = C.XED_CPUID_BIT_CLFLUSH
+	CPUID_BIT_CLFLUSHOPT       CpuIDBit = C.XED_CPUID_BIT_CLFLUSHOPT
+	CPUID_BIT_CLWB             CpuIDBit = C.XED_CPUID_BIT_CLWB
+	CPUID_BIT_CMPXCHG16B       CpuIDBit = C.XED_CPUID_BIT_CMPXCHG16B
+	CPUID_BIT_F16C             CpuIDBit = C.XED_CPUID_BIT_F16C
+	CPUID_BIT_FMA              CpuIDBit = C.XED_CPUID_BIT_FMA
+	CPUID_BIT_FXSAVE           CpuIDBit = C.XED_CPUID_BIT_FXSAVE
+	CPUID_BIT_GFNI             CpuIDBit = C.XED_CPUID_BIT_GFNI
+	CPUID_BIT_INTEL64          CpuIDBit = C.XED_CPUID_BIT_INTEL64
+	CPUID_BIT_INTELPT          CpuIDBit = C.XED_CPUID_BIT_INTELPT
+	CPUID_BIT_INVPCID          CpuIDBit = C.XED_CPUID_BIT_INVPCID
+	CPUID_BIT_LAHF             CpuIDBit = C.XED_CPUID_BIT_LAHF
+	CPUID_BIT_LZCNT            CpuIDBit = C.XED_CPUID_BIT_LZCNT
+	CPUID_BIT_MONITOR          CpuIDBit = C.XED_CPUID_BIT_MONITOR
+	CPUID_BIT_MONITORX         CpuIDBit = C.XED_CPUID_BIT_MONITORX
+	CPUID_BIT_MOVDIR64B        CpuIDBit = C.XED_CPUID_BIT_MOVDIR64B
+	CPUID_BIT_MOVDIRI          CpuIDBit = C.XED_CPUID_BIT_MOVDIRI
+	CPUID_BIT_MOVEBE           CpuIDBit = C.XED_CPUID_BIT_MOVEBE
+	CPUID_BIT_MPX              CpuIDBit = C.XED_CPUID_BIT_MPX
+	CPUID_BIT_OSPKU            CpuIDBit = C.XED_CPUID_BIT_OSPKU
+	CPUID_BIT_OSXSAVE          CpuIDBit = C.XED_CPUID_BIT_OSXSAVE
+	CPUID_BIT_PCLMULQDQ        CpuIDBit = C.XED_CPUID_BIT_PCLMULQDQ
+	CPUID_BIT_PCONFIG          CpuIDBit = C.XED_CPUID_BIT_PCONFIG
+	CPUID_BIT_PKU              CpuIDBit = C.XED_CPUID_BIT_PKU
+	CPUID_BIT_POPCNT           CpuIDBit = C.XED_CPUID_BIT_POPCNT
+	CPUID_BIT_PREFETCHW        CpuIDBit = C.XED_CPUID_BIT_PREFETCHW
+	CPUID_BIT_PREFETCHWT1      CpuIDBit = C.XED_CPUID_BIT_PREFETCHWT1
+	CPUID_BIT_PTWRITE          CpuIDBit = C.XED_CPUID_BIT_PTWRITE
+	CPUID_BIT_RDP              CpuIDBit = C.XED_CPUID_BIT_RDP
+	CPUID_BIT_RDRAND           CpuIDBit = C.XED_CPUID_BIT_RDRAND
+	CPUID_BIT_RDSEED           CpuIDBit = C.XED_CPUID_BIT_RDSEED
+	CPUID_BIT_RDTSCP           CpuIDBit = C.XED_CPUID_BIT_RDTSCP
+	CPUID_BIT_RDWRFSGS         CpuIDBit = C.XED_CPUID_BIT_RDWRFSGS
+	CPUID_BIT_RTM              CpuIDBit = C.XED_CPUID_BIT_RTM
+	CPUID_BIT_SGX              CpuIDBit = C.XED_CPUID_BIT_SGX
+	CPUID_BIT_SHA              CpuIDBit = C.XED_CPUID_BIT_SHA
+	CPUID_BIT_SMAP             CpuIDBit = C.XED_CPUID_BIT_SMAP
+	CPUID_BIT_SMX              CpuIDBit = C.XED_CPUID_BIT_SMX
+	CPUID_BIT_SSE              CpuIDBit = C.XED_CPUID_BIT_SSE
+	CPUID_BIT_SSE2             CpuIDBit = C.XED_CPUID_BIT_SSE2
+	CPUID_BIT_SSE3             CpuIDBit = C.XED_CPUID_BIT_SSE3
+	CPUID_BIT_SSE4             CpuIDBit = C.XED_CPUID_BIT_SSE4
+	CPUID_BIT_SSE42            CpuIDBit = C.XED_CPUID_BIT_SSE42
+	CPUID_BIT_SSSE3            CpuIDBit = C.XED_CPUID_BIT_SSSE3
+	CPUID_BIT_VAES             CpuIDBit = C.XED_CPUID_BIT_VAES
+	CPUID_BIT_VMX              CpuIDBit = C.XED_CPUID_BIT_VMX
+	CPUID_BIT_VPCLMULQDQ       CpuIDBit = C.XED_CPUID_BIT_VPCLMULQDQ
+	CPUID_BIT_WAITPKG          CpuIDBit = C.XED_CPUID_BIT_WAITPKG
+	CPUID_BIT_WBNOINVD         CpuIDBit = C.XED_CPUID_BIT_WBNOINVD
+	CPUID_BIT_XSAVE            CpuIDBit = C.XED_CPUID_BIT_XSAVE
+	CPUID_BIT_XSAVEC           CpuIDBit = C.XED_CPUID_BIT_XSAVEC
+	CPUID_BIT_XSAVEOPT         CpuIDBit = C.XED_CPUID_BIT_XSAVEOPT
+	CPUID_BIT_XSAVES           CpuIDBit = C.XED_CPUID_BIT_XSAVES
+	CPUID_BIT_LAST             CpuIDBit = C.XED_CPUID_BIT_LAST
 )
 
 const (
@@ -222,6 +308,577 @@ const (
 	ATTRIBUTE_LAST                        Attribute = C.XED_ATTRIBUTE_LAST
 )
 
+const (
+	OPERAND_INVALID                OperandMode = C.XED_OPERAND_INVALID
+	OPERAND_AGEN                   OperandMode = C.XED_OPERAND_AGEN
+	OPERAND_AMD3DNOW               OperandMode = C.XED_OPERAND_AMD3DNOW
+	OPERAND_ASZ                    OperandMode = C.XED_OPERAND_ASZ
+	OPERAND_BASE0                  OperandMode = C.XED_OPERAND_BASE0
+	OPERAND_BASE1                  OperandMode = C.XED_OPERAND_BASE1
+	OPERAND_BCAST                  OperandMode = C.XED_OPERAND_BCAST
+	OPERAND_BCRC                   OperandMode = C.XED_OPERAND_BCRC
+	OPERAND_BRDISP_WIDTH           OperandMode = C.XED_OPERAND_BRDISP_WIDTH
+	OPERAND_CET                    OperandMode = C.XED_OPERAND_CET
+	OPERAND_CHIP                   OperandMode = C.XED_OPERAND_CHIP
+	OPERAND_CLDEMOTE               OperandMode = C.XED_OPERAND_CLDEMOTE
+	OPERAND_DEFAULT_SEG            OperandMode = C.XED_OPERAND_DEFAULT_SEG
+	OPERAND_DF32                   OperandMode = C.XED_OPERAND_DF32
+	OPERAND_DF64                   OperandMode = C.XED_OPERAND_DF64
+	OPERAND_DISP                   OperandMode = C.XED_OPERAND_DISP
+	OPERAND_DISP_WIDTH             OperandMode = C.XED_OPERAND_DISP_WIDTH
+	OPERAND_DUMMY                  OperandMode = C.XED_OPERAND_DUMMY
+	OPERAND_EASZ                   OperandMode = C.XED_OPERAND_EASZ
+	OPERAND_ELEMENT_SIZE           OperandMode = C.XED_OPERAND_ELEMENT_SIZE
+	OPERAND_ENCODER_PREFERRED      OperandMode = C.XED_OPERAND_ENCODER_PREFERRED
+	OPERAND_EOSZ                   OperandMode = C.XED_OPERAND_EOSZ
+	OPERAND_ERROR                  OperandMode = C.XED_OPERAND_ERROR
+	OPERAND_ESRC                   OperandMode = C.XED_OPERAND_ESRC
+	OPERAND_FIRST_F2F3             OperandMode = C.XED_OPERAND_FIRST_F2F3
+	OPERAND_HAS_MODRM              OperandMode = C.XED_OPERAND_HAS_MODRM
+	OPERAND_HAS_SIB                OperandMode = C.XED_OPERAND_HAS_SIB
+	OPERAND_HINT                   OperandMode = C.XED_OPERAND_HINT
+	OPERAND_ICLASS                 OperandMode = C.XED_OPERAND_ICLASS
+	OPERAND_ILD_F2                 OperandMode = C.XED_OPERAND_ILD_F2
+	OPERAND_ILD_F3                 OperandMode = C.XED_OPERAND_ILD_F3
+	OPERAND_ILD_SEG                OperandMode = C.XED_OPERAND_ILD_SEG
+	OPERAND_IMM0                   OperandMode = C.XED_OPERAND_IMM0
+	OPERAND_IMM0SIGNED             OperandMode = C.XED_OPERAND_IMM0SIGNED
+	OPERAND_IMM1                   OperandMode = C.XED_OPERAND_IMM1
+	OPERAND_IMM1_BYTES             OperandMode = C.XED_OPERAND_IMM1_BYTES
+	OPERAND_IMM_WIDTH              OperandMode = C.XED_OPERAND_IMM_WIDTH
+	OPERAND_INDEX                  OperandMode = C.XED_OPERAND_INDEX
+	OPERAND_LAST_F2F3              OperandMode = C.XED_OPERAND_LAST_F2F3
+	OPERAND_LLRC                   OperandMode = C.XED_OPERAND_LLRC
+	OPERAND_LOCK                   OperandMode = C.XED_OPERAND_LOCK
+	OPERAND_LZCNT                  OperandMode = C.XED_OPERAND_LZCNT
+	OPERAND_MAP                    OperandMode = C.XED_OPERAND_MAP
+	OPERAND_MASK                   OperandMode = C.XED_OPERAND_MASK
+	OPERAND_MAX_BYTES              OperandMode = C.XED_OPERAND_MAX_BYTES
+	OPERAND_MEM0                   OperandMode = C.XED_OPERAND_MEM0
+	OPERAND_MEM1                   OperandMode = C.XED_OPERAND_MEM1
+	OPERAND_MEM_WIDTH              OperandMode = C.XED_OPERAND_MEM_WIDTH
+	OPERAND_MOD                    OperandMode = C.XED_OPERAND_MOD
+	OPERAND_MODE                   OperandMode = C.XED_OPERAND_MODE
+	OPERAND_MODEP5                 OperandMode = C.XED_OPERAND_MODEP5
+	OPERAND_MODEP55C               OperandMode = C.XED_OPERAND_MODEP55C
+	OPERAND_MODE_FIRST_PREFIX      OperandMode = C.XED_OPERAND_MODE_FIRST_PREFIX
+	OPERAND_MODRM_BYTE             OperandMode = C.XED_OPERAND_MODRM_BYTE
+	OPERAND_MPXMODE                OperandMode = C.XED_OPERAND_MPXMODE
+	OPERAND_NEEDREX                OperandMode = C.XED_OPERAND_NEEDREX
+	OPERAND_NEED_MEMDISP           OperandMode = C.XED_OPERAND_NEED_MEMDISP
+	OPERAND_NELEM                  OperandMode = C.XED_OPERAND_NELEM
+	OPERAND_NOMINAL_OPCODE         OperandMode = C.XED_OPERAND_NOMINAL_OPCODE
+	OPERAND_NOREX                  OperandMode = C.XED_OPERAND_NOREX
+	OPERAND_NO_SCALE_DISP8         OperandMode = C.XED_OPERAND_NO_SCALE_DISP8
+	OPERAND_NPREFIXES              OperandMode = C.XED_OPERAND_NPREFIXES
+	OPERAND_NREXES                 OperandMode = C.XED_OPERAND_NREXES
+	OPERAND_NSEG_PREFIXES          OperandMode = C.XED_OPERAND_NSEG_PREFIXES
+	OPERAND_OSZ                    OperandMode = C.XED_OPERAND_OSZ
+	OPERAND_OUTREG                 OperandMode = C.XED_OPERAND_OUTREG
+	OPERAND_OUT_OF_BYTES           OperandMode = C.XED_OPERAND_OUT_OF_BYTES
+	OPERAND_P4                     OperandMode = C.XED_OPERAND_P4
+	OPERAND_POS_DISP               OperandMode = C.XED_OPERAND_POS_DISP
+	OPERAND_POS_IMM                OperandMode = C.XED_OPERAND_POS_IMM
+	OPERAND_POS_IMM1               OperandMode = C.XED_OPERAND_POS_IMM1
+	OPERAND_POS_MODRM              OperandMode = C.XED_OPERAND_POS_MODRM
+	OPERAND_POS_NOMINAL_OPCODE     OperandMode = C.XED_OPERAND_POS_NOMINAL_OPCODE
+	OPERAND_POS_SIB                OperandMode = C.XED_OPERAND_POS_SIB
+	OPERAND_PREFIX66               OperandMode = C.XED_OPERAND_PREFIX66
+	OPERAND_PTR                    OperandMode = C.XED_OPERAND_PTR
+	OPERAND_REALMODE               OperandMode = C.XED_OPERAND_REALMODE
+	OPERAND_REG                    OperandMode = C.XED_OPERAND_REG
+	OPERAND_REG0                   OperandMode = C.XED_OPERAND_REG0
+	OPERAND_REG1                   OperandMode = C.XED_OPERAND_REG1
+	OPERAND_REG2                   OperandMode = C.XED_OPERAND_REG2
+	OPERAND_REG3                   OperandMode = C.XED_OPERAND_REG3
+	OPERAND_REG4                   OperandMode = C.XED_OPERAND_REG4
+	OPERAND_REG5                   OperandMode = C.XED_OPERAND_REG5
+	OPERAND_REG6                   OperandMode = C.XED_OPERAND_REG6
+	OPERAND_REG7                   OperandMode = C.XED_OPERAND_REG7
+	OPERAND_REG8                   OperandMode = C.XED_OPERAND_REG8
+	OPERAND_RELBR                  OperandMode = C.XED_OPERAND_RELBR
+	OPERAND_REP                    OperandMode = C.XED_OPERAND_REP
+	OPERAND_REX                    OperandMode = C.XED_OPERAND_REX
+	OPERAND_REXB                   OperandMode = C.XED_OPERAND_REXB
+	OPERAND_REXR                   OperandMode = C.XED_OPERAND_REXR
+	OPERAND_REXRR                  OperandMode = C.XED_OPERAND_REXRR
+	OPERAND_REXW                   OperandMode = C.XED_OPERAND_REXW
+	OPERAND_REXX                   OperandMode = C.XED_OPERAND_REXX
+	OPERAND_RM                     OperandMode = C.XED_OPERAND_RM
+	OPERAND_ROUNDC                 OperandMode = C.XED_OPERAND_ROUNDC
+	OPERAND_SAE                    OperandMode = C.XED_OPERAND_SAE
+	OPERAND_SCALE                  OperandMode = C.XED_OPERAND_SCALE
+	OPERAND_SEG0                   OperandMode = C.XED_OPERAND_SEG0
+	OPERAND_SEG1                   OperandMode = C.XED_OPERAND_SEG1
+	OPERAND_SEG_OVD                OperandMode = C.XED_OPERAND_SEG_OVD
+	OPERAND_SIB                    OperandMode = C.XED_OPERAND_SIB
+	OPERAND_SIBBASE                OperandMode = C.XED_OPERAND_SIBBASE
+	OPERAND_SIBINDEX               OperandMode = C.XED_OPERAND_SIBINDEX
+	OPERAND_SIBSCALE               OperandMode = C.XED_OPERAND_SIBSCALE
+	OPERAND_SKIP_OSZ               OperandMode = C.XED_OPERAND_SKIP_OSZ
+	OPERAND_SMODE                  OperandMode = C.XED_OPERAND_SMODE
+	OPERAND_SRM                    OperandMode = C.XED_OPERAND_SRM
+	OPERAND_TZCNT                  OperandMode = C.XED_OPERAND_TZCNT
+	OPERAND_UBIT                   OperandMode = C.XED_OPERAND_UBIT
+	OPERAND_UIMM0                  OperandMode = C.XED_OPERAND_UIMM0
+	OPERAND_UIMM1                  OperandMode = C.XED_OPERAND_UIMM1
+	OPERAND_USING_DEFAULT_SEGMENT0 OperandMode = C.XED_OPERAND_USING_DEFAULT_SEGMENT0
+	OPERAND_USING_DEFAULT_SEGMENT1 OperandMode = C.XED_OPERAND_USING_DEFAULT_SEGMENT1
+	OPERAND_VEXDEST210             OperandMode = C.XED_OPERAND_VEXDEST210
+	OPERAND_VEXDEST3               OperandMode = C.XED_OPERAND_VEXDEST3
+	OPERAND_VEXDEST4               OperandMode = C.XED_OPERAND_VEXDEST4
+	OPERAND_VEXVALID               OperandMode = C.XED_OPERAND_VEXVALID
+	OPERAND_VEX_C4                 OperandMode = C.XED_OPERAND_VEX_C4
+	OPERAND_VEX_PREFIX             OperandMode = C.XED_OPERAND_VEX_PREFIX
+	OPERAND_VL                     OperandMode = C.XED_OPERAND_VL
+	OPERAND_WBNOINVD               OperandMode = C.XED_OPERAND_WBNOINVD
+	OPERAND_ZEROING                OperandMode = C.XED_OPERAND_ZEROING
+	OPERAND_LAST                   OperandMode = C.XED_OPERAND_LAST
+)
+
+const (
+	EXCEPTION_INVALID        Exception = C.XED_EXCEPTION_INVALID
+	EXCEPTION_AVX512_E1      Exception = C.XED_EXCEPTION_AVX512_E1
+	EXCEPTION_AVX512_E10     Exception = C.XED_EXCEPTION_AVX512_E10
+	EXCEPTION_AVX512_E10NF   Exception = C.XED_EXCEPTION_AVX512_E10NF
+	EXCEPTION_AVX512_E11     Exception = C.XED_EXCEPTION_AVX512_E11
+	EXCEPTION_AVX512_E11NF   Exception = C.XED_EXCEPTION_AVX512_E11NF
+	EXCEPTION_AVX512_E12     Exception = C.XED_EXCEPTION_AVX512_E12
+	EXCEPTION_AVX512_E12NP   Exception = C.XED_EXCEPTION_AVX512_E12NP
+	EXCEPTION_AVX512_E1NF    Exception = C.XED_EXCEPTION_AVX512_E1NF
+	EXCEPTION_AVX512_E2      Exception = C.XED_EXCEPTION_AVX512_E2
+	EXCEPTION_AVX512_E3      Exception = C.XED_EXCEPTION_AVX512_E3
+	EXCEPTION_AVX512_E3NF    Exception = C.XED_EXCEPTION_AVX512_E3NF
+	EXCEPTION_AVX512_E4      Exception = C.XED_EXCEPTION_AVX512_E4
+	EXCEPTION_AVX512_E4NF    Exception = C.XED_EXCEPTION_AVX512_E4NF
+	EXCEPTION_AVX512_E5      Exception = C.XED_EXCEPTION_AVX512_E5
+	EXCEPTION_AVX512_E5NF    Exception = C.XED_EXCEPTION_AVX512_E5NF
+	EXCEPTION_AVX512_E6      Exception = C.XED_EXCEPTION_AVX512_E6
+	EXCEPTION_AVX512_E6NF    Exception = C.XED_EXCEPTION_AVX512_E6NF
+	EXCEPTION_AVX512_E7NM    Exception = C.XED_EXCEPTION_AVX512_E7NM
+	EXCEPTION_AVX512_E7NM128 Exception = C.XED_EXCEPTION_AVX512_E7NM128
+	EXCEPTION_AVX512_E9NF    Exception = C.XED_EXCEPTION_AVX512_E9NF
+	EXCEPTION_AVX512_K20     Exception = C.XED_EXCEPTION_AVX512_K20
+	EXCEPTION_AVX512_K21     Exception = C.XED_EXCEPTION_AVX512_K21
+	EXCEPTION_AVX_TYPE_1     Exception = C.XED_EXCEPTION_AVX_TYPE_1
+	EXCEPTION_AVX_TYPE_11    Exception = C.XED_EXCEPTION_AVX_TYPE_11
+	EXCEPTION_AVX_TYPE_12    Exception = C.XED_EXCEPTION_AVX_TYPE_12
+	EXCEPTION_AVX_TYPE_2     Exception = C.XED_EXCEPTION_AVX_TYPE_2
+	EXCEPTION_AVX_TYPE_2D    Exception = C.XED_EXCEPTION_AVX_TYPE_2D
+	EXCEPTION_AVX_TYPE_3     Exception = C.XED_EXCEPTION_AVX_TYPE_3
+	EXCEPTION_AVX_TYPE_4     Exception = C.XED_EXCEPTION_AVX_TYPE_4
+	EXCEPTION_AVX_TYPE_4M    Exception = C.XED_EXCEPTION_AVX_TYPE_4M
+	EXCEPTION_AVX_TYPE_5     Exception = C.XED_EXCEPTION_AVX_TYPE_5
+	EXCEPTION_AVX_TYPE_5L    Exception = C.XED_EXCEPTION_AVX_TYPE_5L
+	EXCEPTION_AVX_TYPE_6     Exception = C.XED_EXCEPTION_AVX_TYPE_6
+	EXCEPTION_AVX_TYPE_7     Exception = C.XED_EXCEPTION_AVX_TYPE_7
+	EXCEPTION_AVX_TYPE_8     Exception = C.XED_EXCEPTION_AVX_TYPE_8
+	EXCEPTION_MMX_FP         Exception = C.XED_EXCEPTION_MMX_FP
+	EXCEPTION_MMX_FP_16ALIGN Exception = C.XED_EXCEPTION_MMX_FP_16ALIGN
+	EXCEPTION_MMX_MEM        Exception = C.XED_EXCEPTION_MMX_MEM
+	EXCEPTION_MMX_NOFP       Exception = C.XED_EXCEPTION_MMX_NOFP
+	EXCEPTION_MMX_NOFP2      Exception = C.XED_EXCEPTION_MMX_NOFP2
+	EXCEPTION_MMX_NOMEM      Exception = C.XED_EXCEPTION_MMX_NOMEM
+	EXCEPTION_SSE_TYPE_1     Exception = C.XED_EXCEPTION_SSE_TYPE_1
+	EXCEPTION_SSE_TYPE_2     Exception = C.XED_EXCEPTION_SSE_TYPE_2
+	EXCEPTION_SSE_TYPE_2D    Exception = C.XED_EXCEPTION_SSE_TYPE_2D
+	EXCEPTION_SSE_TYPE_3     Exception = C.XED_EXCEPTION_SSE_TYPE_3
+	EXCEPTION_SSE_TYPE_4     Exception = C.XED_EXCEPTION_SSE_TYPE_4
+	EXCEPTION_SSE_TYPE_4M    Exception = C.XED_EXCEPTION_SSE_TYPE_4M
+	EXCEPTION_SSE_TYPE_5     Exception = C.XED_EXCEPTION_SSE_TYPE_5
+	EXCEPTION_SSE_TYPE_7     Exception = C.XED_EXCEPTION_SSE_TYPE_7
+	EXCEPTION_LAST           Exception = C.XED_EXCEPTION_LAST
+)
+
+const (
+	REG_INVALID         Reg = C.XED_REG_INVALID
+	REG_BNDCFGU         Reg = C.XED_REG_BNDCFGU
+	REG_BNDSTATUS       Reg = C.XED_REG_BNDSTATUS
+	REG_BND0            Reg = C.XED_REG_BND0
+	REG_BND1            Reg = C.XED_REG_BND1
+	REG_BND2            Reg = C.XED_REG_BND2
+	REG_BND3            Reg = C.XED_REG_BND3
+	REG_CR0             Reg = C.XED_REG_CR0
+	REG_CR1             Reg = C.XED_REG_CR1
+	REG_CR2             Reg = C.XED_REG_CR2
+	REG_CR3             Reg = C.XED_REG_CR3
+	REG_CR4             Reg = C.XED_REG_CR4
+	REG_CR5             Reg = C.XED_REG_CR5
+	REG_CR6             Reg = C.XED_REG_CR6
+	REG_CR7             Reg = C.XED_REG_CR7
+	REG_CR8             Reg = C.XED_REG_CR8
+	REG_CR9             Reg = C.XED_REG_CR9
+	REG_CR10            Reg = C.XED_REG_CR10
+	REG_CR11            Reg = C.XED_REG_CR11
+	REG_CR12            Reg = C.XED_REG_CR12
+	REG_CR13            Reg = C.XED_REG_CR13
+	REG_CR14            Reg = C.XED_REG_CR14
+	REG_CR15            Reg = C.XED_REG_CR15
+	REG_DR0             Reg = C.XED_REG_DR0
+	REG_DR1             Reg = C.XED_REG_DR1
+	REG_DR2             Reg = C.XED_REG_DR2
+	REG_DR3             Reg = C.XED_REG_DR3
+	REG_DR4             Reg = C.XED_REG_DR4
+	REG_DR5             Reg = C.XED_REG_DR5
+	REG_DR6             Reg = C.XED_REG_DR6
+	REG_DR7             Reg = C.XED_REG_DR7
+	REG_FLAGS           Reg = C.XED_REG_FLAGS
+	REG_EFLAGS          Reg = C.XED_REG_EFLAGS
+	REG_RFLAGS          Reg = C.XED_REG_RFLAGS
+	REG_AX              Reg = C.XED_REG_AX
+	REG_CX              Reg = C.XED_REG_CX
+	REG_DX              Reg = C.XED_REG_DX
+	REG_BX              Reg = C.XED_REG_BX
+	REG_SP              Reg = C.XED_REG_SP
+	REG_BP              Reg = C.XED_REG_BP
+	REG_SI              Reg = C.XED_REG_SI
+	REG_DI              Reg = C.XED_REG_DI
+	REG_R8W             Reg = C.XED_REG_R8W
+	REG_R9W             Reg = C.XED_REG_R9W
+	REG_R10W            Reg = C.XED_REG_R10W
+	REG_R11W            Reg = C.XED_REG_R11W
+	REG_R12W            Reg = C.XED_REG_R12W
+	REG_R13W            Reg = C.XED_REG_R13W
+	REG_R14W            Reg = C.XED_REG_R14W
+	REG_R15W            Reg = C.XED_REG_R15W
+	REG_EAX             Reg = C.XED_REG_EAX
+	REG_ECX             Reg = C.XED_REG_ECX
+	REG_EDX             Reg = C.XED_REG_EDX
+	REG_EBX             Reg = C.XED_REG_EBX
+	REG_ESP             Reg = C.XED_REG_ESP
+	REG_EBP             Reg = C.XED_REG_EBP
+	REG_ESI             Reg = C.XED_REG_ESI
+	REG_EDI             Reg = C.XED_REG_EDI
+	REG_R8D             Reg = C.XED_REG_R8D
+	REG_R9D             Reg = C.XED_REG_R9D
+	REG_R10D            Reg = C.XED_REG_R10D
+	REG_R11D            Reg = C.XED_REG_R11D
+	REG_R12D            Reg = C.XED_REG_R12D
+	REG_R13D            Reg = C.XED_REG_R13D
+	REG_R14D            Reg = C.XED_REG_R14D
+	REG_R15D            Reg = C.XED_REG_R15D
+	REG_RAX             Reg = C.XED_REG_RAX
+	REG_RCX             Reg = C.XED_REG_RCX
+	REG_RDX             Reg = C.XED_REG_RDX
+	REG_RBX             Reg = C.XED_REG_RBX
+	REG_RSP             Reg = C.XED_REG_RSP
+	REG_RBP             Reg = C.XED_REG_RBP
+	REG_RSI             Reg = C.XED_REG_RSI
+	REG_RDI             Reg = C.XED_REG_RDI
+	REG_R8              Reg = C.XED_REG_R8
+	REG_R9              Reg = C.XED_REG_R9
+	REG_R10             Reg = C.XED_REG_R10
+	REG_R11             Reg = C.XED_REG_R11
+	REG_R12             Reg = C.XED_REG_R12
+	REG_R13             Reg = C.XED_REG_R13
+	REG_R14             Reg = C.XED_REG_R14
+	REG_R15             Reg = C.XED_REG_R15
+	REG_AL              Reg = C.XED_REG_AL
+	REG_CL              Reg = C.XED_REG_CL
+	REG_DL              Reg = C.XED_REG_DL
+	REG_BL              Reg = C.XED_REG_BL
+	REG_SPL             Reg = C.XED_REG_SPL
+	REG_BPL             Reg = C.XED_REG_BPL
+	REG_SIL             Reg = C.XED_REG_SIL
+	REG_DIL             Reg = C.XED_REG_DIL
+	REG_R8B             Reg = C.XED_REG_R8B
+	REG_R9B             Reg = C.XED_REG_R9B
+	REG_R10B            Reg = C.XED_REG_R10B
+	REG_R11B            Reg = C.XED_REG_R11B
+	REG_R12B            Reg = C.XED_REG_R12B
+	REG_R13B            Reg = C.XED_REG_R13B
+	REG_R14B            Reg = C.XED_REG_R14B
+	REG_R15B            Reg = C.XED_REG_R15B
+	REG_AH              Reg = C.XED_REG_AH
+	REG_CH              Reg = C.XED_REG_CH
+	REG_DH              Reg = C.XED_REG_DH
+	REG_BH              Reg = C.XED_REG_BH
+	REG_ERROR           Reg = C.XED_REG_ERROR
+	REG_RIP             Reg = C.XED_REG_RIP
+	REG_EIP             Reg = C.XED_REG_EIP
+	REG_IP              Reg = C.XED_REG_IP
+	REG_K0              Reg = C.XED_REG_K0
+	REG_K1              Reg = C.XED_REG_K1
+	REG_K2              Reg = C.XED_REG_K2
+	REG_K3              Reg = C.XED_REG_K3
+	REG_K4              Reg = C.XED_REG_K4
+	REG_K5              Reg = C.XED_REG_K5
+	REG_K6              Reg = C.XED_REG_K6
+	REG_K7              Reg = C.XED_REG_K7
+	REG_MMX0            Reg = C.XED_REG_MMX0
+	REG_MMX1            Reg = C.XED_REG_MMX1
+	REG_MMX2            Reg = C.XED_REG_MMX2
+	REG_MMX3            Reg = C.XED_REG_MMX3
+	REG_MMX4            Reg = C.XED_REG_MMX4
+	REG_MMX5            Reg = C.XED_REG_MMX5
+	REG_MMX6            Reg = C.XED_REG_MMX6
+	REG_MMX7            Reg = C.XED_REG_MMX7
+	REG_SSP             Reg = C.XED_REG_SSP
+	REG_IA32_U_CET      Reg = C.XED_REG_IA32_U_CET
+	REG_MXCSR           Reg = C.XED_REG_MXCSR
+	REG_STACKPUSH       Reg = C.XED_REG_STACKPUSH
+	REG_STACKPOP        Reg = C.XED_REG_STACKPOP
+	REG_GDTR            Reg = C.XED_REG_GDTR
+	REG_LDTR            Reg = C.XED_REG_LDTR
+	REG_IDTR            Reg = C.XED_REG_IDTR
+	REG_TR              Reg = C.XED_REG_TR
+	REG_TSC             Reg = C.XED_REG_TSC
+	REG_TSCAUX          Reg = C.XED_REG_TSCAUX
+	REG_MSRS            Reg = C.XED_REG_MSRS
+	REG_FSBASE          Reg = C.XED_REG_FSBASE
+	REG_GSBASE          Reg = C.XED_REG_GSBASE
+	REG_X87CONTROL      Reg = C.XED_REG_X87CONTROL
+	REG_X87STATUS       Reg = C.XED_REG_X87STATUS
+	REG_X87TAG          Reg = C.XED_REG_X87TAG
+	REG_X87PUSH         Reg = C.XED_REG_X87PUSH
+	REG_X87POP          Reg = C.XED_REG_X87POP
+	REG_X87POP2         Reg = C.XED_REG_X87POP2
+	REG_X87OPCODE       Reg = C.XED_REG_X87OPCODE
+	REG_X87LASTCS       Reg = C.XED_REG_X87LASTCS
+	REG_X87LASTIP       Reg = C.XED_REG_X87LASTIP
+	REG_X87LASTDS       Reg = C.XED_REG_X87LASTDS
+	REG_X87LASTDP       Reg = C.XED_REG_X87LASTDP
+	REG_CS              Reg = C.XED_REG_CS
+	REG_DS              Reg = C.XED_REG_DS
+	REG_ES              Reg = C.XED_REG_ES
+	REG_SS              Reg = C.XED_REG_SS
+	REG_FS              Reg = C.XED_REG_FS
+	REG_GS              Reg = C.XED_REG_GS
+	REG_TMP0            Reg = C.XED_REG_TMP0
+	REG_TMP1            Reg = C.XED_REG_TMP1
+	REG_TMP2            Reg = C.XED_REG_TMP2
+	REG_TMP3            Reg = C.XED_REG_TMP3
+	REG_TMP4            Reg = C.XED_REG_TMP4
+	REG_TMP5            Reg = C.XED_REG_TMP5
+	REG_TMP6            Reg = C.XED_REG_TMP6
+	REG_TMP7            Reg = C.XED_REG_TMP7
+	REG_TMP8            Reg = C.XED_REG_TMP8
+	REG_TMP9            Reg = C.XED_REG_TMP9
+	REG_TMP10           Reg = C.XED_REG_TMP10
+	REG_TMP11           Reg = C.XED_REG_TMP11
+	REG_TMP12           Reg = C.XED_REG_TMP12
+	REG_TMP13           Reg = C.XED_REG_TMP13
+	REG_TMP14           Reg = C.XED_REG_TMP14
+	REG_TMP15           Reg = C.XED_REG_TMP15
+	REG_ST0             Reg = C.XED_REG_ST0
+	REG_ST1             Reg = C.XED_REG_ST1
+	REG_ST2             Reg = C.XED_REG_ST2
+	REG_ST3             Reg = C.XED_REG_ST3
+	REG_ST4             Reg = C.XED_REG_ST4
+	REG_ST5             Reg = C.XED_REG_ST5
+	REG_ST6             Reg = C.XED_REG_ST6
+	REG_ST7             Reg = C.XED_REG_ST7
+	REG_XCR0            Reg = C.XED_REG_XCR0
+	REG_XMM0            Reg = C.XED_REG_XMM0
+	REG_XMM1            Reg = C.XED_REG_XMM1
+	REG_XMM2            Reg = C.XED_REG_XMM2
+	REG_XMM3            Reg = C.XED_REG_XMM3
+	REG_XMM4            Reg = C.XED_REG_XMM4
+	REG_XMM5            Reg = C.XED_REG_XMM5
+	REG_XMM6            Reg = C.XED_REG_XMM6
+	REG_XMM7            Reg = C.XED_REG_XMM7
+	REG_XMM8            Reg = C.XED_REG_XMM8
+	REG_XMM9            Reg = C.XED_REG_XMM9
+	REG_XMM10           Reg = C.XED_REG_XMM10
+	REG_XMM11           Reg = C.XED_REG_XMM11
+	REG_XMM12           Reg = C.XED_REG_XMM12
+	REG_XMM13           Reg = C.XED_REG_XMM13
+	REG_XMM14           Reg = C.XED_REG_XMM14
+	REG_XMM15           Reg = C.XED_REG_XMM15
+	REG_XMM16           Reg = C.XED_REG_XMM16
+	REG_XMM17           Reg = C.XED_REG_XMM17
+	REG_XMM18           Reg = C.XED_REG_XMM18
+	REG_XMM19           Reg = C.XED_REG_XMM19
+	REG_XMM20           Reg = C.XED_REG_XMM20
+	REG_XMM21           Reg = C.XED_REG_XMM21
+	REG_XMM22           Reg = C.XED_REG_XMM22
+	REG_XMM23           Reg = C.XED_REG_XMM23
+	REG_XMM24           Reg = C.XED_REG_XMM24
+	REG_XMM25           Reg = C.XED_REG_XMM25
+	REG_XMM26           Reg = C.XED_REG_XMM26
+	REG_XMM27           Reg = C.XED_REG_XMM27
+	REG_XMM28           Reg = C.XED_REG_XMM28
+	REG_XMM29           Reg = C.XED_REG_XMM29
+	REG_XMM30           Reg = C.XED_REG_XMM30
+	REG_XMM31           Reg = C.XED_REG_XMM31
+	REG_YMM0            Reg = C.XED_REG_YMM0
+	REG_YMM1            Reg = C.XED_REG_YMM1
+	REG_YMM2            Reg = C.XED_REG_YMM2
+	REG_YMM3            Reg = C.XED_REG_YMM3
+	REG_YMM4            Reg = C.XED_REG_YMM4
+	REG_YMM5            Reg = C.XED_REG_YMM5
+	REG_YMM6            Reg = C.XED_REG_YMM6
+	REG_YMM7            Reg = C.XED_REG_YMM7
+	REG_YMM8            Reg = C.XED_REG_YMM8
+	REG_YMM9            Reg = C.XED_REG_YMM9
+	REG_YMM10           Reg = C.XED_REG_YMM10
+	REG_YMM11           Reg = C.XED_REG_YMM11
+	REG_YMM12           Reg = C.XED_REG_YMM12
+	REG_YMM13           Reg = C.XED_REG_YMM13
+	REG_YMM14           Reg = C.XED_REG_YMM14
+	REG_YMM15           Reg = C.XED_REG_YMM15
+	REG_YMM16           Reg = C.XED_REG_YMM16
+	REG_YMM17           Reg = C.XED_REG_YMM17
+	REG_YMM18           Reg = C.XED_REG_YMM18
+	REG_YMM19           Reg = C.XED_REG_YMM19
+	REG_YMM20           Reg = C.XED_REG_YMM20
+	REG_YMM21           Reg = C.XED_REG_YMM21
+	REG_YMM22           Reg = C.XED_REG_YMM22
+	REG_YMM23           Reg = C.XED_REG_YMM23
+	REG_YMM24           Reg = C.XED_REG_YMM24
+	REG_YMM25           Reg = C.XED_REG_YMM25
+	REG_YMM26           Reg = C.XED_REG_YMM26
+	REG_YMM27           Reg = C.XED_REG_YMM27
+	REG_YMM28           Reg = C.XED_REG_YMM28
+	REG_YMM29           Reg = C.XED_REG_YMM29
+	REG_YMM30           Reg = C.XED_REG_YMM30
+	REG_YMM31           Reg = C.XED_REG_YMM31
+	REG_ZMM0            Reg = C.XED_REG_ZMM0
+	REG_ZMM1            Reg = C.XED_REG_ZMM1
+	REG_ZMM2            Reg = C.XED_REG_ZMM2
+	REG_ZMM3            Reg = C.XED_REG_ZMM3
+	REG_ZMM4            Reg = C.XED_REG_ZMM4
+	REG_ZMM5            Reg = C.XED_REG_ZMM5
+	REG_ZMM6            Reg = C.XED_REG_ZMM6
+	REG_ZMM7            Reg = C.XED_REG_ZMM7
+	REG_ZMM8            Reg = C.XED_REG_ZMM8
+	REG_ZMM9            Reg = C.XED_REG_ZMM9
+	REG_ZMM10           Reg = C.XED_REG_ZMM10
+	REG_ZMM11           Reg = C.XED_REG_ZMM11
+	REG_ZMM12           Reg = C.XED_REG_ZMM12
+	REG_ZMM13           Reg = C.XED_REG_ZMM13
+	REG_ZMM14           Reg = C.XED_REG_ZMM14
+	REG_ZMM15           Reg = C.XED_REG_ZMM15
+	REG_ZMM16           Reg = C.XED_REG_ZMM16
+	REG_ZMM17           Reg = C.XED_REG_ZMM17
+	REG_ZMM18           Reg = C.XED_REG_ZMM18
+	REG_ZMM19           Reg = C.XED_REG_ZMM19
+	REG_ZMM20           Reg = C.XED_REG_ZMM20
+	REG_ZMM21           Reg = C.XED_REG_ZMM21
+	REG_ZMM22           Reg = C.XED_REG_ZMM22
+	REG_ZMM23           Reg = C.XED_REG_ZMM23
+	REG_ZMM24           Reg = C.XED_REG_ZMM24
+	REG_ZMM25           Reg = C.XED_REG_ZMM25
+	REG_ZMM26           Reg = C.XED_REG_ZMM26
+	REG_ZMM27           Reg = C.XED_REG_ZMM27
+	REG_ZMM28           Reg = C.XED_REG_ZMM28
+	REG_ZMM29           Reg = C.XED_REG_ZMM29
+	REG_ZMM30           Reg = C.XED_REG_ZMM30
+	REG_ZMM31           Reg = C.XED_REG_ZMM31
+	REG_LAST            Reg = C.XED_REG_LAST
+	REG_BNDCFG_FIRST    Reg = C.XED_REG_BNDCFG_FIRST
+	REG_BNDCFG_LAST     Reg = C.XED_REG_BNDCFG_LAST
+	REG_BNDSTAT_FIRST   Reg = C.XED_REG_BNDSTAT_FIRST
+	REG_BNDSTAT_LAST    Reg = C.XED_REG_BNDSTAT_LAST
+	REG_BOUND_FIRST     Reg = C.XED_REG_BOUND_FIRST
+	REG_BOUND_LAST      Reg = C.XED_REG_BOUND_LAST
+	REG_CR_FIRST        Reg = C.XED_REG_CR_FIRST
+	REG_CR_LAST         Reg = C.XED_REG_CR_LAST
+	REG_DR_FIRST        Reg = C.XED_REG_DR_FIRST
+	REG_DR_LAST         Reg = C.XED_REG_DR_LAST
+	REG_FLAGS_FIRST     Reg = C.XED_REG_FLAGS_FIRST
+	REG_FLAGS_LAST      Reg = C.XED_REG_FLAGS_LAST
+	REG_GPR16_FIRST     Reg = C.XED_REG_GPR16_FIRST
+	REG_GPR16_LAST      Reg = C.XED_REG_GPR16_LAST
+	REG_GPR32_FIRST     Reg = C.XED_REG_GPR32_FIRST
+	REG_GPR32_LAST      Reg = C.XED_REG_GPR32_LAST
+	REG_GPR64_FIRST     Reg = C.XED_REG_GPR64_FIRST
+	REG_GPR64_LAST      Reg = C.XED_REG_GPR64_LAST
+	REG_GPR8_FIRST      Reg = C.XED_REG_GPR8_FIRST
+	REG_GPR8_LAST       Reg = C.XED_REG_GPR8_LAST
+	REG_GPR8h_FIRST     Reg = C.XED_REG_GPR8h_FIRST
+	REG_GPR8h_LAST      Reg = C.XED_REG_GPR8h_LAST
+	REG_INVALID_FIRST   Reg = C.XED_REG_INVALID_FIRST
+	REG_INVALID_LAST    Reg = C.XED_REG_INVALID_LAST
+	REG_IP_FIRST        Reg = C.XED_REG_IP_FIRST
+	REG_IP_LAST         Reg = C.XED_REG_IP_LAST
+	REG_MASK_FIRST      Reg = C.XED_REG_MASK_FIRST
+	REG_MASK_LAST       Reg = C.XED_REG_MASK_LAST
+	REG_MMX_FIRST       Reg = C.XED_REG_MMX_FIRST
+	REG_MMX_LAST        Reg = C.XED_REG_MMX_LAST
+	REG_MSR_FIRST       Reg = C.XED_REG_MSR_FIRST
+	REG_MSR_LAST        Reg = C.XED_REG_MSR_LAST
+	REG_MXCSR_FIRST     Reg = C.XED_REG_MXCSR_FIRST
+	REG_MXCSR_LAST      Reg = C.XED_REG_MXCSR_LAST
+	REG_PSEUDO_FIRST    Reg = C.XED_REG_PSEUDO_FIRST
+	REG_PSEUDO_LAST     Reg = C.XED_REG_PSEUDO_LAST
+	REG_PSEUDOX87_FIRST Reg = C.XED_REG_PSEUDOX87_FIRST
+	REG_PSEUDOX87_LAST  Reg = C.XED_REG_PSEUDOX87_LAST
+	REG_SR_FIRST        Reg = C.XED_REG_SR_FIRST
+	REG_SR_LAST         Reg = C.XED_REG_SR_LAST
+	REG_TMP_FIRST       Reg = C.XED_REG_TMP_FIRST
+	REG_TMP_LAST        Reg = C.XED_REG_TMP_LAST
+	REG_X87_FIRST       Reg = C.XED_REG_X87_FIRST
+	REG_X87_LAST        Reg = C.XED_REG_X87_LAST
+	REG_XCR_FIRST       Reg = C.XED_REG_XCR_FIRST
+	REG_XCR_LAST        Reg = C.XED_REG_XCR_LAST
+	REG_XMM_FIRST       Reg = C.XED_REG_XMM_FIRST
+	REG_XMM_LAST        Reg = C.XED_REG_XMM_LAST
+	REG_YMM_FIRST       Reg = C.XED_REG_YMM_FIRST
+	REG_YMM_LAST        Reg = C.XED_REG_YMM_LAST
+	REG_ZMM_FIRST       Reg = C.XED_REG_ZMM_FIRST
+	REG_ZMM_LAST        Reg = C.XED_REG_ZMM_LAST
+)
+
+const (
+	CHIP_INVALID           Chip = C.XED_CHIP_INVALID
+	CHIP_I86               Chip = C.XED_CHIP_I86
+	CHIP_I86FP             Chip = C.XED_CHIP_I86FP
+	CHIP_I186              Chip = C.XED_CHIP_I186
+	CHIP_I186FP            Chip = C.XED_CHIP_I186FP
+	CHIP_I286REAL          Chip = C.XED_CHIP_I286REAL
+	CHIP_I286              Chip = C.XED_CHIP_I286
+	CHIP_I2186FP           Chip = C.XED_CHIP_I2186FP
+	CHIP_I386REAL          Chip = C.XED_CHIP_I386REAL
+	CHIP_I386              Chip = C.XED_CHIP_I386
+	CHIP_I386FP            Chip = C.XED_CHIP_I386FP
+	CHIP_I486REAL          Chip = C.XED_CHIP_I486REAL
+	CHIP_I486              Chip = C.XED_CHIP_I486
+	CHIP_PENTIUMREAL       Chip = C.XED_CHIP_PENTIUMREAL
+	CHIP_PENTIUM           Chip = C.XED_CHIP_PENTIUM
+	CHIP_QUARK             Chip = C.XED_CHIP_QUARK
+	CHIP_PENTIUMMMXREAL    Chip = C.XED_CHIP_PENTIUMMMXREAL
+	CHIP_PENTIUMMMX        Chip = C.XED_CHIP_PENTIUMMMX
+	CHIP_ALLREAL           Chip = C.XED_CHIP_ALLREAL
+	CHIP_PENTIUMPRO        Chip = C.XED_CHIP_PENTIUMPRO
+	CHIP_PENTIUM2          Chip = C.XED_CHIP_PENTIUM2
+	CHIP_PENTIUM3          Chip = C.XED_CHIP_PENTIUM3
+	CHIP_PENTIUM4          Chip = C.XED_CHIP_PENTIUM4
+	CHIP_P4PRESCOTT        Chip = C.XED_CHIP_P4PRESCOTT
+	CHIP_P4PRESCOTT_NOLAHF Chip = C.XED_CHIP_P4PRESCOTT_NOLAHF
+	CHIP_P4PRESCOTT_VTX    Chip = C.XED_CHIP_P4PRESCOTT_VTX
+	CHIP_CORE2             Chip = C.XED_CHIP_CORE2
+	CHIP_PENRYN            Chip = C.XED_CHIP_PENRYN
+	CHIP_PENRYN_E          Chip = C.XED_CHIP_PENRYN_E
+	CHIP_NEHALEM           Chip = C.XED_CHIP_NEHALEM
+	CHIP_WESTMERE          Chip = C.XED_CHIP_WESTMERE
+	CHIP_BONNELL           Chip = C.XED_CHIP_BONNELL
+	CHIP_SALTWELL          Chip = C.XED_CHIP_SALTWELL
+	CHIP_SILVERMONT        Chip = C.XED_CHIP_SILVERMONT
+	CHIP_AMD               Chip = C.XED_CHIP_AMD
+	CHIP_GOLDMONT          Chip = C.XED_CHIP_GOLDMONT
+	CHIP_GOLDMONT_PLUS     Chip = C.XED_CHIP_GOLDMONT_PLUS
+	CHIP_TREMONT           Chip = C.XED_CHIP_TREMONT
+	CHIP_SANDYBRIDGE       Chip = C.XED_CHIP_SANDYBRIDGE
+	CHIP_IVYBRIDGE         Chip = C.XED_CHIP_IVYBRIDGE
+	CHIP_HASWELL           Chip = C.XED_CHIP_HASWELL
+	CHIP_BROADWELL         Chip = C.XED_CHIP_BROADWELL
+	CHIP_SKYLAKE           Chip = C.XED_CHIP_SKYLAKE
+	CHIP_SKYLAKE_SERVER    Chip = C.XED_CHIP_SKYLAKE_SERVER
+	CHIP_KNL               Chip = C.XED_CHIP_KNL
+	CHIP_KNM               Chip = C.XED_CHIP_KNM
+	CHIP_CANNONLAKE        Chip = C.XED_CHIP_CANNONLAKE
+	CHIP_ICELAKE           Chip = C.XED_CHIP_ICELAKE
+	CHIP_ICELAKE_SERVER    Chip = C.XED_CHIP_ICELAKE_SERVER
+	CHIP_FUTURE            Chip = C.XED_CHIP_FUTURE
+	CHIP_ALL               Chip = C.XED_CHIP_ALL
+	CHIP_LAST              Chip = C.XED_CHIP_LAST
+)
+
+func (r Reg) String() string {
+	return C.GoString(C.xed_reg_enum_t2str(C.xed_reg_enum_t(r)))
+}
+
 func (c Category) String() string {
 	return C.GoString(C.xed_category_enum_t2str(C.xed_category_enum_t(c)))
 }
@@ -244,7 +901,7 @@ func (c *DecodedInst) SetMode(mmode MachineMode, stack_addr_width AddressWidth) 
 	C.xed_decoded_inst_set_mode((*C.xed_decoded_inst_t)(c), C.xed_machine_mode_enum_t(mmode), C.xed_address_width_enum_t(stack_addr_width))
 }
 
-func (c *DecodedInst) SetScale(scale uint) {
+func (c *DecodedInst) SetScale(scale int) {
 	C.xed_decoded_inst_set_scale((*C.xed_decoded_inst_t)(c), C.xed_uint_t(scale))
 }
 
@@ -254,6 +911,70 @@ func (c *DecodedInst) Valid() bool {
 
 func (c *DecodedInst) Decode(itext []byte) error {
 	return Error(C.xed_ild_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
+}
+
+func (c *DecodedInst) Length() int {
+	return int(C.xed_decoded_inst_get_length((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) MachineModeBits() int {
+	return int(C.xed_decoded_inst_get_machine_mode_bits((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) MemopAddressWidth(memop_idx int) int {
+	return int(C.xed_decoded_inst_get_memop_address_width((*C.xed_decoded_inst_t)(c), C.xed_uint_t(memop_idx)))
+}
+
+func (c *DecodedInst) Modrm() int {
+	return int(C.xed_decoded_inst_get_modrm((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) Nprefixes() int {
+	return int(C.xed_decoded_inst_get_nprefixes((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) Reg(reg_operand OperandMode) Reg {
+	return Reg(C.xed_decoded_inst_get_reg((*C.xed_decoded_inst_t)(c), C.xed_operand_enum_t(reg_operand)))
+}
+
+type Operand C.xed_operand_t
+
+type OperandValues C.xed_operand_values_t
+
+func (c *OperandValues) Init() {
+	C.xed_operand_values_init((*C.xed_operand_values_t)(c))
+}
+
+func (c *OperandValues) HasRepPrefix() bool {
+	return xedbool(C.xed_operand_values_has_rep_prefix((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) HasRepnePrefix() bool {
+	return xedbool(C.xed_operand_values_has_repne_prefix((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) HasRexwPrefix() bool {
+	return xedbool(C.xed_operand_values_has_rexw_prefix((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) HasSegmentPrefix() bool {
+	return xedbool(C.xed_operand_values_has_segment_prefix((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) HasSibByte() bool {
+	return xedbool(C.xed_operand_values_has_sib_byte((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) IsNop() bool {
+	return xedbool(C.xed_operand_values_is_nop((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) Lockable() bool {
+	return xedbool(C.xed_operand_values_lockable((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) MemopWithoutModrm() bool {
+	return xedbool(C.xed_operand_values_memop_without_modrm((*C.xed_operand_values_t)(c)))
 }
 
 func xedbool(b C.xed_bool_t) bool {
