@@ -8,16 +8,26 @@ package xed
 import "C"
 
 type (
-	OperandMode  C.xed_operand_enum_t
-	MachineMode  C.xed_machine_mode_enum_t
-	AddressWidth C.xed_address_width_enum_t
-	Category     C.xed_category_enum_t
-	Attribute    C.xed_attribute_enum_t
-	Exception    C.xed_exception_enum_t
-	Reg          C.xed_reg_enum_t
-	Chip         C.xed_chip_enum_t
-	Error        C.xed_error_enum_t
-	CpuIDBit     C.xed_cpuid_bit_enum_t
+	OperandMode       C.xed_operand_enum_t
+	OperandVisibility C.xed_operand_visibility_enum_t
+	MachineMode       C.xed_machine_mode_enum_t
+	AddressWidth      C.xed_address_width_enum_t
+	Category          C.xed_category_enum_t
+	Attribute         C.xed_attribute_enum_t
+	Exception         C.xed_exception_enum_t
+	Reg               C.xed_reg_enum_t
+	Chip              C.xed_chip_enum_t
+	Error             C.xed_error_enum_t
+	CpuIDBit          C.xed_cpuid_bit_enum_t
+	RegClass          C.xed_reg_class_enum_t
+)
+
+const (
+	OPVIS_INVALID    OperandVisibility = C.XED_OPVIS_INVALID
+	OPVIS_EXPLICIT   OperandVisibility = C.XED_OPVIS_EXPLICIT
+	OPVIS_IMPLICIT   OperandVisibility = C.XED_OPVIS_IMPLICIT
+	OPVIS_SUPPRESSED OperandVisibility = C.XED_OPVIS_SUPPRESSED
+	OPVIS_LAST       OperandVisibility = C.XED_OPVIS_LAST
 )
 
 const (
@@ -874,6 +884,40 @@ const (
 	CHIP_ALL               Chip = C.XED_CHIP_ALL
 	CHIP_LAST              Chip = C.XED_CHIP_LAST
 )
+
+const (
+	REG_CLASS_INVALID   RegClass = C.XED_REG_CLASS_INVALID
+	REG_CLASS_BNDCFG    RegClass = C.XED_REG_CLASS_BNDCFG
+	REG_CLASS_BNDSTAT   RegClass = C.XED_REG_CLASS_BNDSTAT
+	REG_CLASS_BOUND     RegClass = C.XED_REG_CLASS_BOUND
+	REG_CLASS_CR        RegClass = C.XED_REG_CLASS_CR
+	REG_CLASS_DR        RegClass = C.XED_REG_CLASS_DR
+	REG_CLASS_FLAGS     RegClass = C.XED_REG_CLASS_FLAGS
+	REG_CLASS_GPR       RegClass = C.XED_REG_CLASS_GPR
+	REG_CLASS_GPR16     RegClass = C.XED_REG_CLASS_GPR16
+	REG_CLASS_GPR32     RegClass = C.XED_REG_CLASS_GPR32
+	REG_CLASS_GPR64     RegClass = C.XED_REG_CLASS_GPR64
+	REG_CLASS_GPR8      RegClass = C.XED_REG_CLASS_GPR8
+	REG_CLASS_IP        RegClass = C.XED_REG_CLASS_IP
+	REG_CLASS_MASK      RegClass = C.XED_REG_CLASS_MASK
+	REG_CLASS_MMX       RegClass = C.XED_REG_CLASS_MMX
+	REG_CLASS_MSR       RegClass = C.XED_REG_CLASS_MSR
+	REG_CLASS_MXCSR     RegClass = C.XED_REG_CLASS_MXCSR
+	REG_CLASS_PSEUDO    RegClass = C.XED_REG_CLASS_PSEUDO
+	REG_CLASS_PSEUDOX87 RegClass = C.XED_REG_CLASS_PSEUDOX87
+	REG_CLASS_SR        RegClass = C.XED_REG_CLASS_SR
+	REG_CLASS_TMP       RegClass = C.XED_REG_CLASS_TMP
+	REG_CLASS_X87       RegClass = C.XED_REG_CLASS_X87
+	REG_CLASS_XCR       RegClass = C.XED_REG_CLASS_XCR
+	REG_CLASS_XMM       RegClass = C.XED_REG_CLASS_XMM
+	REG_CLASS_YMM       RegClass = C.XED_REG_CLASS_YMM
+	REG_CLASS_ZMM       RegClass = C.XED_REG_CLASS_ZMM
+	REG_CLASS_LAST      RegClass = C.XED_REG_CLASS_LAST
+)
+
+func (r RegClass) String() string {
+	return C.GoString(C.xed_reg_class_enum_t2str(C.xed_reg_class_enum_t(r)))
+}
 
 func (r Reg) String() string {
 	return C.GoString(C.xed_reg_enum_t2str(C.xed_reg_enum_t(r)))
