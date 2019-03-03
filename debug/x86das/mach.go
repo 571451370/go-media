@@ -21,6 +21,7 @@ type Seg struct {
 
 type Mach struct {
 	Prog *Prog
+	Page int
 	Reg  [256]uint64
 	Seg  []*Seg
 	Mem  []byte
@@ -28,7 +29,7 @@ type Mach struct {
 
 func (m *Mach) LoadProg(prog *Prog) error {
 	m.Prog = prog
-
+	m.Page = 4096
 	m.Seg = m.Seg[:0]
 	return nil
 }

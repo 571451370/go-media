@@ -19,17 +19,17 @@ type Prog struct {
 	Format   interface{}
 	Mode     xed.MachineMode
 	Width    xed.AddressWidth
-	Pagesz   int
 	Entry    uint64
 	Sections []*Section
 }
 
 type Section struct {
-	Name string
-	Addr uint64
-	Size uint64
-	Flag uint64
-	Data []byte
+	Name  string
+	Addr  uint64
+	Size  uint64
+	Align uint64
+	Flag  uint64
+	Data  []byte
 }
 
 type BasicBlock struct {
@@ -65,13 +65,16 @@ func readPE(f *peutil.File) (*Prog, error) {
 		return nil, fmt.Errorf("unsupported machine type %d", f.Machine)
 	}
 
+	var align uint64
 	var base uint64
 	var entry uint64
 	switch h := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader32:
+		align = uint64(h.SectionAlignment)
 		base = uint64(h.ImageBase)
 		entry = uint64(h.AddressOfEntryPoint) + base
 	case *pe.OptionalHeader64:
+		align = uint64(h.SectionAlignment)
 		base = uint64(h.ImageBase)
 		entry = uint64(h.AddressOfEntryPoint) + base
 	}
@@ -94,11 +97,12 @@ func readPE(f *peutil.File) (*Prog, error) {
 			return nil, err
 		}
 		section := &Section{
-			Name: s.Name,
-			Addr: uint64(s.VirtualAddress) + base,
-			Size: uint64(s.VirtualSize),
-			Flag: flag,
-			Data: data,
+			Name:  s.Name,
+			Addr:  uint64(s.VirtualAddress) + base,
+			Size:  uint64(s.VirtualSize),
+			Align: align,
+			Flag:  flag,
+			Data:  data,
 		}
 		sections = append(sections, section)
 	}
