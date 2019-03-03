@@ -13,13 +13,24 @@ const (
 	REG_NDI
 )
 
+type Seg struct {
+	Virt uint64
+	Phys uint64
+	Size uint64
+}
+
 type Mach struct {
 	Prog *Prog
 	Reg  [256]uint64
+	Seg  []*Seg
+	Mem  []byte
 }
 
-func (m *Mach) LoadProg(prog *Prog) {
+func (m *Mach) LoadProg(prog *Prog) error {
 	m.Prog = prog
+
+	m.Seg = m.Seg[:0]
+	return nil
 }
 
 func (m *Mach) ReadReg(reg xed.Reg) uint64 {

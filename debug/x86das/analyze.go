@@ -19,6 +19,7 @@ type Prog struct {
 	Format   interface{}
 	Mode     xed.MachineMode
 	Width    xed.AddressWidth
+	Pagesz   int
 	Entry    uint64
 	Sections []*Section
 }

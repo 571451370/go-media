@@ -2453,6 +2453,10 @@ const (
 	ICLASS_LAST               IClass = C.XED_ICLASS_LAST
 )
 
+func (a AddressWidth) String() string {
+	return C.GoString(C.xed_address_width_enum_t2str(C.xed_address_width_enum_t(a)))
+}
+
 func (m MachineMode) String() string {
 	return C.GoString(C.xed_machine_mode_enum_t2str(C.xed_machine_mode_enum_t(m)))
 }
