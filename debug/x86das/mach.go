@@ -14,9 +14,12 @@ const (
 )
 
 type Mach struct {
-	Mode  xed.MachineMode
-	Width xed.AddressWidth
-	Reg   [256]uint64
+	Prog *Prog
+	Reg  [256]uint64
+}
+
+func (m *Mach) LoadProg(prog *Prog) {
+	m.Prog = prog
 }
 
 func (m *Mach) ReadReg(reg xed.Reg) uint64 {
@@ -27,7 +30,7 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 		mask64 = 0xffffffffffffffff
 	)
 	var mask uint64
-	switch m.Width {
+	switch m.Prog.Width {
 	case xed.ADDRESS_WIDTH_16b:
 		mask = mask16
 	case xed.ADDRESS_WIDTH_32b:
@@ -115,6 +118,6 @@ func (m *Mach) fetch(inst *xed.DecodedInst) {
 	m.ReadBuffer(m.ReadReg(REG_NIP), buf[:])
 
 	inst.Zero()
-	inst.SetMode(m.Mode, m.Width)
+	inst.SetMode(m.Prog.Mode, m.Prog.Width)
 	inst.Decode(buf[:])
 }

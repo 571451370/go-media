@@ -2453,6 +2453,10 @@ const (
 	ICLASS_LAST               IClass = C.XED_ICLASS_LAST
 )
 
+func (m MachineMode) String() string {
+	return C.GoString(C.xed_machine_mode_enum_t2str(C.xed_machine_mode_enum_t(m)))
+}
+
 func (r RegClass) String() string {
 	return C.GoString(C.xed_reg_class_enum_t2str(C.xed_reg_class_enum_t(r)))
 }
