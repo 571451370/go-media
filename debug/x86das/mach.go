@@ -1,6 +1,8 @@
 package x86das
 
-import "github.com/qeedquan/go-media/debug/xed"
+import (
+	"github.com/qeedquan/go-media/debug/xed"
+)
 
 const (
 	REG_NIP xed.Reg = xed.REG_ZMM_LAST + iota
@@ -17,6 +19,7 @@ type Seg struct {
 	Virt uint64
 	Phys uint64
 	Size uint64
+	Flag uint64
 }
 
 type Mach struct {
@@ -31,7 +34,25 @@ func (m *Mach) LoadProg(prog *Prog) error {
 	m.Prog = prog
 	m.Page = 4096
 	m.Seg = m.Seg[:0]
+	for _, s := range prog.Sections {
+		sg, err := m.Map(s.Addr, s.Size, s.Flag)
+		if err != nil {
+			return err
+		}
+		copy(m.Mem[sg.Phys:], s.Data)
+	}
 	return nil
+}
+
+func (m *Mach) Map(addr, size, flag uint64) (*Seg, error) {
+	m.Seg = append(m.Seg, &Seg{
+		Virt: addr,
+		Phys: uint64(len(m.Mem)),
+		Size: size,
+		Flag: flag,
+	})
+	m.Mem = append(m.Mem, make([]byte, size)...)
+	return m.Seg[len(m.Seg)-1], nil
 }
 
 func (m *Mach) ReadReg(reg xed.Reg) uint64 {
@@ -73,6 +94,13 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 	case REG_NDI:
 		idx = 7
 
+	case xed.REG_EIP:
+		idx = 0
+		mask = mask32
+	case xed.REG_RIP:
+		idx = 0
+		mask = mask64
+
 	case xed.REG_AL:
 		idx = 2
 		mask = mask8
@@ -94,7 +122,16 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 }
 
 func (m *Mach) ReadMem(addr uint64, size int) uint64 {
-	return 0
+	var v uint64
+	for i := 0; i < size; i++ {
+		for _, sg := range m.Seg {
+			vaddr := addr + uint64(i)
+			if sg.Virt <= vaddr && vaddr <= sg.Virt+sg.Size {
+				v |= uint64(m.Mem[vaddr-sg.Virt]) << uint(8*i)
+			}
+		}
+	}
+	return v
 }
 
 func (m *Mach) ReadBuffer(addr uint64, buf []byte) {
@@ -107,6 +144,15 @@ func (m *Mach) WriteReg(reg xed.Reg, val uint64) {
 }
 
 func (m *Mach) WriteMem(addr, val uint64, size int) {
+	var v uint64
+	for i := 0; i < size; i++ {
+		for _, sg := range m.Seg {
+			vaddr := addr + uint64(i)
+			if sg.Virt <= vaddr && vaddr <= sg.Virt+sg.Size {
+				m.Mem[vaddr-sg.Virt] = byte(v>>uint(8*i)) & 0xff
+			}
+		}
+	}
 }
 
 func (m *Mach) WriteBuffer(addr uint64, buf []byte) {
