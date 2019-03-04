@@ -22,6 +22,17 @@ type (
 	RegClass          C.xed_reg_class_enum_t
 	IClass            C.xed_iclass_enum_t
 	ISASet            C.xed_isa_set_enum_t
+	State             C.xed_state_t
+	SimpleFlag        C.xed_simple_flag_t
+	FlagSet           C.xed_flag_set_t
+	EncDisplacement   C.xed_enc_displacement_t
+	EncoderOperand    C.xed_encoder_operand_t
+)
+
+const (
+	MAX_INSTRUCTION_BYTES  = C.XED_MAX_INSTRUCTION_BYTES
+	MAX_IMMEDIATE_BYTES    = C.XED_MAX_IMMEDIATE_BYTES
+	MAX_DISPLACEMENT_BYTES = C.XED_MAX_DISPLACEMENT_BYTES
 )
 
 const (
@@ -2652,7 +2663,10 @@ func (c *DecodedInst) Valid() bool {
 }
 
 func (c *DecodedInst) Decode(itext []byte) error {
-	return Error(C.xed_ild_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
+	if len(itext) == 0 {
+		return Error(C.xed_decode((*C.xed_decoded_inst_t)(c), nil, 0))
+	}
+	return Error(C.xed_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
 }
 
 func (c *DecodedInst) Length() int {
@@ -2699,6 +2713,66 @@ func (c *DecodedInst) Merging() bool {
 	return xedbool(C.xed_decoded_inst_merging((*C.xed_decoded_inst_t)(c)))
 }
 
+func (c *DecodedInst) UsesRflags() bool {
+	return xedbool(C.xed_decoded_inst_uses_rflags((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) BaseReg(mem_idx uint) Reg {
+	return Reg(C.xed_decoded_inst_get_base_reg((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
+}
+
+func (c *DecodedInst) BranchDisplacement(mem_idx uint) int32 {
+	return int32(C.xed_decoded_inst_get_branch_displacement((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) BranchDisplacementWidth() uint {
+	return uint(C.xed_decoded_inst_get_branch_displacement_width((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) BranchDisplacementWidthBits() uint {
+	return uint(C.xed_decoded_inst_get_branch_displacement_width_bits((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) PatchDisp(itext []byte, disp EncDisplacement) bool {
+	if itext == nil {
+		return xedbool(C.xed_patch_disp((*C.xed_decoded_inst_t)(c), nil, C.xed_enc_displacement_t(disp)))
+
+	}
+	return xedbool(C.xed_patch_disp((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_enc_displacement_t(disp)))
+}
+
+func (c *DecodedInst) PatchRelBr(itext []byte, disp EncoderOperand) bool {
+	if itext == nil {
+		return xedbool(C.xed_patch_relbr((*C.xed_decoded_inst_t)(c), nil, C.xed_encoder_operand_t(disp)))
+
+	}
+	return xedbool(C.xed_patch_relbr((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_encoder_operand_t(disp)))
+}
+
+func (c *DecodedInst) PatchImm0(itext []byte, disp EncoderOperand) bool {
+	if itext == nil {
+		return xedbool(C.xed_patch_imm0((*C.xed_decoded_inst_t)(c), nil, C.xed_encoder_operand_t(disp)))
+
+	}
+	return xedbool(C.xed_patch_imm0((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_encoder_operand_t(disp)))
+}
+
+func (c *SimpleFlag) ReadsFlags() bool {
+	return xedbool(C.xed_simple_flag_reads_flags((*C.xed_simple_flag_t)(c)))
+}
+
+func (c *SimpleFlag) WritesFlags() bool {
+	return xedbool(C.xed_simple_flag_writes_flags((*C.xed_simple_flag_t)(c)))
+}
+
+func (c *SimpleFlag) MayWrite() bool {
+	return xedbool(C.xed_simple_flag_get_may_write((*C.xed_simple_flag_t)(c)))
+}
+
+func (c *SimpleFlag) MustWrite() bool {
+	return xedbool(C.xed_simple_flag_get_must_write((*C.xed_simple_flag_t)(c)))
+}
+
 type Operand C.xed_operand_t
 
 type OperandValues C.xed_operand_values_t
@@ -2737,6 +2811,26 @@ func (c *OperandValues) Lockable() bool {
 
 func (c *OperandValues) MemopWithoutModrm() bool {
 	return xedbool(C.xed_operand_values_memop_without_modrm((*C.xed_operand_values_t)(c)))
+}
+
+func (c *State) Zero() {
+	C.xed_state_zero((*C.xed_state_t)(c))
+}
+
+func (c *State) SetMachineMode(mmode MachineMode) {
+	c.mmode = C.xed_machine_mode_enum_t(mmode)
+}
+
+func (c *State) SetStackAddrWidth(stack_addr_width AddressWidth) {
+	c.stack_addr_width = C.xed_address_width_enum_t(stack_addr_width)
+}
+
+func (c *State) MachineMode() MachineMode {
+	return MachineMode(c.mmode)
+}
+
+func (c *State) StackAddrWidth() AddressWidth {
+	return AddressWidth(c.stack_addr_width)
 }
 
 func xedbool(b C.xed_bool_t) bool {
