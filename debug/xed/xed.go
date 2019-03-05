@@ -32,12 +32,25 @@ type (
 	Bits              C.xed_bits_t
 	Extension         C.xed_extension_enum_t
 	Iform             C.xed_iform_enum_t
+	OperandAction     C.xed_operand_action_enum_t
 )
 
 const (
 	MAX_INSTRUCTION_BYTES  = C.XED_MAX_INSTRUCTION_BYTES
 	MAX_IMMEDIATE_BYTES    = C.XED_MAX_IMMEDIATE_BYTES
 	MAX_DISPLACEMENT_BYTES = C.XED_MAX_DISPLACEMENT_BYTES
+)
+
+const (
+	OPERAND_ACTION_INVALID OperandAction = C.XED_OPERAND_ACTION_INVALID
+	OPERAND_ACTION_RW      OperandAction = C.XED_OPERAND_ACTION_RW
+	OPERAND_ACTION_R       OperandAction = C.XED_OPERAND_ACTION_R
+	OPERAND_ACTION_W       OperandAction = C.XED_OPERAND_ACTION_W
+	OPERAND_ACTION_RCW     OperandAction = C.XED_OPERAND_ACTION_RCW
+	OPERAND_ACTION_CW      OperandAction = C.XED_OPERAND_ACTION_CW
+	OPERAND_ACTION_CRW     OperandAction = C.XED_OPERAND_ACTION_CRW
+	OPERAND_ACTION_CR      OperandAction = C.XED_OPERAND_ACTION_CR
+	OPERAND_ACTION_LAST    OperandAction = C.XED_OPERAND_ACTION_LAST
 )
 
 const (
