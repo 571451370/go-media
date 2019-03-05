@@ -1,11 +1,13 @@
 package xed
 
 /*
+#include <stdlib.h>
 #include <xed-interface.h>
 
 #cgo pkg-config: xed
 */
 import "C"
+import "unsafe"
 
 type (
 	OperandMode       C.xed_operand_enum_t
@@ -27,12 +29,113 @@ type (
 	FlagSet           C.xed_flag_set_t
 	EncDisplacement   C.xed_enc_displacement_t
 	EncoderOperand    C.xed_encoder_operand_t
+	Bits              C.xed_bits_t
+	Extension         C.xed_extension_enum_t
+	Iform             C.xed_iform_enum_t
 )
 
 const (
 	MAX_INSTRUCTION_BYTES  = C.XED_MAX_INSTRUCTION_BYTES
 	MAX_IMMEDIATE_BYTES    = C.XED_MAX_IMMEDIATE_BYTES
 	MAX_DISPLACEMENT_BYTES = C.XED_MAX_DISPLACEMENT_BYTES
+)
+
+const (
+	EXTENSION_INVALID     Extension = C.XED_EXTENSION_INVALID
+	EXTENSION_3DNOW       Extension = C.XED_EXTENSION_3DNOW
+	EXTENSION_ADOX_ADCX   Extension = C.XED_EXTENSION_ADOX_ADCX
+	EXTENSION_AES         Extension = C.XED_EXTENSION_AES
+	EXTENSION_AVX         Extension = C.XED_EXTENSION_AVX
+	EXTENSION_AVX2        Extension = C.XED_EXTENSION_AVX2
+	EXTENSION_AVX2GATHER  Extension = C.XED_EXTENSION_AVX2GATHER
+	EXTENSION_AVX512EVEX  Extension = C.XED_EXTENSION_AVX512EVEX
+	EXTENSION_AVX512VEX   Extension = C.XED_EXTENSION_AVX512VEX
+	EXTENSION_AVXAES      Extension = C.XED_EXTENSION_AVXAES
+	EXTENSION_BASE        Extension = C.XED_EXTENSION_BASE
+	EXTENSION_BMI1        Extension = C.XED_EXTENSION_BMI1
+	EXTENSION_BMI2        Extension = C.XED_EXTENSION_BMI2
+	EXTENSION_CET         Extension = C.XED_EXTENSION_CET
+	EXTENSION_CLDEMOTE    Extension = C.XED_EXTENSION_CLDEMOTE
+	EXTENSION_CLFLUSHOPT  Extension = C.XED_EXTENSION_CLFLUSHOPT
+	EXTENSION_CLFSH       Extension = C.XED_EXTENSION_CLFSH
+	EXTENSION_CLWB        Extension = C.XED_EXTENSION_CLWB
+	EXTENSION_CLZERO      Extension = C.XED_EXTENSION_CLZERO
+	EXTENSION_F16C        Extension = C.XED_EXTENSION_F16C
+	EXTENSION_FMA         Extension = C.XED_EXTENSION_FMA
+	EXTENSION_FMA4        Extension = C.XED_EXTENSION_FMA4
+	EXTENSION_GFNI        Extension = C.XED_EXTENSION_GFNI
+	EXTENSION_INVPCID     Extension = C.XED_EXTENSION_INVPCID
+	EXTENSION_LONGMODE    Extension = C.XED_EXTENSION_LONGMODE
+	EXTENSION_LZCNT       Extension = C.XED_EXTENSION_LZCNT
+	EXTENSION_MMX         Extension = C.XED_EXTENSION_MMX
+	EXTENSION_MONITOR     Extension = C.XED_EXTENSION_MONITOR
+	EXTENSION_MONITORX    Extension = C.XED_EXTENSION_MONITORX
+	EXTENSION_MOVBE       Extension = C.XED_EXTENSION_MOVBE
+	EXTENSION_MOVDIR      Extension = C.XED_EXTENSION_MOVDIR
+	EXTENSION_MPX         Extension = C.XED_EXTENSION_MPX
+	EXTENSION_PAUSE       Extension = C.XED_EXTENSION_PAUSE
+	EXTENSION_PCLMULQDQ   Extension = C.XED_EXTENSION_PCLMULQDQ
+	EXTENSION_PCONFIG     Extension = C.XED_EXTENSION_PCONFIG
+	EXTENSION_PKU         Extension = C.XED_EXTENSION_PKU
+	EXTENSION_PREFETCHWT1 Extension = C.XED_EXTENSION_PREFETCHWT1
+	EXTENSION_PT          Extension = C.XED_EXTENSION_PT
+	EXTENSION_RDPID       Extension = C.XED_EXTENSION_RDPID
+	EXTENSION_RDRAND      Extension = C.XED_EXTENSION_RDRAND
+	EXTENSION_RDSEED      Extension = C.XED_EXTENSION_RDSEED
+	EXTENSION_RDTSCP      Extension = C.XED_EXTENSION_RDTSCP
+	EXTENSION_RDWRFSGS    Extension = C.XED_EXTENSION_RDWRFSGS
+	EXTENSION_RTM         Extension = C.XED_EXTENSION_RTM
+	EXTENSION_SGX         Extension = C.XED_EXTENSION_SGX
+	EXTENSION_SGX_ENCLV   Extension = C.XED_EXTENSION_SGX_ENCLV
+	EXTENSION_SHA         Extension = C.XED_EXTENSION_SHA
+	EXTENSION_SMAP        Extension = C.XED_EXTENSION_SMAP
+	EXTENSION_SMX         Extension = C.XED_EXTENSION_SMX
+	EXTENSION_SSE         Extension = C.XED_EXTENSION_SSE
+	EXTENSION_SSE2        Extension = C.XED_EXTENSION_SSE2
+	EXTENSION_SSE3        Extension = C.XED_EXTENSION_SSE3
+	EXTENSION_SSE4        Extension = C.XED_EXTENSION_SSE4
+	EXTENSION_SSE4A       Extension = C.XED_EXTENSION_SSE4A
+	EXTENSION_SSSE3       Extension = C.XED_EXTENSION_SSSE3
+	EXTENSION_SVM         Extension = C.XED_EXTENSION_SVM
+	EXTENSION_TBM         Extension = C.XED_EXTENSION_TBM
+	EXTENSION_VAES        Extension = C.XED_EXTENSION_VAES
+	EXTENSION_VMFUNC      Extension = C.XED_EXTENSION_VMFUNC
+	EXTENSION_VPCLMULQDQ  Extension = C.XED_EXTENSION_VPCLMULQDQ
+	EXTENSION_VTX         Extension = C.XED_EXTENSION_VTX
+	EXTENSION_WAITPKG     Extension = C.XED_EXTENSION_WAITPKG
+	EXTENSION_WBNOINVD    Extension = C.XED_EXTENSION_WBNOINVD
+	EXTENSION_X87         Extension = C.XED_EXTENSION_X87
+	EXTENSION_XOP         Extension = C.XED_EXTENSION_XOP
+	EXTENSION_XSAVE       Extension = C.XED_EXTENSION_XSAVE
+	EXTENSION_XSAVEC      Extension = C.XED_EXTENSION_XSAVEC
+	EXTENSION_XSAVEOPT    Extension = C.XED_EXTENSION_XSAVEOPT
+	EXTENSION_XSAVES      Extension = C.XED_EXTENSION_XSAVES
+	EXTENSION_LAST        Extension = C.XED_EXTENSION_LAST
+)
+
+const (
+	ERROR_NONE                         Error = C.XED_ERROR_NONE
+	ERROR_BUFFER_TOO_SHORT             Error = C.XED_ERROR_BUFFER_TOO_SHORT
+	ERROR_GENERAL_ERROR                Error = C.XED_ERROR_GENERAL_ERROR
+	ERROR_INVALID_FOR_CHIP             Error = C.XED_ERROR_INVALID_FOR_CHIP
+	ERROR_BAD_REGISTER                 Error = C.XED_ERROR_BAD_REGISTER
+	ERROR_BAD_LOCK_PREFIX              Error = C.XED_ERROR_BAD_LOCK_PREFIX
+	ERROR_BAD_REP_PREFIX               Error = C.XED_ERROR_BAD_REP_PREFIX
+	ERROR_BAD_LEGACY_PREFIX            Error = C.XED_ERROR_BAD_LEGACY_PREFIX
+	ERROR_BAD_REX_PREFIX               Error = C.XED_ERROR_BAD_REX_PREFIX
+	ERROR_BAD_EVEX_UBIT                Error = C.XED_ERROR_BAD_EVEX_UBIT
+	ERROR_BAD_MAP                      Error = C.XED_ERROR_BAD_MAP
+	ERROR_BAD_EVEX_V_PRIME             Error = C.XED_ERROR_BAD_EVEX_V_PRIME
+	ERROR_BAD_EVEX_Z_NO_MASKING        Error = C.XED_ERROR_BAD_EVEX_Z_NO_MASKING
+	ERROR_NO_OUTPUT_POINTER            Error = C.XED_ERROR_NO_OUTPUT_POINTER
+	ERROR_NO_AGEN_CALL_BACK_REGISTERED Error = C.XED_ERROR_NO_AGEN_CALL_BACK_REGISTERED
+	ERROR_BAD_MEMOP_INDEX              Error = C.XED_ERROR_BAD_MEMOP_INDEX
+	ERROR_CALLBACK_PROBLEM             Error = C.XED_ERROR_CALLBACK_PROBLEM
+	ERROR_GATHER_REGS                  Error = C.XED_ERROR_GATHER_REGS
+	ERROR_INSTR_TOO_LONG               Error = C.XED_ERROR_INSTR_TOO_LONG
+	ERROR_INVALID_MODE                 Error = C.XED_ERROR_INVALID_MODE
+	ERROR_BAD_EVEX_LL                  Error = C.XED_ERROR_BAD_EVEX_LL
+	ERROR_LAST                         Error = C.XED_ERROR_LAST
 )
 
 const (
@@ -2616,6 +2719,14 @@ var (
 	ISA_SET_LAST                  ISASet = C.XED_ISA_SET_LAST
 )
 
+func (c ISASet) String() string {
+	return C.GoString(C.xed_isa_set_enum_t2str(C.xed_isa_set_enum_t(c)))
+}
+
+func (c IClass) String() string {
+	return C.GoString(C.xed_iclass_enum_t2str(C.xed_iclass_enum_t(c)))
+}
+
 func (a AddressWidth) String() string {
 	return C.GoString(C.xed_address_width_enum_t2str(C.xed_address_width_enum_t(a)))
 }
@@ -2640,6 +2751,10 @@ func (c Attribute) String() string {
 	return C.GoString(C.xed_attribute_enum_t2str(C.xed_attribute_enum_t(c)))
 }
 
+func (c Extension) String() string {
+	return C.GoString(C.xed_extension_enum_t2str(C.xed_extension_enum_t(c)))
+}
+
 func (e Error) Error() string {
 	return C.GoString(C.xed_error_enum_t2str(C.xed_error_enum_t(e)))
 }
@@ -2650,8 +2765,16 @@ func (c *DecodedInst) Zero() {
 	C.xed_decoded_inst_zero((*C.xed_decoded_inst_t)(c))
 }
 
+func (c *DecodedInst) ISASet() ISASet {
+	return ISASet(C.xed_decoded_inst_get_isa_set((*C.xed_decoded_inst_t)(c)))
+}
+
 func (c *DecodedInst) SetMode(mmode MachineMode, stack_addr_width AddressWidth) {
 	C.xed_decoded_inst_set_mode((*C.xed_decoded_inst_t)(c), C.xed_machine_mode_enum_t(mmode), C.xed_address_width_enum_t(stack_addr_width))
+}
+
+func (c *DecodedInst) OperandsConst() *OperandValues {
+	return (*OperandValues)(C.xed_decoded_inst_operands_const((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) SetScale(scale int) {
@@ -2664,13 +2787,17 @@ func (c *DecodedInst) Valid() bool {
 
 func (c *DecodedInst) Decode(itext []byte) error {
 	if len(itext) == 0 {
-		return Error(C.xed_decode((*C.xed_decoded_inst_t)(c), nil, 0))
+		return xederror(C.xed_decode((*C.xed_decoded_inst_t)(c), nil, 0))
 	}
-	return Error(C.xed_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
+	return xederror(C.xed_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
 }
 
 func (c *DecodedInst) Length() int {
 	return int(C.xed_decoded_inst_get_length((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) Extension() Extension {
+	return Extension(C.xed_decoded_inst_get_extension((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) MachineModeBits() int {
@@ -2691,6 +2818,10 @@ func (c *DecodedInst) Nprefixes() int {
 
 func (c *DecodedInst) Reg(reg_operand OperandMode) Reg {
 	return Reg(C.xed_decoded_inst_get_reg((*C.xed_decoded_inst_t)(c), C.xed_operand_enum_t(reg_operand)))
+}
+
+func (c *DecodedInst) OperandWidth() uint32 {
+	return uint32(C.xed_decoded_inst_get_operand_width((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) IClass() IClass {
@@ -2757,6 +2888,30 @@ func (c *DecodedInst) PatchImm0(itext []byte, disp EncoderOperand) bool {
 	return xedbool(C.xed_patch_imm0((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_encoder_operand_t(disp)))
 }
 
+func (c *DecodedInst) ZeroSetMode(state *State) {
+	C.xed_decoded_inst_zero_set_mode((*C.xed_decoded_inst_t)(c), (*C.xed_state_t)(state))
+}
+
+func (c *DecodedInst) Zeroing() bool {
+	return xedbool(C.xed_decoded_inst_zeroing((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) SetInputChip(chip Chip) {
+	C.xed_decoded_inst_set_input_chip((*C.xed_decoded_inst_t)(c), C.xed_chip_enum_t(chip))
+}
+
+func (c *DecodedInst) SetMpxMode(opval Bits) {
+	C.xed3_operand_set_mpxmode((*C.xed_decoded_inst_t)(c), C.xed_bits_t(opval))
+}
+
+func (c *DecodedInst) SetCetMode(opval Bits) {
+	C.xed3_operand_set_cet((*C.xed_decoded_inst_t)(c), C.xed_bits_t(opval))
+}
+
+func (c *DecodedInst) Category() Category {
+	return Category(C.xed_decoded_inst_get_category((*C.xed_decoded_inst_t)(c)))
+}
+
 func (c *SimpleFlag) ReadsFlags() bool {
 	return xedbool(C.xed_simple_flag_reads_flags((*C.xed_simple_flag_t)(c)))
 }
@@ -2776,6 +2931,22 @@ func (c *SimpleFlag) MustWrite() bool {
 type Operand C.xed_operand_t
 
 type OperandValues C.xed_operand_values_t
+
+func (c *OperandValues) EffectiveOperandWidth() uint32 {
+	return uint32(C.xed_operand_values_get_effective_operand_width((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) EffectiveAddressWidth() uint32 {
+	return uint32(C.xed_operand_values_get_effective_address_width((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) StackAddressWidth() uint32 {
+	return uint32(C.xed_operand_values_get_stack_address_width((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) IClass() IClass {
+	return IClass(C.xed_operand_values_get_iclass((*C.xed_operand_values_t)(c)))
+}
 
 func (c *OperandValues) Init() {
 	C.xed_operand_values_init((*C.xed_operand_values_t)(c))
@@ -2831,6 +3002,29 @@ func (c *State) MachineMode() MachineMode {
 
 func (c *State) StackAddrWidth() AddressWidth {
 	return AddressWidth(c.stack_addr_width)
+}
+
+func (c Chip) String() string {
+	return C.GoString(C.xed_chip_enum_t2str(C.xed_chip_enum_t(c)))
+}
+
+func Str2Chip(str string) Chip {
+	cstr := C.CString(str)
+	defer C.free(unsafe.Pointer(cstr))
+	return Chip(C.str2xed_chip_enum_t(cstr))
+}
+
+func Str2CpuIDBit(str string) CpuIDBit {
+	cstr := C.CString(str)
+	defer C.free(unsafe.Pointer(cstr))
+	return CpuIDBit(C.str2xed_cpuid_bit_enum_t(cstr))
+}
+
+func xederror(e C.xed_error_enum_t) error {
+	if e == C.XED_ERROR_NONE {
+		return nil
+	}
+	return Error(e)
 }
 
 func xedbool(b C.xed_bool_t) bool {
