@@ -10,29 +10,30 @@ import "C"
 import "unsafe"
 
 type (
-	OperandMode       C.xed_operand_enum_t
-	OperandVisibility C.xed_operand_visibility_enum_t
-	MachineMode       C.xed_machine_mode_enum_t
 	AddressWidth      C.xed_address_width_enum_t
-	Category          C.xed_category_enum_t
 	Attribute         C.xed_attribute_enum_t
-	Exception         C.xed_exception_enum_t
-	Reg               C.xed_reg_enum_t
+	Bits              C.xed_bits_t
+	Category          C.xed_category_enum_t
 	Chip              C.xed_chip_enum_t
-	Error             C.xed_error_enum_t
 	CpuIDBit          C.xed_cpuid_bit_enum_t
-	RegClass          C.xed_reg_class_enum_t
-	IClass            C.xed_iclass_enum_t
-	ISASet            C.xed_isa_set_enum_t
-	State             C.xed_state_t
-	SimpleFlag        C.xed_simple_flag_t
-	FlagSet           C.xed_flag_set_t
 	EncDisplacement   C.xed_enc_displacement_t
 	EncoderOperand    C.xed_encoder_operand_t
-	Bits              C.xed_bits_t
+	Error             C.xed_error_enum_t
+	Exception         C.xed_exception_enum_t
 	Extension         C.xed_extension_enum_t
+	FlagSet           C.xed_flag_set_t
+	IClass            C.xed_iclass_enum_t
 	Iform             C.xed_iform_enum_t
+	Inst              C.xed_inst_t
+	ISASet            C.xed_isa_set_enum_t
+	MachineMode       C.xed_machine_mode_enum_t
 	OperandAction     C.xed_operand_action_enum_t
+	OperandMode       C.xed_operand_enum_t
+	OperandVisibility C.xed_operand_visibility_enum_t
+	RegClass          C.xed_reg_class_enum_t
+	Reg               C.xed_reg_enum_t
+	SimpleFlag        C.xed_simple_flag_t
+	State             C.xed_state_t
 )
 
 const (
@@ -2736,8 +2737,16 @@ func (c ISASet) String() string {
 	return C.GoString(C.xed_isa_set_enum_t2str(C.xed_isa_set_enum_t(c)))
 }
 
+func (c IClass) IformMaxPerIclass() uint32 {
+	return uint32(C.xed_iform_max_per_iclass(C.xed_iclass_enum_t(c)))
+}
+
 func (c IClass) String() string {
 	return C.GoString(C.xed_iclass_enum_t2str(C.xed_iclass_enum_t(c)))
+}
+
+func (c Iform) String() string {
+	return C.GoString(C.xed_iform_enum_t2str(C.xed_iform_enum_t(c)))
 }
 
 func (a AddressWidth) String() string {
@@ -2925,6 +2934,18 @@ func (c *DecodedInst) Category() Category {
 	return Category(C.xed_decoded_inst_get_category((*C.xed_decoded_inst_t)(c)))
 }
 
+func (c *DecodedInst) Iform() Iform {
+	return Iform(C.xed_decoded_inst_get_iform_enum((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) Inst() *Inst {
+	return (*Inst)(C.xed_decoded_inst_inst((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) IformDispatch() uint {
+	return uint(C.xed_decoded_inst_get_iform_enum_dispatch((*C.xed_decoded_inst_t)(c)))
+}
+
 func (c *SimpleFlag) ReadsFlags() bool {
 	return xedbool(C.xed_simple_flag_reads_flags((*C.xed_simple_flag_t)(c)))
 }
@@ -3021,6 +3042,26 @@ func (c Chip) String() string {
 	return C.GoString(C.xed_chip_enum_t2str(C.xed_chip_enum_t(c)))
 }
 
+func (c *Inst) Attribute(attr Attribute) uint32 {
+	return uint32(C.xed_inst_get_attribute((*C.xed_inst_t)(c), C.xed_attribute_enum_t(attr)))
+}
+
+func (c *Inst) NumOperands() uint {
+	return uint(C.xed_inst_noperands((*C.xed_inst_t)(c)))
+}
+
+func (c *Inst) Operand(i uint) *Operand {
+	return (*Operand)(C.xed_inst_operand((*C.xed_inst_t)(c), C.uint(i)))
+}
+
+func (c *Operand) Name() OperandMode {
+	return OperandMode(C.xed_operand_name((*C.xed_operand_t)(c)))
+}
+
+func (c OperandMode) String() string {
+	return C.GoString(C.xed_operand_enum_t2str((C.xed_operand_enum_t)(c)))
+}
+
 func Str2Chip(str string) Chip {
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
@@ -3031,6 +3072,14 @@ func Str2CpuIDBit(str string) CpuIDBit {
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
 	return CpuIDBit(C.str2xed_cpuid_bit_enum_t(cstr))
+}
+
+func AttributeEnum(i uint) Attribute {
+	return Attribute(C.xed_attribute(C.uint(i)))
+}
+
+func AttributeMax() uint {
+	return uint(C.xed_attribute_max())
 }
 
 func xederror(e C.xed_error_enum_t) error {
