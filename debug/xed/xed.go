@@ -10,30 +10,32 @@ import "C"
 import "unsafe"
 
 type (
-	AddressWidth      C.xed_address_width_enum_t
-	Attribute         C.xed_attribute_enum_t
-	Bits              C.xed_bits_t
-	Category          C.xed_category_enum_t
-	Chip              C.xed_chip_enum_t
-	CpuIDBit          C.xed_cpuid_bit_enum_t
-	EncDisplacement   C.xed_enc_displacement_t
-	EncoderOperand    C.xed_encoder_operand_t
-	Error             C.xed_error_enum_t
-	Exception         C.xed_exception_enum_t
-	Extension         C.xed_extension_enum_t
-	FlagSet           C.xed_flag_set_t
-	IClass            C.xed_iclass_enum_t
-	Iform             C.xed_iform_enum_t
-	Inst              C.xed_inst_t
-	ISASet            C.xed_isa_set_enum_t
-	MachineMode       C.xed_machine_mode_enum_t
-	OperandAction     C.xed_operand_action_enum_t
-	OperandMode       C.xed_operand_enum_t
-	OperandVisibility C.xed_operand_visibility_enum_t
-	RegClass          C.xed_reg_class_enum_t
-	Reg               C.xed_reg_enum_t
-	SimpleFlag        C.xed_simple_flag_t
-	State             C.xed_state_t
+	AddressWidth       C.xed_address_width_enum_t
+	Attribute          C.xed_attribute_enum_t
+	Bits               C.xed_bits_t
+	Category           C.xed_category_enum_t
+	Chip               C.xed_chip_enum_t
+	CpuIDBit           C.xed_cpuid_bit_enum_t
+	EncDisplacement    C.xed_enc_displacement_t
+	EncoderOperand     C.xed_encoder_operand_t
+	Error              C.xed_error_enum_t
+	Exception          C.xed_exception_enum_t
+	Extension          C.xed_extension_enum_t
+	FlagSet            C.xed_flag_set_t
+	IClass             C.xed_iclass_enum_t
+	Iform              C.xed_iform_enum_t
+	Inst               C.xed_inst_t
+	ISASet             C.xed_isa_set_enum_t
+	MachineMode        C.xed_machine_mode_enum_t
+	OperandAction      C.xed_operand_action_enum_t
+	OperandElementType C.xed_operand_element_type_enum_t
+	OperandMode        C.xed_operand_enum_t
+	OperandVisibility  C.xed_operand_visibility_enum_t
+	OperandWidth       C.xed_operand_width_enum_t
+	RegClass           C.xed_reg_class_enum_t
+	Reg                C.xed_reg_enum_t
+	SimpleFlag         C.xed_simple_flag_t
+	State              C.xed_state_t
 )
 
 const (
@@ -2733,6 +2735,13 @@ var (
 	ISA_SET_LAST                  ISASet = C.XED_ISA_SET_LAST
 )
 
+func (r Reg) Class() RegClass {
+	return RegClass(C.xed_reg_class(C.xed_reg_enum_t(r)))
+}
+
+func (c OperandElementType) String() string {
+	return C.GoString(C.xed_operand_element_type_enum_t2str(C.xed_operand_element_type_enum_t(c)))
+}
 func (c ISASet) String() string {
 	return C.GoString(C.xed_isa_set_enum_t2str(C.xed_isa_set_enum_t(c)))
 }
@@ -2777,11 +2786,39 @@ func (c Extension) String() string {
 	return C.GoString(C.xed_extension_enum_t2str(C.xed_extension_enum_t(c)))
 }
 
+func (c OperandAction) String() string {
+	return C.GoString(C.xed_operand_action_enum_t2str(C.xed_operand_action_enum_t(c)))
+}
+
+func (c OperandVisibility) String() string {
+	return C.GoString(C.xed_operand_visibility_enum_t2str(C.xed_operand_visibility_enum_t(c)))
+}
+
+func (c OperandWidth) String() string {
+	return C.GoString(C.xed_operand_width_enum_t2str(C.xed_operand_width_enum_t(c)))
+}
+
 func (e Error) Error() string {
 	return C.GoString(C.xed_error_enum_t2str(C.xed_error_enum_t(e)))
 }
 
 type DecodedInst C.xed_decoded_inst_t
+
+func (c *DecodedInst) OperandAction(operand_index uint) OperandAction {
+	return OperandAction(C.xed_decoded_inst_operand_action((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
+}
+
+func (c *DecodedInst) OperandLengthBits(operand_index uint) uint {
+	return uint(C.xed_decoded_inst_operand_length_bits((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
+}
+
+func (c *DecodedInst) OperandElements(operand_index uint) uint {
+	return uint(C.xed_decoded_inst_operand_elements((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
+}
+
+func (c *DecodedInst) OperandElementSizeBits(operand_index uint) uint {
+	return uint(C.xed_decoded_inst_operand_element_size_bits((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
+}
 
 func (c *DecodedInst) Zero() {
 	C.xed_decoded_inst_zero((*C.xed_decoded_inst_t)(c))
@@ -2874,7 +2911,7 @@ func (c *DecodedInst) BaseReg(mem_idx uint) Reg {
 	return Reg(C.xed_decoded_inst_get_base_reg((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
 }
 
-func (c *DecodedInst) BranchDisplacement(mem_idx uint) int32 {
+func (c *DecodedInst) BranchDisplacement() int32 {
 	return int32(C.xed_decoded_inst_get_branch_displacement((*C.xed_decoded_inst_t)(c)))
 }
 
@@ -2884,6 +2921,29 @@ func (c *DecodedInst) BranchDisplacementWidth() uint {
 
 func (c *DecodedInst) BranchDisplacementWidthBits() uint {
 	return uint(C.xed_decoded_inst_get_branch_displacement_width_bits((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) ImmediateWidthBits() uint {
+	return uint(C.xed_decoded_inst_get_immediate_width_bits((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) ImmediateIsSigned() uint {
+	return uint(C.xed_decoded_inst_get_immediate_is_signed((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) OperandElementType(operand_index uint) OperandElementType {
+	return OperandElementType(C.xed_decoded_inst_operand_element_type((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
+}
+func (c *DecodedInst) SignedImmediate() int32 {
+	return int32(C.xed_decoded_inst_get_signed_immediate((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) UnsignedImmediate() uint64 {
+	return uint64(C.xed_decoded_inst_get_unsigned_immediate((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) SecondImmediate() uint8 {
+	return uint8(C.xed_decoded_inst_get_second_immediate((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) PatchDisp(itext []byte, disp EncDisplacement) bool {
@@ -2920,6 +2980,10 @@ func (c *DecodedInst) Zeroing() bool {
 
 func (c *DecodedInst) SetInputChip(chip Chip) {
 	C.xed_decoded_inst_set_input_chip((*C.xed_decoded_inst_t)(c), C.xed_chip_enum_t(chip))
+}
+
+func (c *DecodedInst) RflagsInfo() *SimpleFlag {
+	return (*SimpleFlag)(C.xed_decoded_inst_get_rflags_info((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) SetMpxMode(opval Bits) {
@@ -2963,6 +3027,14 @@ func (c *SimpleFlag) MustWrite() bool {
 }
 
 type Operand C.xed_operand_t
+
+func (c *Operand) Width() OperandWidth {
+	return OperandWidth(C.xed_operand_width((*C.xed_operand_t)(c)))
+}
+
+func (c *Operand) Visibility() OperandVisibility {
+	return OperandVisibility(C.xed_operand_operand_visibility((*C.xed_operand_t)(c)))
+}
 
 type OperandValues C.xed_operand_values_t
 
@@ -3080,6 +3152,22 @@ func AttributeEnum(i uint) Attribute {
 
 func AttributeMax() uint {
 	return uint(C.xed_attribute_max())
+}
+
+func SignExtendArbitraryTo64(x uint64, bits uint) int64 {
+	return int64(C.xed_sign_extend_arbitrary_to_64(C.xed_uint64_t(x), C.uint(bits)))
+}
+
+func ZeroExtend16_32(x uint16) uint32 {
+	return uint32(C.xed_zero_extend16_32(C.xed_uint16_t(x)))
+}
+
+func ZeroExtend16_64(x uint16) uint64 {
+	return uint64(C.xed_zero_extend16_64(C.xed_uint16_t(x)))
+}
+
+func ZeroExtend32_64(x uint32) uint64 {
+	return uint64(C.xed_zero_extend32_64(C.xed_uint32_t(x)))
 }
 
 func xederror(e C.xed_error_enum_t) error {
