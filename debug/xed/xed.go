@@ -5,6 +5,7 @@ package xed
 #include <xed-interface.h>
 
 #cgo pkg-config: xed
+
 */
 import "C"
 import "unsafe"
@@ -12,19 +13,16 @@ import "unsafe"
 type (
 	AddressWidth       C.xed_address_width_enum_t
 	Attribute          C.xed_attribute_enum_t
+	Attributes         C.xed_attributes_t
 	Bits               C.xed_bits_t
 	Category           C.xed_category_enum_t
 	Chip               C.xed_chip_enum_t
-	CpuIDBit           C.xed_cpuid_bit_enum_t
 	EncDisplacement    C.xed_enc_displacement_t
 	EncoderOperand     C.xed_encoder_operand_t
 	Error              C.xed_error_enum_t
 	Exception          C.xed_exception_enum_t
 	Extension          C.xed_extension_enum_t
-	FlagSet            C.xed_flag_set_t
 	IClass             C.xed_iclass_enum_t
-	Iform              C.xed_iform_enum_t
-	Inst               C.xed_inst_t
 	ISASet             C.xed_isa_set_enum_t
 	MachineMode        C.xed_machine_mode_enum_t
 	OperandAction      C.xed_operand_action_enum_t
@@ -39,9 +37,10 @@ type (
 )
 
 const (
-	MAX_INSTRUCTION_BYTES  = C.XED_MAX_INSTRUCTION_BYTES
-	MAX_IMMEDIATE_BYTES    = C.XED_MAX_IMMEDIATE_BYTES
-	MAX_DISPLACEMENT_BYTES = C.XED_MAX_DISPLACEMENT_BYTES
+	MAX_INSTRUCTION_BYTES      = C.XED_MAX_INSTRUCTION_BYTES
+	MAX_IMMEDIATE_BYTES        = C.XED_MAX_IMMEDIATE_BYTES
+	MAX_DISPLACEMENT_BYTES     = C.XED_MAX_DISPLACEMENT_BYTES
+	MAX_CPUID_BITS_PER_ISA_SET = C.XED_MAX_CPUID_BITS_PER_ISA_SET
 )
 
 const (
@@ -160,87 +159,6 @@ const (
 	OPVIS_IMPLICIT   OperandVisibility = C.XED_OPVIS_IMPLICIT
 	OPVIS_SUPPRESSED OperandVisibility = C.XED_OPVIS_SUPPRESSED
 	OPVIS_LAST       OperandVisibility = C.XED_OPVIS_LAST
-)
-
-const (
-	CPUID_BIT_INVALID          CpuIDBit = C.XED_CPUID_BIT_INVALID
-	CPUID_BIT_ADOXADCX         CpuIDBit = C.XED_CPUID_BIT_ADOXADCX
-	CPUID_BIT_AES              CpuIDBit = C.XED_CPUID_BIT_AES
-	CPUID_BIT_AVX              CpuIDBit = C.XED_CPUID_BIT_AVX
-	CPUID_BIT_AVX2             CpuIDBit = C.XED_CPUID_BIT_AVX2
-	CPUID_BIT_AVX512BW         CpuIDBit = C.XED_CPUID_BIT_AVX512BW
-	CPUID_BIT_AVX512CD         CpuIDBit = C.XED_CPUID_BIT_AVX512CD
-	CPUID_BIT_AVX512DQ         CpuIDBit = C.XED_CPUID_BIT_AVX512DQ
-	CPUID_BIT_AVX512ER         CpuIDBit = C.XED_CPUID_BIT_AVX512ER
-	CPUID_BIT_AVX512F          CpuIDBit = C.XED_CPUID_BIT_AVX512F
-	CPUID_BIT_AVX512IFMA       CpuIDBit = C.XED_CPUID_BIT_AVX512IFMA
-	CPUID_BIT_AVX512PF         CpuIDBit = C.XED_CPUID_BIT_AVX512PF
-	CPUID_BIT_AVX512VBMI       CpuIDBit = C.XED_CPUID_BIT_AVX512VBMI
-	CPUID_BIT_AVX512VL         CpuIDBit = C.XED_CPUID_BIT_AVX512VL
-	CPUID_BIT_AVX512_4FMAPS    CpuIDBit = C.XED_CPUID_BIT_AVX512_4FMAPS
-	CPUID_BIT_AVX512_4VNNIW    CpuIDBit = C.XED_CPUID_BIT_AVX512_4VNNIW
-	CPUID_BIT_AVX512_BITALG    CpuIDBit = C.XED_CPUID_BIT_AVX512_BITALG
-	CPUID_BIT_AVX512_VBMI2     CpuIDBit = C.XED_CPUID_BIT_AVX512_VBMI2
-	CPUID_BIT_AVX512_VNNI      CpuIDBit = C.XED_CPUID_BIT_AVX512_VNNI
-	CPUID_BIT_AVX512_VPOPCNTDQ CpuIDBit = C.XED_CPUID_BIT_AVX512_VPOPCNTDQ
-	CPUID_BIT_BMI1             CpuIDBit = C.XED_CPUID_BIT_BMI1
-	CPUID_BIT_BMI2             CpuIDBit = C.XED_CPUID_BIT_BMI2
-	CPUID_BIT_CET              CpuIDBit = C.XED_CPUID_BIT_CET
-	CPUID_BIT_CLDEMOTE         CpuIDBit = C.XED_CPUID_BIT_CLDEMOTE
-	CPUID_BIT_CLFLUSH          CpuIDBit = C.XED_CPUID_BIT_CLFLUSH
-	CPUID_BIT_CLFLUSHOPT       CpuIDBit = C.XED_CPUID_BIT_CLFLUSHOPT
-	CPUID_BIT_CLWB             CpuIDBit = C.XED_CPUID_BIT_CLWB
-	CPUID_BIT_CMPXCHG16B       CpuIDBit = C.XED_CPUID_BIT_CMPXCHG16B
-	CPUID_BIT_F16C             CpuIDBit = C.XED_CPUID_BIT_F16C
-	CPUID_BIT_FMA              CpuIDBit = C.XED_CPUID_BIT_FMA
-	CPUID_BIT_FXSAVE           CpuIDBit = C.XED_CPUID_BIT_FXSAVE
-	CPUID_BIT_GFNI             CpuIDBit = C.XED_CPUID_BIT_GFNI
-	CPUID_BIT_INTEL64          CpuIDBit = C.XED_CPUID_BIT_INTEL64
-	CPUID_BIT_INTELPT          CpuIDBit = C.XED_CPUID_BIT_INTELPT
-	CPUID_BIT_INVPCID          CpuIDBit = C.XED_CPUID_BIT_INVPCID
-	CPUID_BIT_LAHF             CpuIDBit = C.XED_CPUID_BIT_LAHF
-	CPUID_BIT_LZCNT            CpuIDBit = C.XED_CPUID_BIT_LZCNT
-	CPUID_BIT_MONITOR          CpuIDBit = C.XED_CPUID_BIT_MONITOR
-	CPUID_BIT_MONITORX         CpuIDBit = C.XED_CPUID_BIT_MONITORX
-	CPUID_BIT_MOVDIR64B        CpuIDBit = C.XED_CPUID_BIT_MOVDIR64B
-	CPUID_BIT_MOVDIRI          CpuIDBit = C.XED_CPUID_BIT_MOVDIRI
-	CPUID_BIT_MOVEBE           CpuIDBit = C.XED_CPUID_BIT_MOVEBE
-	CPUID_BIT_MPX              CpuIDBit = C.XED_CPUID_BIT_MPX
-	CPUID_BIT_OSPKU            CpuIDBit = C.XED_CPUID_BIT_OSPKU
-	CPUID_BIT_OSXSAVE          CpuIDBit = C.XED_CPUID_BIT_OSXSAVE
-	CPUID_BIT_PCLMULQDQ        CpuIDBit = C.XED_CPUID_BIT_PCLMULQDQ
-	CPUID_BIT_PCONFIG          CpuIDBit = C.XED_CPUID_BIT_PCONFIG
-	CPUID_BIT_PKU              CpuIDBit = C.XED_CPUID_BIT_PKU
-	CPUID_BIT_POPCNT           CpuIDBit = C.XED_CPUID_BIT_POPCNT
-	CPUID_BIT_PREFETCHW        CpuIDBit = C.XED_CPUID_BIT_PREFETCHW
-	CPUID_BIT_PREFETCHWT1      CpuIDBit = C.XED_CPUID_BIT_PREFETCHWT1
-	CPUID_BIT_PTWRITE          CpuIDBit = C.XED_CPUID_BIT_PTWRITE
-	CPUID_BIT_RDP              CpuIDBit = C.XED_CPUID_BIT_RDP
-	CPUID_BIT_RDRAND           CpuIDBit = C.XED_CPUID_BIT_RDRAND
-	CPUID_BIT_RDSEED           CpuIDBit = C.XED_CPUID_BIT_RDSEED
-	CPUID_BIT_RDTSCP           CpuIDBit = C.XED_CPUID_BIT_RDTSCP
-	CPUID_BIT_RDWRFSGS         CpuIDBit = C.XED_CPUID_BIT_RDWRFSGS
-	CPUID_BIT_RTM              CpuIDBit = C.XED_CPUID_BIT_RTM
-	CPUID_BIT_SGX              CpuIDBit = C.XED_CPUID_BIT_SGX
-	CPUID_BIT_SHA              CpuIDBit = C.XED_CPUID_BIT_SHA
-	CPUID_BIT_SMAP             CpuIDBit = C.XED_CPUID_BIT_SMAP
-	CPUID_BIT_SMX              CpuIDBit = C.XED_CPUID_BIT_SMX
-	CPUID_BIT_SSE              CpuIDBit = C.XED_CPUID_BIT_SSE
-	CPUID_BIT_SSE2             CpuIDBit = C.XED_CPUID_BIT_SSE2
-	CPUID_BIT_SSE3             CpuIDBit = C.XED_CPUID_BIT_SSE3
-	CPUID_BIT_SSE4             CpuIDBit = C.XED_CPUID_BIT_SSE4
-	CPUID_BIT_SSE42            CpuIDBit = C.XED_CPUID_BIT_SSE42
-	CPUID_BIT_SSSE3            CpuIDBit = C.XED_CPUID_BIT_SSSE3
-	CPUID_BIT_VAES             CpuIDBit = C.XED_CPUID_BIT_VAES
-	CPUID_BIT_VMX              CpuIDBit = C.XED_CPUID_BIT_VMX
-	CPUID_BIT_VPCLMULQDQ       CpuIDBit = C.XED_CPUID_BIT_VPCLMULQDQ
-	CPUID_BIT_WAITPKG          CpuIDBit = C.XED_CPUID_BIT_WAITPKG
-	CPUID_BIT_WBNOINVD         CpuIDBit = C.XED_CPUID_BIT_WBNOINVD
-	CPUID_BIT_XSAVE            CpuIDBit = C.XED_CPUID_BIT_XSAVE
-	CPUID_BIT_XSAVEC           CpuIDBit = C.XED_CPUID_BIT_XSAVEC
-	CPUID_BIT_XSAVEOPT         CpuIDBit = C.XED_CPUID_BIT_XSAVEOPT
-	CPUID_BIT_XSAVES           CpuIDBit = C.XED_CPUID_BIT_XSAVES
-	CPUID_BIT_LAST             CpuIDBit = C.XED_CPUID_BIT_LAST
 )
 
 const (
@@ -2584,166 +2502,12 @@ const (
 	ICLASS_LAST               IClass = C.XED_ICLASS_LAST
 )
 
-var (
-	ISA_SET_INVALID               ISASet = C.XED_ISA_SET_INVALID
-	ISA_SET_3DNOW                 ISASet = C.XED_ISA_SET_3DNOW
-	ISA_SET_ADOX_ADCX             ISASet = C.XED_ISA_SET_ADOX_ADCX
-	ISA_SET_AES                   ISASet = C.XED_ISA_SET_AES
-	ISA_SET_AMD                   ISASet = C.XED_ISA_SET_AMD
-	ISA_SET_AVX                   ISASet = C.XED_ISA_SET_AVX
-	ISA_SET_AVX2                  ISASet = C.XED_ISA_SET_AVX2
-	ISA_SET_AVX2GATHER            ISASet = C.XED_ISA_SET_AVX2GATHER
-	ISA_SET_AVX512BW_128          ISASet = C.XED_ISA_SET_AVX512BW_128
-	ISA_SET_AVX512BW_128N         ISASet = C.XED_ISA_SET_AVX512BW_128N
-	ISA_SET_AVX512BW_256          ISASet = C.XED_ISA_SET_AVX512BW_256
-	ISA_SET_AVX512BW_512          ISASet = C.XED_ISA_SET_AVX512BW_512
-	ISA_SET_AVX512BW_KOP          ISASet = C.XED_ISA_SET_AVX512BW_KOP
-	ISA_SET_AVX512CD_128          ISASet = C.XED_ISA_SET_AVX512CD_128
-	ISA_SET_AVX512CD_256          ISASet = C.XED_ISA_SET_AVX512CD_256
-	ISA_SET_AVX512CD_512          ISASet = C.XED_ISA_SET_AVX512CD_512
-	ISA_SET_AVX512DQ_128          ISASet = C.XED_ISA_SET_AVX512DQ_128
-	ISA_SET_AVX512DQ_128N         ISASet = C.XED_ISA_SET_AVX512DQ_128N
-	ISA_SET_AVX512DQ_256          ISASet = C.XED_ISA_SET_AVX512DQ_256
-	ISA_SET_AVX512DQ_512          ISASet = C.XED_ISA_SET_AVX512DQ_512
-	ISA_SET_AVX512DQ_KOP          ISASet = C.XED_ISA_SET_AVX512DQ_KOP
-	ISA_SET_AVX512DQ_SCALAR       ISASet = C.XED_ISA_SET_AVX512DQ_SCALAR
-	ISA_SET_AVX512ER_512          ISASet = C.XED_ISA_SET_AVX512ER_512
-	ISA_SET_AVX512ER_SCALAR       ISASet = C.XED_ISA_SET_AVX512ER_SCALAR
-	ISA_SET_AVX512F_128           ISASet = C.XED_ISA_SET_AVX512F_128
-	ISA_SET_AVX512F_128N          ISASet = C.XED_ISA_SET_AVX512F_128N
-	ISA_SET_AVX512F_256           ISASet = C.XED_ISA_SET_AVX512F_256
-	ISA_SET_AVX512F_512           ISASet = C.XED_ISA_SET_AVX512F_512
-	ISA_SET_AVX512F_KOP           ISASet = C.XED_ISA_SET_AVX512F_KOP
-	ISA_SET_AVX512F_SCALAR        ISASet = C.XED_ISA_SET_AVX512F_SCALAR
-	ISA_SET_AVX512PF_512          ISASet = C.XED_ISA_SET_AVX512PF_512
-	ISA_SET_AVX512_4FMAPS_512     ISASet = C.XED_ISA_SET_AVX512_4FMAPS_512
-	ISA_SET_AVX512_4FMAPS_SCALAR  ISASet = C.XED_ISA_SET_AVX512_4FMAPS_SCALAR
-	ISA_SET_AVX512_4VNNIW_512     ISASet = C.XED_ISA_SET_AVX512_4VNNIW_512
-	ISA_SET_AVX512_BITALG_128     ISASet = C.XED_ISA_SET_AVX512_BITALG_128
-	ISA_SET_AVX512_BITALG_256     ISASet = C.XED_ISA_SET_AVX512_BITALG_256
-	ISA_SET_AVX512_BITALG_512     ISASet = C.XED_ISA_SET_AVX512_BITALG_512
-	ISA_SET_AVX512_GFNI_128       ISASet = C.XED_ISA_SET_AVX512_GFNI_128
-	ISA_SET_AVX512_GFNI_256       ISASet = C.XED_ISA_SET_AVX512_GFNI_256
-	ISA_SET_AVX512_GFNI_512       ISASet = C.XED_ISA_SET_AVX512_GFNI_512
-	ISA_SET_AVX512_IFMA_128       ISASet = C.XED_ISA_SET_AVX512_IFMA_128
-	ISA_SET_AVX512_IFMA_256       ISASet = C.XED_ISA_SET_AVX512_IFMA_256
-	ISA_SET_AVX512_IFMA_512       ISASet = C.XED_ISA_SET_AVX512_IFMA_512
-	ISA_SET_AVX512_VAES_128       ISASet = C.XED_ISA_SET_AVX512_VAES_128
-	ISA_SET_AVX512_VAES_256       ISASet = C.XED_ISA_SET_AVX512_VAES_256
-	ISA_SET_AVX512_VAES_512       ISASet = C.XED_ISA_SET_AVX512_VAES_512
-	ISA_SET_AVX512_VBMI2_128      ISASet = C.XED_ISA_SET_AVX512_VBMI2_128
-	ISA_SET_AVX512_VBMI2_256      ISASet = C.XED_ISA_SET_AVX512_VBMI2_256
-	ISA_SET_AVX512_VBMI2_512      ISASet = C.XED_ISA_SET_AVX512_VBMI2_512
-	ISA_SET_AVX512_VBMI_128       ISASet = C.XED_ISA_SET_AVX512_VBMI_128
-	ISA_SET_AVX512_VBMI_256       ISASet = C.XED_ISA_SET_AVX512_VBMI_256
-	ISA_SET_AVX512_VBMI_512       ISASet = C.XED_ISA_SET_AVX512_VBMI_512
-	ISA_SET_AVX512_VNNI_128       ISASet = C.XED_ISA_SET_AVX512_VNNI_128
-	ISA_SET_AVX512_VNNI_256       ISASet = C.XED_ISA_SET_AVX512_VNNI_256
-	ISA_SET_AVX512_VNNI_512       ISASet = C.XED_ISA_SET_AVX512_VNNI_512
-	ISA_SET_AVX512_VPCLMULQDQ_128 ISASet = C.XED_ISA_SET_AVX512_VPCLMULQDQ_128
-	ISA_SET_AVX512_VPCLMULQDQ_256 ISASet = C.XED_ISA_SET_AVX512_VPCLMULQDQ_256
-	ISA_SET_AVX512_VPCLMULQDQ_512 ISASet = C.XED_ISA_SET_AVX512_VPCLMULQDQ_512
-	ISA_SET_AVX512_VPOPCNTDQ_128  ISASet = C.XED_ISA_SET_AVX512_VPOPCNTDQ_128
-	ISA_SET_AVX512_VPOPCNTDQ_256  ISASet = C.XED_ISA_SET_AVX512_VPOPCNTDQ_256
-	ISA_SET_AVX512_VPOPCNTDQ_512  ISASet = C.XED_ISA_SET_AVX512_VPOPCNTDQ_512
-	ISA_SET_AVXAES                ISASet = C.XED_ISA_SET_AVXAES
-	ISA_SET_AVX_GFNI              ISASet = C.XED_ISA_SET_AVX_GFNI
-	ISA_SET_BMI1                  ISASet = C.XED_ISA_SET_BMI1
-	ISA_SET_BMI2                  ISASet = C.XED_ISA_SET_BMI2
-	ISA_SET_CET                   ISASet = C.XED_ISA_SET_CET
-	ISA_SET_CLDEMOTE              ISASet = C.XED_ISA_SET_CLDEMOTE
-	ISA_SET_CLFLUSHOPT            ISASet = C.XED_ISA_SET_CLFLUSHOPT
-	ISA_SET_CLFSH                 ISASet = C.XED_ISA_SET_CLFSH
-	ISA_SET_CLWB                  ISASet = C.XED_ISA_SET_CLWB
-	ISA_SET_CLZERO                ISASet = C.XED_ISA_SET_CLZERO
-	ISA_SET_CMOV                  ISASet = C.XED_ISA_SET_CMOV
-	ISA_SET_CMPXCHG16B            ISASet = C.XED_ISA_SET_CMPXCHG16B
-	ISA_SET_F16C                  ISASet = C.XED_ISA_SET_F16C
-	ISA_SET_FAT_NOP               ISASet = C.XED_ISA_SET_FAT_NOP
-	ISA_SET_FCMOV                 ISASet = C.XED_ISA_SET_FCMOV
-	ISA_SET_FMA                   ISASet = C.XED_ISA_SET_FMA
-	ISA_SET_FMA4                  ISASet = C.XED_ISA_SET_FMA4
-	ISA_SET_FXSAVE                ISASet = C.XED_ISA_SET_FXSAVE
-	ISA_SET_FXSAVE64              ISASet = C.XED_ISA_SET_FXSAVE64
-	ISA_SET_GFNI                  ISASet = C.XED_ISA_SET_GFNI
-	ISA_SET_I186                  ISASet = C.XED_ISA_SET_I186
-	ISA_SET_I286PROTECTED         ISASet = C.XED_ISA_SET_I286PROTECTED
-	ISA_SET_I286REAL              ISASet = C.XED_ISA_SET_I286REAL
-	ISA_SET_I386                  ISASet = C.XED_ISA_SET_I386
-	ISA_SET_I486                  ISASet = C.XED_ISA_SET_I486
-	ISA_SET_I486REAL              ISASet = C.XED_ISA_SET_I486REAL
-	ISA_SET_I86                   ISASet = C.XED_ISA_SET_I86
-	ISA_SET_INVPCID               ISASet = C.XED_ISA_SET_INVPCID
-	ISA_SET_LAHF                  ISASet = C.XED_ISA_SET_LAHF
-	ISA_SET_LONGMODE              ISASet = C.XED_ISA_SET_LONGMODE
-	ISA_SET_LZCNT                 ISASet = C.XED_ISA_SET_LZCNT
-	ISA_SET_MONITOR               ISASet = C.XED_ISA_SET_MONITOR
-	ISA_SET_MONITORX              ISASet = C.XED_ISA_SET_MONITORX
-	ISA_SET_MOVBE                 ISASet = C.XED_ISA_SET_MOVBE
-	ISA_SET_MOVDIR                ISASet = C.XED_ISA_SET_MOVDIR
-	ISA_SET_MPX                   ISASet = C.XED_ISA_SET_MPX
-	ISA_SET_PAUSE                 ISASet = C.XED_ISA_SET_PAUSE
-	ISA_SET_PCLMULQDQ             ISASet = C.XED_ISA_SET_PCLMULQDQ
-	ISA_SET_PCONFIG               ISASet = C.XED_ISA_SET_PCONFIG
-	ISA_SET_PENTIUMMMX            ISASet = C.XED_ISA_SET_PENTIUMMMX
-	ISA_SET_PENTIUMREAL           ISASet = C.XED_ISA_SET_PENTIUMREAL
-	ISA_SET_PKU                   ISASet = C.XED_ISA_SET_PKU
-	ISA_SET_POPCNT                ISASet = C.XED_ISA_SET_POPCNT
-	ISA_SET_PPRO                  ISASet = C.XED_ISA_SET_PPRO
-	ISA_SET_PREFETCHW             ISASet = C.XED_ISA_SET_PREFETCHW
-	ISA_SET_PREFETCHWT1           ISASet = C.XED_ISA_SET_PREFETCHWT1
-	ISA_SET_PREFETCH_NOP          ISASet = C.XED_ISA_SET_PREFETCH_NOP
-	ISA_SET_PT                    ISASet = C.XED_ISA_SET_PT
-	ISA_SET_RDPID                 ISASet = C.XED_ISA_SET_RDPID
-	ISA_SET_RDPMC                 ISASet = C.XED_ISA_SET_RDPMC
-	ISA_SET_RDRAND                ISASet = C.XED_ISA_SET_RDRAND
-	ISA_SET_RDSEED                ISASet = C.XED_ISA_SET_RDSEED
-	ISA_SET_RDTSCP                ISASet = C.XED_ISA_SET_RDTSCP
-	ISA_SET_RDWRFSGS              ISASet = C.XED_ISA_SET_RDWRFSGS
-	ISA_SET_RTM                   ISASet = C.XED_ISA_SET_RTM
-	ISA_SET_SGX                   ISASet = C.XED_ISA_SET_SGX
-	ISA_SET_SGX_ENCLV             ISASet = C.XED_ISA_SET_SGX_ENCLV
-	ISA_SET_SHA                   ISASet = C.XED_ISA_SET_SHA
-	ISA_SET_SMAP                  ISASet = C.XED_ISA_SET_SMAP
-	ISA_SET_SMX                   ISASet = C.XED_ISA_SET_SMX
-	ISA_SET_SSE                   ISASet = C.XED_ISA_SET_SSE
-	ISA_SET_SSE2                  ISASet = C.XED_ISA_SET_SSE2
-	ISA_SET_SSE2MMX               ISASet = C.XED_ISA_SET_SSE2MMX
-	ISA_SET_SSE3                  ISASet = C.XED_ISA_SET_SSE3
-	ISA_SET_SSE3X87               ISASet = C.XED_ISA_SET_SSE3X87
-	ISA_SET_SSE4                  ISASet = C.XED_ISA_SET_SSE4
-	ISA_SET_SSE42                 ISASet = C.XED_ISA_SET_SSE42
-	ISA_SET_SSE4A                 ISASet = C.XED_ISA_SET_SSE4A
-	ISA_SET_SSEMXCSR              ISASet = C.XED_ISA_SET_SSEMXCSR
-	ISA_SET_SSE_PREFETCH          ISASet = C.XED_ISA_SET_SSE_PREFETCH
-	ISA_SET_SSSE3                 ISASet = C.XED_ISA_SET_SSSE3
-	ISA_SET_SSSE3MMX              ISASet = C.XED_ISA_SET_SSSE3MMX
-	ISA_SET_SVM                   ISASet = C.XED_ISA_SET_SVM
-	ISA_SET_TBM                   ISASet = C.XED_ISA_SET_TBM
-	ISA_SET_VAES                  ISASet = C.XED_ISA_SET_VAES
-	ISA_SET_VMFUNC                ISASet = C.XED_ISA_SET_VMFUNC
-	ISA_SET_VPCLMULQDQ            ISASet = C.XED_ISA_SET_VPCLMULQDQ
-	ISA_SET_VTX                   ISASet = C.XED_ISA_SET_VTX
-	ISA_SET_WAITPKG               ISASet = C.XED_ISA_SET_WAITPKG
-	ISA_SET_WBNOINVD              ISASet = C.XED_ISA_SET_WBNOINVD
-	ISA_SET_X87                   ISASet = C.XED_ISA_SET_X87
-	ISA_SET_XOP                   ISASet = C.XED_ISA_SET_XOP
-	ISA_SET_XSAVE                 ISASet = C.XED_ISA_SET_XSAVE
-	ISA_SET_XSAVEC                ISASet = C.XED_ISA_SET_XSAVEC
-	ISA_SET_XSAVEOPT              ISASet = C.XED_ISA_SET_XSAVEOPT
-	ISA_SET_XSAVES                ISASet = C.XED_ISA_SET_XSAVES
-	ISA_SET_LAST                  ISASet = C.XED_ISA_SET_LAST
-)
-
 func (r Reg) Class() RegClass {
 	return RegClass(C.xed_reg_class(C.xed_reg_enum_t(r)))
 }
 
 func (c OperandElementType) String() string {
 	return C.GoString(C.xed_operand_element_type_enum_t2str(C.xed_operand_element_type_enum_t(c)))
-}
-func (c ISASet) String() string {
-	return C.GoString(C.xed_isa_set_enum_t2str(C.xed_isa_set_enum_t(c)))
 }
 
 func (c IClass) IformMaxPerIclass() uint32 {
@@ -2802,294 +2566,6 @@ func (e Error) Error() string {
 	return C.GoString(C.xed_error_enum_t2str(C.xed_error_enum_t(e)))
 }
 
-type DecodedInst C.xed_decoded_inst_t
-
-func (c *DecodedInst) OperandAction(operand_index uint) OperandAction {
-	return OperandAction(C.xed_decoded_inst_operand_action((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
-}
-
-func (c *DecodedInst) OperandLengthBits(operand_index uint) uint {
-	return uint(C.xed_decoded_inst_operand_length_bits((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
-}
-
-func (c *DecodedInst) OperandElements(operand_index uint) uint {
-	return uint(C.xed_decoded_inst_operand_elements((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
-}
-
-func (c *DecodedInst) OperandElementSizeBits(operand_index uint) uint {
-	return uint(C.xed_decoded_inst_operand_element_size_bits((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
-}
-
-func (c *DecodedInst) Zero() {
-	C.xed_decoded_inst_zero((*C.xed_decoded_inst_t)(c))
-}
-
-func (c *DecodedInst) ISASet() ISASet {
-	return ISASet(C.xed_decoded_inst_get_isa_set((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) SetMode(mmode MachineMode, stack_addr_width AddressWidth) {
-	C.xed_decoded_inst_set_mode((*C.xed_decoded_inst_t)(c), C.xed_machine_mode_enum_t(mmode), C.xed_address_width_enum_t(stack_addr_width))
-}
-
-func (c *DecodedInst) OperandsConst() *OperandValues {
-	return (*OperandValues)(C.xed_decoded_inst_operands_const((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) SetScale(scale int) {
-	C.xed_decoded_inst_set_scale((*C.xed_decoded_inst_t)(c), C.xed_uint_t(scale))
-}
-
-func (c *DecodedInst) Valid() bool {
-	return xedbool(C.xed_decoded_inst_valid((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Decode(itext []byte) error {
-	if len(itext) == 0 {
-		return xederror(C.xed_decode((*C.xed_decoded_inst_t)(c), nil, 0))
-	}
-	return xederror(C.xed_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
-}
-
-func (c *DecodedInst) Length() int {
-	return int(C.xed_decoded_inst_get_length((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Extension() Extension {
-	return Extension(C.xed_decoded_inst_get_extension((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) MachineModeBits() int {
-	return int(C.xed_decoded_inst_get_machine_mode_bits((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) MemopAddressWidth(memop_idx int) int {
-	return int(C.xed_decoded_inst_get_memop_address_width((*C.xed_decoded_inst_t)(c), C.xed_uint_t(memop_idx)))
-}
-
-func (c *DecodedInst) Modrm() int {
-	return int(C.xed_decoded_inst_get_modrm((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Nprefixes() int {
-	return int(C.xed_decoded_inst_get_nprefixes((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Reg(reg_operand OperandMode) Reg {
-	return Reg(C.xed_decoded_inst_get_reg((*C.xed_decoded_inst_t)(c), C.xed_operand_enum_t(reg_operand)))
-}
-
-func (c *DecodedInst) OperandWidth() uint32 {
-	return uint32(C.xed_decoded_inst_get_operand_width((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) IClass() IClass {
-	return IClass(C.xed_decoded_inst_get_iclass((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) MemRead(mem_idx uint) bool {
-	return xedbool(C.xed_decoded_inst_mem_read((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
-}
-
-func (c *DecodedInst) MemWritten(mem_idx uint) bool {
-	return xedbool(C.xed_decoded_inst_mem_written((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
-}
-
-func (c *DecodedInst) MemWrittenOnly(mem_idx uint) bool {
-	return xedbool(C.xed_decoded_inst_mem_written_only((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
-}
-
-func (c *DecodedInst) Merging() bool {
-	return xedbool(C.xed_decoded_inst_merging((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) UsesRflags() bool {
-	return xedbool(C.xed_decoded_inst_uses_rflags((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) BaseReg(mem_idx uint) Reg {
-	return Reg(C.xed_decoded_inst_get_base_reg((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
-}
-
-func (c *DecodedInst) BranchDisplacement() int32 {
-	return int32(C.xed_decoded_inst_get_branch_displacement((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) BranchDisplacementWidth() uint {
-	return uint(C.xed_decoded_inst_get_branch_displacement_width((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) BranchDisplacementWidthBits() uint {
-	return uint(C.xed_decoded_inst_get_branch_displacement_width_bits((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) ImmediateWidthBits() uint {
-	return uint(C.xed_decoded_inst_get_immediate_width_bits((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) ImmediateIsSigned() uint {
-	return uint(C.xed_decoded_inst_get_immediate_is_signed((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) OperandElementType(operand_index uint) OperandElementType {
-	return OperandElementType(C.xed_decoded_inst_operand_element_type((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
-}
-func (c *DecodedInst) SignedImmediate() int32 {
-	return int32(C.xed_decoded_inst_get_signed_immediate((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) UnsignedImmediate() uint64 {
-	return uint64(C.xed_decoded_inst_get_unsigned_immediate((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) SecondImmediate() uint8 {
-	return uint8(C.xed_decoded_inst_get_second_immediate((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) PatchDisp(itext []byte, disp EncDisplacement) bool {
-	if itext == nil {
-		return xedbool(C.xed_patch_disp((*C.xed_decoded_inst_t)(c), nil, C.xed_enc_displacement_t(disp)))
-
-	}
-	return xedbool(C.xed_patch_disp((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_enc_displacement_t(disp)))
-}
-
-func (c *DecodedInst) PatchRelBr(itext []byte, disp EncoderOperand) bool {
-	if itext == nil {
-		return xedbool(C.xed_patch_relbr((*C.xed_decoded_inst_t)(c), nil, C.xed_encoder_operand_t(disp)))
-
-	}
-	return xedbool(C.xed_patch_relbr((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_encoder_operand_t(disp)))
-}
-
-func (c *DecodedInst) PatchImm0(itext []byte, disp EncoderOperand) bool {
-	if itext == nil {
-		return xedbool(C.xed_patch_imm0((*C.xed_decoded_inst_t)(c), nil, C.xed_encoder_operand_t(disp)))
-
-	}
-	return xedbool(C.xed_patch_imm0((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.xed_encoder_operand_t(disp)))
-}
-
-func (c *DecodedInst) ZeroSetMode(state *State) {
-	C.xed_decoded_inst_zero_set_mode((*C.xed_decoded_inst_t)(c), (*C.xed_state_t)(state))
-}
-
-func (c *DecodedInst) Zeroing() bool {
-	return xedbool(C.xed_decoded_inst_zeroing((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) SetInputChip(chip Chip) {
-	C.xed_decoded_inst_set_input_chip((*C.xed_decoded_inst_t)(c), C.xed_chip_enum_t(chip))
-}
-
-func (c *DecodedInst) RflagsInfo() *SimpleFlag {
-	return (*SimpleFlag)(C.xed_decoded_inst_get_rflags_info((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) SetMpxMode(opval Bits) {
-	C.xed3_operand_set_mpxmode((*C.xed_decoded_inst_t)(c), C.xed_bits_t(opval))
-}
-
-func (c *DecodedInst) SetCetMode(opval Bits) {
-	C.xed3_operand_set_cet((*C.xed_decoded_inst_t)(c), C.xed_bits_t(opval))
-}
-
-func (c *DecodedInst) Category() Category {
-	return Category(C.xed_decoded_inst_get_category((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Iform() Iform {
-	return Iform(C.xed_decoded_inst_get_iform_enum((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Inst() *Inst {
-	return (*Inst)(C.xed_decoded_inst_inst((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) IformDispatch() uint {
-	return uint(C.xed_decoded_inst_get_iform_enum_dispatch((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *SimpleFlag) ReadsFlags() bool {
-	return xedbool(C.xed_simple_flag_reads_flags((*C.xed_simple_flag_t)(c)))
-}
-
-func (c *SimpleFlag) WritesFlags() bool {
-	return xedbool(C.xed_simple_flag_writes_flags((*C.xed_simple_flag_t)(c)))
-}
-
-func (c *SimpleFlag) MayWrite() bool {
-	return xedbool(C.xed_simple_flag_get_may_write((*C.xed_simple_flag_t)(c)))
-}
-
-func (c *SimpleFlag) MustWrite() bool {
-	return xedbool(C.xed_simple_flag_get_must_write((*C.xed_simple_flag_t)(c)))
-}
-
-type Operand C.xed_operand_t
-
-func (c *Operand) Width() OperandWidth {
-	return OperandWidth(C.xed_operand_width((*C.xed_operand_t)(c)))
-}
-
-func (c *Operand) Visibility() OperandVisibility {
-	return OperandVisibility(C.xed_operand_operand_visibility((*C.xed_operand_t)(c)))
-}
-
-type OperandValues C.xed_operand_values_t
-
-func (c *OperandValues) EffectiveOperandWidth() uint32 {
-	return uint32(C.xed_operand_values_get_effective_operand_width((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) EffectiveAddressWidth() uint32 {
-	return uint32(C.xed_operand_values_get_effective_address_width((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) StackAddressWidth() uint32 {
-	return uint32(C.xed_operand_values_get_stack_address_width((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) IClass() IClass {
-	return IClass(C.xed_operand_values_get_iclass((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) Init() {
-	C.xed_operand_values_init((*C.xed_operand_values_t)(c))
-}
-
-func (c *OperandValues) HasRepPrefix() bool {
-	return xedbool(C.xed_operand_values_has_rep_prefix((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) HasRepnePrefix() bool {
-	return xedbool(C.xed_operand_values_has_repne_prefix((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) HasRexwPrefix() bool {
-	return xedbool(C.xed_operand_values_has_rexw_prefix((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) HasSegmentPrefix() bool {
-	return xedbool(C.xed_operand_values_has_segment_prefix((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) HasSibByte() bool {
-	return xedbool(C.xed_operand_values_has_sib_byte((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) IsNop() bool {
-	return xedbool(C.xed_operand_values_is_nop((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) Lockable() bool {
-	return xedbool(C.xed_operand_values_lockable((*C.xed_operand_values_t)(c)))
-}
-
-func (c *OperandValues) MemopWithoutModrm() bool {
-	return xedbool(C.xed_operand_values_memop_without_modrm((*C.xed_operand_values_t)(c)))
-}
-
 func (c *State) Zero() {
 	C.xed_state_zero((*C.xed_state_t)(c))
 }
@@ -3114,18 +2590,6 @@ func (c Chip) String() string {
 	return C.GoString(C.xed_chip_enum_t2str(C.xed_chip_enum_t(c)))
 }
 
-func (c *Inst) Attribute(attr Attribute) uint32 {
-	return uint32(C.xed_inst_get_attribute((*C.xed_inst_t)(c), C.xed_attribute_enum_t(attr)))
-}
-
-func (c *Inst) NumOperands() uint {
-	return uint(C.xed_inst_noperands((*C.xed_inst_t)(c)))
-}
-
-func (c *Inst) Operand(i uint) *Operand {
-	return (*Operand)(C.xed_inst_operand((*C.xed_inst_t)(c), C.uint(i)))
-}
-
 func (c *Operand) Name() OperandMode {
 	return OperandMode(C.xed_operand_name((*C.xed_operand_t)(c)))
 }
@@ -3138,12 +2602,6 @@ func Str2Chip(str string) Chip {
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
 	return Chip(C.str2xed_chip_enum_t(cstr))
-}
-
-func Str2CpuIDBit(str string) CpuIDBit {
-	cstr := C.CString(str)
-	defer C.free(unsafe.Pointer(cstr))
-	return CpuIDBit(C.str2xed_cpuid_bit_enum_t(cstr))
 }
 
 func AttributeEnum(i uint) Attribute {
@@ -3168,6 +2626,10 @@ func ZeroExtend16_64(x uint16) uint64 {
 
 func ZeroExtend32_64(x uint32) uint64 {
 	return uint64(C.xed_zero_extend32_64(C.xed_uint32_t(x)))
+}
+
+func RepRemove(x IClass) IClass {
+	return IClass(C.xed_rep_remove(C.xed_iclass_enum_t(x)))
 }
 
 func xederror(e C.xed_error_enum_t) error {
