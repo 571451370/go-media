@@ -299,3 +299,17 @@ func (c *DecodedInst) MemOpAddressWidth(mem_idx uint) uint {
 func (c *DecodedInst) MemoryOperandLength(mem_idx uint) uint {
 	return uint(C.xed_decoded_inst_get_memory_operand_length((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
 }
+
+func (c *DecodedInst) String() string {
+	var buf [512]C.char
+	C.xed_decoded_inst_dump((*C.xed_decoded_inst_t)(c), &buf[0], C.int(len(buf)))
+	return C.GoString(&buf[0])
+}
+
+/*
+func (c *DecodedInst) DumpXEDFormat(runtime_address uint64) (string, bool) {
+	var buf [512]C.char
+	b := C.xed_decoded_inst_dump((*C.xed_decoded_inst_t)(c), &buf[0], C.int(len(buf)), C.xed_uint64_t(runtime_address))
+	return C.GoString(&buf[0]), xedbool(b)
+}
+*/
