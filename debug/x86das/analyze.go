@@ -4,6 +4,7 @@ import (
 	"debug/pe"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/qeedquan/go-media/debug/peutil"
 	"github.com/qeedquan/go-media/debug/xed"
@@ -39,6 +40,9 @@ func AnalyzeFile(name string) (*Prog, error) {
 	pe, err := peutil.Open(name)
 	if err == nil {
 		return readPE(pe)
+	}
+	if os.IsNotExist(err) || os.IsPermission(err) {
+		return nil, err
 	}
 	return nil, fmt.Errorf("unknown file format")
 }

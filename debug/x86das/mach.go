@@ -1,6 +1,8 @@
 package x86das
 
 import (
+	"fmt"
+
 	"github.com/qeedquan/go-media/debug/xed"
 )
 
@@ -41,6 +43,7 @@ func (m *Mach) LoadProg(prog *Prog) error {
 		}
 		copy(m.Mem[sg.Phys:], s.Data)
 	}
+	m.WriteReg(REG_NIP, prog.Entry)
 	return nil
 }
 
@@ -55,14 +58,14 @@ func (m *Mach) Map(addr, size, flag uint64) (*Seg, error) {
 	return m.Seg[len(m.Seg)-1], nil
 }
 
-func (m *Mach) ReadReg(reg xed.Reg) uint64 {
+func (m *Mach) decodeReg(reg xed.Reg) (idx int, shift, mask uint64) {
 	const (
 		mask8  = 0xff
 		mask16 = 0xffff
 		mask32 = 0xffffffff
 		mask64 = 0xffffffffffffffff
 	)
-	var mask uint64
+
 	switch m.Prog.Width {
 	case xed.ADDRESS_WIDTH_16b:
 		mask = mask16
@@ -74,8 +77,6 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 		panic("invalid address width")
 	}
 
-	var idx int
-	var shift uint
 	switch reg {
 	case REG_NIP:
 		idx = 0
@@ -118,6 +119,11 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 		idx = 2
 		mask = mask64
 	}
+	return
+}
+
+func (m *Mach) ReadReg(reg xed.Reg) uint64 {
+	idx, shift, mask := m.decodeReg(reg)
 	return (m.Reg[idx] >> shift) & mask
 }
 
@@ -141,6 +147,8 @@ func (m *Mach) ReadBuffer(addr uint64, buf []byte) {
 }
 
 func (m *Mach) WriteReg(reg xed.Reg, val uint64) {
+	idx, shift, mask := m.decodeReg(reg)
+	m.Reg[idx] = (((m.Reg[idx] >> shift) &^ mask) | (val & mask)) << shift
 }
 
 func (m *Mach) WriteMem(addr, val uint64, size int) {
@@ -168,7 +176,16 @@ func (m *Mach) Step() error {
 }
 
 func (m *Mach) Op(inst *xed.DecodedInst) error {
-	return nil
+	return m.unsupported(inst)
+}
+
+func (m *Mach) unsupported(inst *xed.DecodedInst) error {
+	istr, _ := xed.FormatContext(xed.SYNTAX_INTEL, inst, 0, nil)
+	ostr := ""
+	for i := uint(0); i < inst.Length(); i++ {
+		ostr += fmt.Sprintf("%02x ", inst.Byte(i))
+	}
+	return fmt.Errorf("unsupported instruction: %x %s %s", m.ReadReg(REG_NIP), ostr, istr)
 }
 
 func (m *Mach) fetch(inst *xed.DecodedInst) {

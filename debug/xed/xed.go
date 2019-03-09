@@ -2640,10 +2640,14 @@ func xederror(e C.xed_error_enum_t) error {
 }
 
 func xedbool(b C.xed_bool_t) bool {
-	if b != 0 {
-		return true
+	return b != 0
+}
+
+func boolxed(b bool) C.xed_bool_t {
+	if b {
+		return 1
 	}
-	return false
+	return 0
 }
 
 func init() {

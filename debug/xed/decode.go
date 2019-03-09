@@ -61,8 +61,8 @@ func (c *DecodedInst) Decode(itext []byte) error {
 	return xederror(C.xed_decode((*C.xed_decoded_inst_t)(c), (*C.xed_uint8_t)(&itext[0]), C.uint(len(itext))))
 }
 
-func (c *DecodedInst) Length() int {
-	return int(C.xed_decoded_inst_get_length((*C.xed_decoded_inst_t)(c)))
+func (c *DecodedInst) Length() uint {
+	return uint(C.xed_decoded_inst_get_length((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) Extension() Extension {
@@ -79,10 +79,6 @@ func (c *DecodedInst) MemopAddressWidth(memop_idx int) int {
 
 func (c *DecodedInst) Modrm() int {
 	return int(C.xed_decoded_inst_get_modrm((*C.xed_decoded_inst_t)(c)))
-}
-
-func (c *DecodedInst) Nprefixes() int {
-	return int(C.xed_decoded_inst_get_nprefixes((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) Reg(reg_operand OperandMode) Reg {
@@ -300,7 +296,7 @@ func (c *DecodedInst) MemoryOperandLength(mem_idx uint) uint {
 	return uint(C.xed_decoded_inst_get_memory_operand_length((*C.xed_decoded_inst_t)(c), C.uint(mem_idx)))
 }
 
-func (c *DecodedInst) String() string {
+func (c *DecodedInst) Dump() string {
 	var buf [512]C.char
 	C.xed_decoded_inst_dump((*C.xed_decoded_inst_t)(c), &buf[0], C.int(len(buf)))
 	return C.GoString(&buf[0])
@@ -310,4 +306,9 @@ func (c *DecodedInst) DumpXEDFormat(runtime_address uint64) (string, bool) {
 	var buf [512]C.char
 	b := C.xed_decoded_inst_dump_xed_format((*C.xed_decoded_inst_t)(c), &buf[0], C.int(len(buf)), C.xed_uint64_t(runtime_address))
 	return C.GoString(&buf[0]), xedbool(b)
+}
+
+func (c *DecodedInst) String() string {
+	str, _ := FormatContext(C.XED_SYNTAX_XED, c, 0, nil)
+	return str
 }
