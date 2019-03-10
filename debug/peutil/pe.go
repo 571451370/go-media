@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/qeedquan/go-media/xio"
 )
 
 const (
@@ -380,6 +382,20 @@ func readStrz(b []byte) string {
 		}
 	}
 	return string(b)
+}
+
+func (f *File) DuplicateSection(s *pe.Section) (*pe.Section, error) {
+	p := &pe.Section{
+		SectionHeader: s.SectionHeader,
+		Relocs:        make([]pe.Reloc, len(s.Relocs)),
+	}
+	copy(p.Relocs, s.Relocs)
+	data, err := s.Data()
+	if err != nil {
+		return p, err
+	}
+	p.ReaderAt = xio.NewBuffer(data)
+	return p, nil
 }
 
 func Format(f *File, w io.Writer) error {
