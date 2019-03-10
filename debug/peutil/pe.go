@@ -7,6 +7,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
+	"os"
+	"reflect"
 
 	"github.com/qeedquan/go-media/xio"
 )
@@ -191,9 +194,22 @@ type Symbol struct {
 
 type File struct {
 	*pe.File
-	Stub    []byte
-	Strings []string
-	r       io.ReaderAt
+	DOSHeader DOSHeader
+	DOSStub   []byte
+	Strings   []string
+	r         io.ReaderAt
+}
+
+// these values are common across many exe files
+var DOSHdr = DOSHeader{
+	Magic:      0x5a4d,
+	LastSize:   0x90,
+	NumBlocks:  0x03,
+	HeaderSize: 0x04,
+	MaxAlloc:   0xffff,
+	SP:         0xb8,
+	RelocPos:   0x40,
+	LFANew:     0x40 + uint32(len(DOSStub)),
 }
 
 var DOSStub = []byte{
@@ -226,7 +242,11 @@ func Open(name string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newFile(p)
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return newFile(p, f)
 }
 
 func NewFile(r io.ReaderAt) (*File, error) {
@@ -234,13 +254,14 @@ func NewFile(r io.ReaderAt) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newFile(p)
+	return newFile(p, r)
 }
 
-func newFile(p *pe.File) (*File, error) {
+func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	f := &File{
-		File: p,
-		Stub: DOSStub,
+		File:      p,
+		DOSHeader: DOSHdr,
+		DOSStub:   DOSStub,
 	}
 	for i := 4; i < len(f.StringTable); {
 		str, err := f.StringTable.String(uint32(i))
@@ -250,6 +271,19 @@ func newFile(p *pe.File) (*File, error) {
 		f.Strings = append(f.Strings, str)
 		i += len(str) + 1
 	}
+
+	var dh DOSHeader
+	sr := io.NewSectionReader(r, 0, math.MaxInt32)
+	err := binary.Read(sr, binary.LittleEndian, &dh)
+	if err == nil {
+		f.DOSHeader = dh
+	}
+	stub := make([]byte, f.DOSHeader.LFANew-0x40)
+	_, err = io.ReadAtLeast(sr, stub, len(stub))
+	if err == nil {
+		f.DOSStub = stub
+	}
+
 	return f, nil
 }
 
@@ -408,33 +442,36 @@ func (f *File) DuplicateRawSection(s *pe.Section) (*pe.Section, error) {
 func Format(f *File, w io.Writer) error {
 	b := bufio.NewWriter(w)
 
-	// these values are common across many exe files
-	dh := DOSHeader{
-		Magic:      0x5a4d,
-		LastSize:   0x90,
-		NumBlocks:  0x03,
-		HeaderSize: 0x04,
-		MaxAlloc:   0xffff,
-		SP:         0xb8,
-		RelocPos:   0x40,
-		LFANew:     0x40 + uint32(len(f.Stub)),
-	}
-	binary.Write(b, binary.LittleEndian, &dh)
-	b.Write(f.Stub)
+	binary.Write(b, binary.LittleEndian, &f.DOSHeader)
+	b.Write(f.DOSStub)
+
+	size := int(reflect.TypeOf(f.DOSHeader).Size()) + len(f.DOSStub)
+	sizeOfHeaders := size
 
 	peSig := [...]byte{'P', 'E', 0x00, 0x00}
 	binary.Write(b, binary.LittleEndian, peSig)
 	binary.Write(b, binary.LittleEndian, &f.FileHeader)
+	size += len(peSig) + int(reflect.TypeOf(f.FileHeader).Size())
+
 	switch oh := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader32:
 		binary.Write(b, binary.LittleEndian, oh)
+		sizeOfHeaders = int(oh.SizeOfHeaders)
+		size += int(reflect.TypeOf(*oh).Size())
 	case *pe.OptionalHeader64:
 		binary.Write(b, binary.LittleEndian, oh)
+		sizeOfHeaders = int(oh.SizeOfHeaders)
+		size += int(reflect.TypeOf(*oh).Size())
 	}
 
 	for _, s := range f.Sections {
 		sh := f.sectionHeader32(&s.SectionHeader)
 		binary.Write(b, binary.LittleEndian, &sh)
+		size += int(reflect.TypeOf(sh).Size())
+	}
+	if size < sizeOfHeaders {
+		pad := make([]byte, sizeOfHeaders-size)
+		b.Write(pad)
 	}
 
 	for _, s := range f.Sections {
