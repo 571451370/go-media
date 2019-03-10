@@ -89,3 +89,55 @@ func (c *OperandValues) HasOperandSizePrefix() bool {
 func (c *OperandValues) Has66Prefix() bool {
 	return xedbool(C.xed_operand_values_has_66_prefix((*C.xed_operand_values_t)(c)))
 }
+
+func (c *OperandValues) HasBranchDisplacement() bool {
+	return xedbool(C.xed_operand_values_has_branch_displacement((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) ImmediateInt64() int64 {
+	return int64(C.xed_operand_values_get_immediate_int64((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) ImmediateUint64() uint64 {
+	return uint64(C.xed_operand_values_get_immediate_uint64((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) ImmediateIsSigned() bool {
+	return C.xed_operand_values_get_immediate_is_signed((*C.xed_operand_values_t)(c)) != 0
+}
+
+func (c *OperandValues) ImmediateByte(i uint) uint8 {
+	return uint8(C.xed_operand_values_get_immediate_byte((*C.xed_operand_values_t)(c), C.uint(i)))
+}
+
+func (c *OperandValues) SecondImmediate() uint8 {
+	return uint8(C.xed_operand_values_get_second_immediate((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) BranchDisplacementLength() uint32 {
+	return uint32(C.xed_operand_values_get_branch_displacement_length((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) BranchDisplacementLengthBits() uint32 {
+	return uint32(C.xed_operand_values_get_branch_displacement_length_bits((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) BranchDisplacementInt32() int32 {
+	return int32(C.xed_operand_values_get_branch_displacement_int32((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) BranchDisplacementByte(i uint) uint8 {
+	return uint8(C.xed_operand_values_get_branch_displacement_byte((*C.xed_operand_values_t)(c), C.uint(i)))
+}
+
+func (c *OperandValues) MemoryDisplacementInt64() int64 {
+	return int64(C.xed_operand_values_get_memory_displacement_int64((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) MemoryDisplacementInt64Raw() int64 {
+	return int64(C.xed_operand_values_get_memory_displacement_int64_raw((*C.xed_operand_values_t)(c)))
+}
+
+func (c *OperandValues) MemoryDisplacementByte(i uint) uint8 {
+	return uint8(C.xed_operand_values_get_memory_displacement_byte((*C.xed_operand_values_t)(c), C.uint(i)))
+}

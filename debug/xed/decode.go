@@ -10,6 +10,10 @@ type (
 	DecodedInst C.xed_decoded_inst_t
 )
 
+func (c *DecodedInst) NumOperands() uint {
+	return uint(C.xed_decoded_inst_noperands((*C.xed_decoded_inst_t)(c)))
+}
+
 func (c *DecodedInst) OperandAction(operand_index uint) OperandAction {
 	return OperandAction(C.xed_decoded_inst_operand_action((*C.xed_decoded_inst_t)(c), C.uint(operand_index)))
 }
@@ -44,6 +48,10 @@ func (c *DecodedInst) SetMode(mmode MachineMode, stack_addr_width AddressWidth) 
 
 func (c *DecodedInst) OperandsConst() *OperandValues {
 	return (*OperandValues)(C.xed_decoded_inst_operands_const((*C.xed_decoded_inst_t)(c)))
+}
+
+func (c *DecodedInst) Operands() *OperandValues {
+	return (*OperandValues)(C.xed_decoded_inst_operands((*C.xed_decoded_inst_t)(c)))
 }
 
 func (c *DecodedInst) SetScale(scale int) {
