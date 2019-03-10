@@ -384,7 +384,14 @@ func readStrz(b []byte) string {
 	return string(b)
 }
 
-func (f *File) DuplicateSection(s *pe.Section) (*pe.Section, error) {
+func (f *File) DuplicateSection(name string) (*pe.Section, error) {
+	return f.DuplicateRawSection(f.Section(name))
+}
+
+func (f *File) DuplicateRawSection(s *pe.Section) (*pe.Section, error) {
+	if s == nil {
+		return nil, nil
+	}
 	p := &pe.Section{
 		SectionHeader: s.SectionHeader,
 		Relocs:        make([]pe.Reloc, len(s.Relocs)),
