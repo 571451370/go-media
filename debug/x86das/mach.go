@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/qeedquan/go-media/debug/xed"
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 )
 
 type Seg struct {
+	Name string
 	Virt uint64
 	Phys uint64
 	Size uint64
@@ -37,7 +39,9 @@ func (m *Mach) LoadProg(prog *Prog) error {
 	m.Page = 4096
 	m.Seg = m.Seg[:0]
 	for _, s := range prog.Sections {
-		sg, err := m.Map(s.Addr, s.Size, s.Flag)
+		size := uint64(mathutil.Multiple(int(s.Size), m.Page))
+		sg, err := m.Map(s.Addr, size, s.Flag)
+		sg.Name = s.Name
 		if err != nil {
 			return err
 		}
@@ -122,6 +126,15 @@ func (m *Mach) decodeReg(reg xed.Reg) (idx int, shift, mask uint64) {
 	return
 }
 
+func (m *Mach) PhysAddr(vaddr uint64) uint64 {
+	for _, sg := range m.Seg {
+		if sg.Virt <= vaddr && vaddr < sg.Virt+sg.Size {
+			return sg.Phys + vaddr - sg.Virt
+		}
+	}
+	return 0
+}
+
 func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 	idx, shift, mask := m.decodeReg(reg)
 	return (m.Reg[idx] >> shift) & mask
@@ -130,12 +143,8 @@ func (m *Mach) ReadReg(reg xed.Reg) uint64 {
 func (m *Mach) ReadMem(addr uint64, size int) uint64 {
 	var v uint64
 	for i := 0; i < size; i++ {
-		for _, sg := range m.Seg {
-			vaddr := addr + uint64(i)
-			if sg.Virt <= vaddr && vaddr <= sg.Virt+sg.Size {
-				v |= uint64(m.Mem[vaddr-sg.Virt]) << uint(8*i)
-			}
-		}
+		n := m.PhysAddr(addr + uint64(i))
+		v |= uint64(m.Mem[n]) << (8 * uint(i))
 	}
 	return v
 }
@@ -154,12 +163,8 @@ func (m *Mach) WriteReg(reg xed.Reg, val uint64) {
 func (m *Mach) WriteMem(addr, val uint64, size int) {
 	var v uint64
 	for i := 0; i < size; i++ {
-		for _, sg := range m.Seg {
-			vaddr := addr + uint64(i)
-			if sg.Virt <= vaddr && vaddr <= sg.Virt+sg.Size {
-				m.Mem[vaddr-sg.Virt] = byte(v>>uint(8*i)) & 0xff
-			}
-		}
+		n := m.PhysAddr(addr + uint64(i))
+		m.Mem[n] = byte(v>>uint(8*i)) & 0xff
 	}
 }
 
@@ -176,7 +181,18 @@ func (m *Mach) Step() error {
 }
 
 func (m *Mach) Op(inst *xed.DecodedInst) error {
-	return m.unsupported(inst)
+	switch inst.Iform() {
+	case xed.IFORM_CALL_NEAR_RELBRz:
+		m.callNearRelbrz(inst)
+		fallthrough
+	default:
+		return m.unsupported(inst)
+	}
+	return nil
+}
+
+func (m *Mach) callNearRelbrz(inst *xed.DecodedInst) {
+	fmt.Println(inst.OperandAction(0))
 }
 
 func (m *Mach) unsupported(inst *xed.DecodedInst) error {
@@ -185,7 +201,8 @@ func (m *Mach) unsupported(inst *xed.DecodedInst) error {
 	for i := uint(0); i < inst.Length(); i++ {
 		ostr += fmt.Sprintf("%02x ", inst.Byte(i))
 	}
-	return fmt.Errorf("unsupported instruction: %x %s %s", m.ReadReg(REG_NIP), ostr, istr)
+	iform := inst.Iform()
+	return fmt.Errorf("unsupported instruction: %x %s %s %s", m.ReadReg(REG_NIP), ostr, istr, iform)
 }
 
 func (m *Mach) fetch(inst *xed.DecodedInst) {

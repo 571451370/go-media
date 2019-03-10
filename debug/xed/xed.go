@@ -2518,10 +2518,6 @@ func (c IClass) String() string {
 	return C.GoString(C.xed_iclass_enum_t2str(C.xed_iclass_enum_t(c)))
 }
 
-func (c Iform) String() string {
-	return C.GoString(C.xed_iform_enum_t2str(C.xed_iform_enum_t(c)))
-}
-
 func (a AddressWidth) String() string {
 	return C.GoString(C.xed_address_width_enum_t2str(C.xed_address_width_enum_t(a)))
 }

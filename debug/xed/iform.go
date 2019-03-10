@@ -6261,3 +6261,7 @@ const (
 	IFORM_XTEST                                                     Iform = C.XED_IFORM_XTEST
 	IFORM_LAST                                                      Iform = C.XED_IFORM_LAST
 )
+
+func (c Iform) String() string {
+	return C.GoString(C.xed_iform_enum_t2str(C.xed_iform_enum_t(c)))
+}
