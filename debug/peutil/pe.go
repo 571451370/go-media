@@ -196,7 +196,10 @@ type Symbol struct {
 	pe.Symbol
 	DllName          string
 	ForwardedAddress uint32
-	Nameoff          int64
+	DllNameOff       int64
+	NameOff          int64
+	OriginalThunkOff int64
+	ThunkOff         int64
 	Auxillary        interface{}
 }
 
@@ -314,7 +317,7 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	return f, nil
 }
 
-func (f *File) DeleteSection(name string) error {
+func (f *File) RemoveSection(name string) error {
 	var (
 		found        bool
 		size, offset uint32
@@ -368,6 +371,86 @@ func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
 	return
 }
 
+func (f *File) ReadImportTable() ([]Symbol, error) {
+	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_IMPORT, nil)
+	if err != nil {
+		return nil, err
+	}
+	if idd == nil {
+		return nil, fmt.Errorf("no import table")
+	}
+
+	_, data := f.sectionVA(idd.VirtualAddress)
+	if len(data) == 0 {
+		return nil, fmt.Errorf("no import table")
+	}
+
+	var (
+		dt []ImportDescriptor
+		d  ImportDescriptor
+	)
+	r := bytes.NewReader(data)
+	for {
+		err := binary.Read(r, binary.LittleEndian, &d)
+		if err != nil {
+			break
+		}
+		if d.OriginalFirstThunk == 0 {
+			break
+		}
+		dt = append(dt, d)
+	}
+
+	var s []Symbol
+	for _, d := range dt {
+		dll := f.readStrzVA(d.Name)
+		_, ft := f.sectionVA(d.OriginalFirstThunk)
+		ftoff := int64(d.OriginalFirstThunk)
+		thoff := int64(d.FirstThunk)
+		for len(ft) > 0 {
+			var (
+				ftsz int64
+				na   int64
+				mask uint64
+			)
+			switch f.Machine {
+			case pe.IMAGE_FILE_MACHINE_AMD64:
+				ftsz = 8
+				na = int64(binary.LittleEndian.Uint64(ft))
+				mask = 1 << 63
+			default:
+				ftsz = 4
+				na = int64(binary.LittleEndian.Uint32(ft))
+				mask = 1 << 31
+			}
+			if uint64(na)&mask > 0 {
+				panic("dynimport ordinals unimplemented")
+			}
+			if na == 0 {
+				break
+			}
+
+			p := Symbol{
+				Symbol: pe.Symbol{
+					Name: f.readStrzVA(uint32(na + 2)),
+				},
+				DllName:          dll,
+				DllNameOff:       int64(d.Name),
+				NameOff:          na,
+				OriginalThunkOff: ftoff,
+				ThunkOff:         thoff,
+				Auxillary:        d,
+			}
+			s = append(s, p)
+			ft = ft[ftsz:]
+			ftoff += ftsz
+			thoff += ftsz
+		}
+	}
+
+	return s, nil
+}
+
 func (f *File) ExportedSymbols() ([]Symbol, error) {
 	var d ExportDirectory
 	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT, &d)
@@ -381,6 +464,7 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 	_, fp := f.sectionVA(d.AddressOfFunctions)
 	_, od := f.sectionVA(d.AddressOfNameOrdinals)
 	_, na := f.sectionVA(d.AddressOfNames)
+	no := uint32(0)
 	if fp == nil || od == nil {
 		return nil, nil
 	}
@@ -401,11 +485,14 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 			fwd = va
 		}
 
+		nameoff := va
 		if len(na) < 4 {
 			name = fmt.Sprintf("%s+%#x", dllName, va)
 		} else {
 			name = f.readStrzVA(binary.LittleEndian.Uint32(na))
+			nameoff = no
 			na = na[4:]
+			no += 4
 		}
 		p := Symbol{
 			Symbol: pe.Symbol{
@@ -413,6 +500,8 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 			},
 			DllName:          dllName,
 			ForwardedAddress: fwd,
+			NameOff:          int64(nameoff),
+			Auxillary:        idd,
 		}
 		s = append(s, p)
 	}
@@ -425,6 +514,42 @@ func (f *File) put1VA(va uint32, val byte) error {
 		return fmt.Errorf("virtual address %#x does not exist", va)
 	}
 	d[0] = val
+	return nil
+}
+
+func (f *File) putVA(va uint32, val interface{}) error {
+	switch v := val.(type) {
+	case uint8:
+		return f.put1VA(va, v)
+	case uint16:
+		e1 := f.put1VA(va, uint8(v))
+		e2 := f.put1VA(va+1, uint8(v>>8))
+		if e1 != nil || e2 != nil {
+			return fmt.Errorf("virtual address %#x does not exist", va)
+		}
+	case uint32:
+		e1 := f.put1VA(va, uint8(v))
+		e2 := f.put1VA(va+1, uint8(v>>8))
+		e3 := f.put1VA(va+2, uint8(v>>16))
+		e4 := f.put1VA(va+3, uint8(v>>24))
+		if e1 != nil || e2 != nil || e3 != nil || e4 != nil {
+			return fmt.Errorf("virtual address %#x does not exist", va)
+		}
+	case uint64:
+		e1 := f.put1VA(va, uint8(v))
+		e2 := f.put1VA(va+1, uint8(v>>8))
+		e3 := f.put1VA(va+2, uint8(v>>16))
+		e4 := f.put1VA(va+3, uint8(v>>24))
+		e5 := f.put1VA(va+4, uint8(v>>32))
+		e6 := f.put1VA(va+5, uint8(v>>40))
+		e7 := f.put1VA(va+6, uint8(v>>48))
+		e8 := f.put1VA(va+7, uint8(v>>56))
+		if e1 != nil || e2 != nil || e3 != nil || e4 != nil || e5 != nil || e6 != nil || e7 != nil || e8 != nil {
+			return fmt.Errorf("virtual address %#x does not exist", va)
+		}
+	default:
+		panic("unsupported type")
+	}
 	return nil
 }
 
