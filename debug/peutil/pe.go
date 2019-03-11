@@ -327,6 +327,40 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	return f, nil
 }
 
+func (f *File) writeOutDLLImport(idd *pe.DataDirectory, dt []ImportDescriptor) error {
+	off := uint64(idd.VirtualAddress)
+	for i := range dt {
+		f.putVA(off, &dt[i])
+		off += uint64(reflect.TypeOf(dt[i]).Size())
+	}
+	f.putVA(off, &ImportDescriptor{})
+	return nil
+}
+
+func (f *File) InsertDLLImport(pos int, dllName string) error {
+	idd, dt, _, err := f.ReadImportTable()
+	if err != nil {
+		return err
+	}
+
+	dllName = strings.ToLower(dllName)
+	var nt []ImportDescriptor
+	var d ImportDescriptor
+	for i := range dt {
+		if strings.ToLower(f.readStrzVA(uint64(dt[i].Name))) == dllName {
+			return fmt.Errorf("dll import %q already exist", dllName)
+		}
+		if i == pos {
+			nt = append(nt, d)
+		}
+		nt = append(nt, dt[i])
+	}
+	if pos < 0 || pos >= 0 {
+		nt = append(nt, d)
+	}
+	return f.writeOutDLLImport(idd, nt)
+}
+
 func (f *File) RemoveDLLImport(dllName string) error {
 	idd, dt, _, err := f.ReadImportTable()
 	if err != nil {
@@ -343,15 +377,7 @@ func (f *File) RemoveDLLImport(dllName string) error {
 	if len(nt) == len(dt) {
 		return fmt.Errorf("dll import %q does not exist", dllName)
 	}
-
-	off := uint64(idd.VirtualAddress)
-	for i := range nt {
-		f.putVA(off, &nt[i])
-		off += uint64(reflect.TypeOf(nt[i]).Size())
-	}
-	f.putVA(off, &ImportDescriptor{})
-
-	return nil
+	return f.writeOutDLLImport(idd, nt)
 }
 
 func (f *File) RemoveImportSymbol(name string) error {
@@ -368,7 +394,7 @@ func (f *File) RemoveImportSymbol(name string) error {
 		}
 	}
 	if p == nil {
-		return fmt.Errorf("dll import %q does not exist", name)
+		return fmt.Errorf("import symbol %q does not exist", name)
 	}
 
 	var ds []Symbol
@@ -390,6 +416,19 @@ func (f *File) RemoveImportSymbol(name string) error {
 	}
 
 	return nil
+}
+
+func (f *File) InsertImportSymbol(pos int, symName, dllName string) (Symbol, error) {
+	f.InsertDLLImport(-1, dllName)
+	return Symbol{}, nil
+}
+
+func (f *File) RedirectImportSymbol(symName, dllName string) (Symbol, error) {
+	err := f.RemoveImportSymbol(symName)
+	if err != nil {
+		return Symbol{}, err
+	}
+	return f.InsertImportSymbol(-1, symName, dllName)
 }
 
 func (f *File) RemoveSection(name string) error {
@@ -495,16 +534,22 @@ func (f *File) ReadImportTable() (*pe.DataDirectory, []ImportDescriptor, []Symbo
 				na = uint64(binary.LittleEndian.Uint32(ft))
 				mask = 1 << 31
 			}
+
+			var name string
 			if uint64(na)&mask > 0 {
-				panic("dynimport ordinals unimplemented")
+				// dynimport ordinals unimplemented
+				name = fmt.Sprintf("%#x", na)
+			} else {
+				name = f.readStrzVA(na + 2)
 			}
+
 			if na == 0 {
 				break
 			}
 
 			p := Symbol{
 				Symbol: pe.Symbol{
-					Name: f.readStrzVA(na + 2),
+					Name: name,
 				},
 				DllName:          dll,
 				DllNameOff:       uint64(d.Name),
