@@ -196,10 +196,10 @@ type Symbol struct {
 	pe.Symbol
 	DllName          string
 	ForwardedAddress uint32
-	DllNameOff       int64
-	NameOff          int64
-	OriginalThunkOff int64
-	ThunkOff         int64
+	DllNameOff       uint64
+	NameOff          uint64
+	OriginalThunkOff uint64
+	ThunkOff         uint64
 	Auxillary        interface{}
 }
 
@@ -212,6 +212,7 @@ type File struct {
 	*pe.File
 	RawSizeOfHeaders int
 	SizeOfHeaders    int
+	ArchSize         int
 	DOSHeader        DOSHeader
 	DOSStub          []byte
 	Sections         []*Section
@@ -292,7 +293,7 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	}
 
 	var dh DOSHeader
-	sr := io.NewSectionReader(r, 0, math.MaxInt32)
+	sr := io.NewSectionReader(r, 0, math.MaxInt64)
 	err := binary.Read(sr, binary.LittleEndian, &dh)
 	if err == nil {
 		f.DOSHeader = dh
@@ -314,7 +315,40 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	}
 	f.RawSizeOfHeaders, f.SizeOfHeaders = f.calcSizeOfHeaders()
 
+	switch f.Machine {
+	case pe.IMAGE_FILE_MACHINE_AMD64:
+		f.ArchSize = 64
+	default:
+		f.ArchSize = 32
+	}
+
 	return f, nil
+}
+
+func (f *File) RemoveDLLImport(dllName string) error {
+	idd, dt, _, err := f.ReadImportTable()
+	if err != nil {
+		return err
+	}
+
+	var nt []ImportDescriptor
+	for i := range dt {
+		if f.readStrzVA(uint64(dt[i].Name)) != dllName {
+			nt = append(nt, dt[i])
+		}
+	}
+	if len(nt) == len(dt) {
+		return fmt.Errorf("no dll import %q", dllName)
+	}
+
+	off := uint64(idd.VirtualAddress)
+	for i := range nt {
+		f.putVA(off, &nt[i])
+		off += uint64(reflect.TypeOf(nt[i]).Size())
+	}
+	f.putVA(off, &ImportDescriptor{})
+
+	return nil
 }
 
 func (f *File) RemoveSection(name string) error {
@@ -371,18 +405,18 @@ func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
 	return
 }
 
-func (f *File) ReadImportTable() ([]Symbol, error) {
+func (f *File) ReadImportTable() (*pe.DataDirectory, []ImportDescriptor, []Symbol, error) {
 	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_IMPORT, nil)
 	if err != nil {
-		return nil, err
+		return idd, nil, nil, err
 	}
 	if idd == nil {
-		return nil, fmt.Errorf("no import table")
+		return idd, nil, nil, fmt.Errorf("no import table")
 	}
 
-	_, data := f.sectionVA(idd.VirtualAddress)
+	_, data := f.sectionVA(uint64(idd.VirtualAddress))
 	if len(data) == 0 {
-		return nil, fmt.Errorf("no import table")
+		return idd, nil, nil, fmt.Errorf("no import table")
 	}
 
 	var (
@@ -403,24 +437,24 @@ func (f *File) ReadImportTable() ([]Symbol, error) {
 
 	var s []Symbol
 	for _, d := range dt {
-		dll := f.readStrzVA(d.Name)
-		_, ft := f.sectionVA(d.OriginalFirstThunk)
-		ftoff := int64(d.OriginalFirstThunk)
-		thoff := int64(d.FirstThunk)
+		dll := f.readStrzVA(uint64(d.Name))
+		_, ft := f.sectionVA(uint64(d.OriginalFirstThunk))
+		ftoff := uint64(d.OriginalFirstThunk)
+		thoff := uint64(d.FirstThunk)
 		for len(ft) > 0 {
 			var (
-				ftsz int64
-				na   int64
+				ftsz uint64
+				na   uint64
 				mask uint64
 			)
 			switch f.Machine {
 			case pe.IMAGE_FILE_MACHINE_AMD64:
 				ftsz = 8
-				na = int64(binary.LittleEndian.Uint64(ft))
+				na = binary.LittleEndian.Uint64(ft)
 				mask = 1 << 63
 			default:
 				ftsz = 4
-				na = int64(binary.LittleEndian.Uint32(ft))
+				na = uint64(binary.LittleEndian.Uint32(ft))
 				mask = 1 << 31
 			}
 			if uint64(na)&mask > 0 {
@@ -432,10 +466,10 @@ func (f *File) ReadImportTable() ([]Symbol, error) {
 
 			p := Symbol{
 				Symbol: pe.Symbol{
-					Name: f.readStrzVA(uint32(na + 2)),
+					Name: f.readStrzVA(na + 2),
 				},
 				DllName:          dll,
-				DllNameOff:       int64(d.Name),
+				DllNameOff:       uint64(d.Name),
 				NameOff:          na,
 				OriginalThunkOff: ftoff,
 				ThunkOff:         thoff,
@@ -448,7 +482,7 @@ func (f *File) ReadImportTable() ([]Symbol, error) {
 		}
 	}
 
-	return s, nil
+	return idd, dt, s, nil
 }
 
 func (f *File) ExportedSymbols() ([]Symbol, error) {
@@ -461,15 +495,15 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 		return nil, nil
 	}
 
-	_, fp := f.sectionVA(d.AddressOfFunctions)
-	_, od := f.sectionVA(d.AddressOfNameOrdinals)
-	_, na := f.sectionVA(d.AddressOfNames)
+	_, fp := f.sectionVA(uint64(d.AddressOfFunctions))
+	_, od := f.sectionVA(uint64(d.AddressOfNameOrdinals))
+	_, na := f.sectionVA(uint64(d.AddressOfNames))
 	no := uint32(0)
 	if fp == nil || od == nil {
 		return nil, nil
 	}
 
-	dllName := f.readStrzVA(d.Name)
+	dllName := f.readStrzVA(uint64(d.Name))
 	var s []Symbol
 	for i := uint32(0); i < d.NumberOfFunctions && len(od) >= 4; i, od = i+1, od[2:] {
 		fn := binary.LittleEndian.Uint16(od) * 2
@@ -489,7 +523,7 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 		if len(na) < 4 {
 			name = fmt.Sprintf("%s+%#x", dllName, va)
 		} else {
-			name = f.readStrzVA(binary.LittleEndian.Uint32(na))
+			name = f.readStrzVA(uint64(binary.LittleEndian.Uint32(na)))
 			nameoff = no
 			na = na[4:]
 			no += 4
@@ -500,7 +534,7 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 			},
 			DllName:          dllName,
 			ForwardedAddress: fwd,
-			NameOff:          int64(nameoff),
+			NameOff:          uint64(nameoff),
 			Auxillary:        idd,
 		}
 		s = append(s, p)
@@ -508,7 +542,7 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 	return s, nil
 }
 
-func (f *File) put1VA(va uint32, val byte) error {
+func (f *File) putByteVA(va uint64, val byte) error {
 	s, d := f.sectionVA(va)
 	if s == nil || len(d) == 0 {
 		return fmt.Errorf("virtual address %#x does not exist", va)
@@ -517,43 +551,50 @@ func (f *File) put1VA(va uint32, val byte) error {
 	return nil
 }
 
-func (f *File) putVA(va uint32, val interface{}) error {
+func (f *File) putWordVA(va uint64, val uint64) error {
+	switch f.ArchSize {
+	case 64:
+		return f.putVA(va, uint64(val))
+	case 32:
+		return f.putVA(va, uint32(val))
+	default:
+		panic("unsupported arch size")
+	}
+}
+
+func (f *File) putVA(va uint64, val interface{}) error {
+	var b []byte
 	switch v := val.(type) {
 	case uint8:
-		return f.put1VA(va, v)
+		b = make([]byte, 1)
+		b[0] = v
 	case uint16:
-		e1 := f.put1VA(va, uint8(v))
-		e2 := f.put1VA(va+1, uint8(v>>8))
-		if e1 != nil || e2 != nil {
-			return fmt.Errorf("virtual address %#x does not exist", va)
-		}
+		b = make([]byte, 2)
+		binary.LittleEndian.PutUint16(b, v)
 	case uint32:
-		e1 := f.put1VA(va, uint8(v))
-		e2 := f.put1VA(va+1, uint8(v>>8))
-		e3 := f.put1VA(va+2, uint8(v>>16))
-		e4 := f.put1VA(va+3, uint8(v>>24))
-		if e1 != nil || e2 != nil || e3 != nil || e4 != nil {
-			return fmt.Errorf("virtual address %#x does not exist", va)
-		}
+		b = make([]byte, 4)
+		binary.LittleEndian.PutUint32(b, v)
 	case uint64:
-		e1 := f.put1VA(va, uint8(v))
-		e2 := f.put1VA(va+1, uint8(v>>8))
-		e3 := f.put1VA(va+2, uint8(v>>16))
-		e4 := f.put1VA(va+3, uint8(v>>24))
-		e5 := f.put1VA(va+4, uint8(v>>32))
-		e6 := f.put1VA(va+5, uint8(v>>40))
-		e7 := f.put1VA(va+6, uint8(v>>48))
-		e8 := f.put1VA(va+7, uint8(v>>56))
-		if e1 != nil || e2 != nil || e3 != nil || e4 != nil || e5 != nil || e6 != nil || e7 != nil || e8 != nil {
-			return fmt.Errorf("virtual address %#x does not exist", va)
-		}
+		b = make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, v)
+	case *ImportDescriptor:
+		p := new(bytes.Buffer)
+		binary.Write(p, binary.LittleEndian, v)
+		b = p.Bytes()
 	default:
-		panic("unsupported type")
+		panic(fmt.Errorf("unsupported type %T", v))
+	}
+
+	for i := range b {
+		err := f.putByteVA(va+uint64(i), b[i])
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (f *File) readStrzVA(va uint32) string {
+func (f *File) readStrzVA(va uint64) string {
 	_, b := f.sectionVA(va)
 	if b == nil {
 		return ""
@@ -561,10 +602,10 @@ func (f *File) readStrzVA(va uint32) string {
 	return readStrz(b)
 }
 
-func (f *File) sectionVA(va uint32) (*Section, []byte) {
+func (f *File) sectionVA(va uint64) (*Section, []byte) {
 	for _, s := range f.Sections {
-		if s.VirtualAddress <= va && va < s.VirtualAddress+s.VirtualSize {
-			return s, s.Data[va-s.VirtualAddress:]
+		if uint64(s.VirtualAddress) <= va && va < uint64(s.VirtualAddress+s.VirtualSize) {
+			return s, s.Data[va-uint64(s.VirtualAddress):]
 		}
 	}
 	return nil, nil
@@ -585,7 +626,7 @@ func (f *File) readDataDirectory(index int, v interface{}) (*pe.DataDirectory, e
 		return nil, nil
 	}
 
-	ds, data := f.sectionVA(idd.VirtualAddress)
+	ds, data := f.sectionVA(uint64(idd.VirtualAddress))
 	if ds == nil {
 		return nil, nil
 	}
