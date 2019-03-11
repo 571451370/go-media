@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -200,6 +201,7 @@ type Symbol struct {
 	NameOff          uint64
 	OriginalThunkOff uint64
 	ThunkOff         uint64
+	IddIdx           int
 	Auxillary        interface{}
 }
 
@@ -212,7 +214,7 @@ type File struct {
 	*pe.File
 	RawSizeOfHeaders int
 	SizeOfHeaders    int
-	ArchSize         int
+	WordSize         int
 	DOSHeader        DOSHeader
 	DOSStub          []byte
 	Sections         []*Section
@@ -317,9 +319,9 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 
 	switch f.Machine {
 	case pe.IMAGE_FILE_MACHINE_AMD64:
-		f.ArchSize = 64
+		f.WordSize = 8
 	default:
-		f.ArchSize = 32
+		f.WordSize = 4
 	}
 
 	return f, nil
@@ -331,14 +333,15 @@ func (f *File) RemoveDLLImport(dllName string) error {
 		return err
 	}
 
+	dllName = strings.ToLower(dllName)
 	var nt []ImportDescriptor
 	for i := range dt {
-		if f.readStrzVA(uint64(dt[i].Name)) != dllName {
+		if strings.ToLower(f.readStrzVA(uint64(dt[i].Name))) != dllName {
 			nt = append(nt, dt[i])
 		}
 	}
 	if len(nt) == len(dt) {
-		return fmt.Errorf("no dll import %q", dllName)
+		return fmt.Errorf("dll import %q does not exist", dllName)
 	}
 
 	off := uint64(idd.VirtualAddress)
@@ -347,6 +350,44 @@ func (f *File) RemoveDLLImport(dllName string) error {
 		off += uint64(reflect.TypeOf(nt[i]).Size())
 	}
 	f.putVA(off, &ImportDescriptor{})
+
+	return nil
+}
+
+func (f *File) RemoveImportSymbol(name string) error {
+	_, dt, syms, err := f.ReadImportTable()
+	if err != nil {
+		return err
+	}
+
+	var p *Symbol
+	for _, s := range syms {
+		if s.Name == name {
+			p = &s
+			break
+		}
+	}
+	if p == nil {
+		return fmt.Errorf("dll import %q does not exist", name)
+	}
+
+	var ds []Symbol
+	for _, s := range syms {
+		if p.IddIdx == s.IddIdx && p.Name != s.Name {
+			ds = append(ds, s)
+		}
+	}
+
+	off := uint64(dt[p.IddIdx].OriginalFirstThunk)
+	for i := range ds {
+		f.putWordVA(off, ds[i].NameOff)
+		off += uint64(f.WordSize)
+	}
+	f.putWordVA(off, 0)
+
+	if len(ds) == 0 {
+		f.RemoveDLLImport(p.DllName)
+	}
 
 	return nil
 }
@@ -436,24 +477,21 @@ func (f *File) ReadImportTable() (*pe.DataDirectory, []ImportDescriptor, []Symbo
 	}
 
 	var s []Symbol
-	for _, d := range dt {
+	for i, d := range dt {
 		dll := f.readStrzVA(uint64(d.Name))
 		_, ft := f.sectionVA(uint64(d.OriginalFirstThunk))
 		ftoff := uint64(d.OriginalFirstThunk)
 		thoff := uint64(d.FirstThunk)
 		for len(ft) > 0 {
 			var (
-				ftsz uint64
 				na   uint64
 				mask uint64
 			)
-			switch f.Machine {
-			case pe.IMAGE_FILE_MACHINE_AMD64:
-				ftsz = 8
+			switch f.WordSize {
+			case 8:
 				na = binary.LittleEndian.Uint64(ft)
 				mask = 1 << 63
 			default:
-				ftsz = 4
 				na = uint64(binary.LittleEndian.Uint32(ft))
 				mask = 1 << 31
 			}
@@ -473,12 +511,13 @@ func (f *File) ReadImportTable() (*pe.DataDirectory, []ImportDescriptor, []Symbo
 				NameOff:          na,
 				OriginalThunkOff: ftoff,
 				ThunkOff:         thoff,
+				IddIdx:           i,
 				Auxillary:        d,
 			}
 			s = append(s, p)
-			ft = ft[ftsz:]
-			ftoff += ftsz
-			thoff += ftsz
+			ft = ft[f.WordSize:]
+			ftoff += uint64(f.WordSize)
+			thoff += uint64(f.WordSize)
 		}
 	}
 
@@ -552,10 +591,10 @@ func (f *File) putByteVA(va uint64, val byte) error {
 }
 
 func (f *File) putWordVA(va uint64, val uint64) error {
-	switch f.ArchSize {
-	case 64:
+	switch f.WordSize {
+	case 8:
 		return f.putVA(va, uint64(val))
-	case 32:
+	case 4:
 		return f.putVA(va, uint32(val))
 	default:
 		panic("unsupported arch size")
