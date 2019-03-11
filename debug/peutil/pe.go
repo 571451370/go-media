@@ -10,8 +10,6 @@ import (
 	"math"
 	"os"
 	"reflect"
-
-	"github.com/qeedquan/go-media/xio"
 )
 
 const (
@@ -172,6 +170,14 @@ type DOSHeader struct {
 	LFANew     uint32 // offset to pe header in windows
 }
 
+type ImportDescriptor struct {
+	OriginalFirstThunk uint32
+	TimeDateStamp      uint32
+	ForwarderChain     uint32
+	Name               uint32
+	FirstThunk         uint32
+}
+
 type ExportDirectory struct {
 	Characteristics       uint32
 	TimeDateStamp         uint32
@@ -190,14 +196,24 @@ type Symbol struct {
 	pe.Symbol
 	DllName          string
 	ForwardedAddress uint32
+	Nameoff          int64
+	Auxillary        interface{}
+}
+
+type Section struct {
+	*pe.Section
+	Data []byte
 }
 
 type File struct {
 	*pe.File
-	DOSHeader DOSHeader
-	DOSStub   []byte
-	Strings   []string
-	r         io.ReaderAt
+	RawSizeOfHeaders int
+	SizeOfHeaders    int
+	DOSHeader        DOSHeader
+	DOSStub          []byte
+	Sections         []*Section
+	Strings          []string
+	r                io.ReaderAt
 }
 
 // these values are common across many exe files
@@ -284,12 +300,80 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 		f.DOSStub = stub
 	}
 
+	for _, s := range f.File.Sections {
+		p := &Section{}
+		p.Section = s
+		p.Data, err = s.Data()
+		if err != nil {
+			return nil, err
+		}
+		f.Sections = append(f.Sections, p)
+	}
+	f.RawSizeOfHeaders, f.SizeOfHeaders = f.calcSizeOfHeaders()
+
 	return f, nil
+}
+
+func (f *File) DeleteSection(name string) error {
+	var (
+		found        bool
+		size, offset uint32
+	)
+	for i, s := range f.Sections {
+		if s.Name == name {
+			size = s.Size
+			offset = s.Offset
+			copy(f.Sections[i:], f.Sections[i+1:])
+			f.Sections = f.Sections[:len(f.Sections)-1]
+			f.RawSizeOfHeaders, f.SizeOfHeaders = f.calcSizeOfHeaders()
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("section %q does not exist", name)
+	}
+
+	for _, s := range f.Sections {
+		if s.Offset >= offset {
+			s.Offset -= size
+		}
+	}
+	return nil
+}
+
+func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
+	rawSizeOfHeaders += int(reflect.TypeOf(f.DOSHeader).Size())
+	rawSizeOfHeaders += len(f.DOSStub)
+	// PE signature
+	rawSizeOfHeaders += 4
+	rawSizeOfHeaders += int(reflect.TypeOf(f.FileHeader).Size())
+
+	switch oh := f.OptionalHeader.(type) {
+	case *pe.OptionalHeader32:
+		sizeOfHeaders = int(oh.SizeOfHeaders)
+		rawSizeOfHeaders += int(reflect.TypeOf(*oh).Size())
+	case *pe.OptionalHeader64:
+		sizeOfHeaders = int(oh.SizeOfHeaders)
+		rawSizeOfHeaders += int(reflect.TypeOf(*oh).Size())
+	}
+
+	for _, s := range f.Sections {
+		sh := f.sectionHeader32(&s.SectionHeader)
+		rawSizeOfHeaders += int(reflect.TypeOf(sh).Size())
+	}
+	if rawSizeOfHeaders > sizeOfHeaders {
+		sizeOfHeaders = rawSizeOfHeaders
+	}
+	return
 }
 
 func (f *File) ExportedSymbols() ([]Symbol, error) {
 	var d ExportDirectory
-	idd := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT, &d)
+	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT, &d)
+	if err != nil {
+		return nil, err
+	}
 	if idd == nil {
 		return nil, nil
 	}
@@ -335,6 +419,15 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 	return s, nil
 }
 
+func (f *File) put1VA(va uint32, val byte) error {
+	s, d := f.sectionVA(va)
+	if s == nil || len(d) == 0 {
+		return fmt.Errorf("virtual address %#x does not exist", va)
+	}
+	d[0] = val
+	return nil
+}
+
 func (f *File) readStrzVA(va uint32) string {
 	_, b := f.sectionVA(va)
 	if b == nil {
@@ -343,20 +436,16 @@ func (f *File) readStrzVA(va uint32) string {
 	return readStrz(b)
 }
 
-func (f *File) sectionVA(va uint32) (*pe.Section, []byte) {
+func (f *File) sectionVA(va uint32) (*Section, []byte) {
 	for _, s := range f.Sections {
 		if s.VirtualAddress <= va && va < s.VirtualAddress+s.VirtualSize {
-			d, err := s.Data()
-			if err != nil {
-				return s, nil
-			}
-			return s, d[va-s.VirtualAddress:]
+			return s, s.Data[va-s.VirtualAddress:]
 		}
 	}
 	return nil, nil
 }
 
-func (f *File) readDataDirectory(index int, v interface{}) *pe.DataDirectory {
+func (f *File) readDataDirectory(index int, v interface{}) (*pe.DataDirectory, error) {
 	var dirlen uint32
 	var idd pe.DataDirectory
 	switch h := f.OptionalHeader.(type) {
@@ -368,21 +457,23 @@ func (f *File) readDataDirectory(index int, v interface{}) *pe.DataDirectory {
 		idd = h.DataDirectory[index]
 	}
 	if dirlen < uint32(index)+1 {
-		return nil
+		return nil, nil
 	}
 
 	ds, data := f.sectionVA(idd.VirtualAddress)
 	if ds == nil {
-		return nil
+		return nil, nil
 	}
 
-	r := bytes.NewReader(data)
-	err := binary.Read(r, binary.LittleEndian, v)
-	if err != nil {
-		return nil
+	if v != nil {
+		r := bytes.NewReader(data)
+		err := binary.Read(r, binary.LittleEndian, v)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &idd
+	return &idd, nil
 }
 
 func (f *File) sectionHeader32(s *pe.SectionHeader) pe.SectionHeader32 {
@@ -418,68 +509,32 @@ func readStrz(b []byte) string {
 	return string(b)
 }
 
-func (f *File) DuplicateSection(name string) (*pe.Section, error) {
-	return f.DuplicateRawSection(f.Section(name))
-}
-
-func (f *File) DuplicateRawSection(s *pe.Section) (*pe.Section, error) {
-	if s == nil {
-		return nil, nil
-	}
-	p := &pe.Section{
-		SectionHeader: s.SectionHeader,
-		Relocs:        make([]pe.Reloc, len(s.Relocs)),
-	}
-	copy(p.Relocs, s.Relocs)
-	data, err := s.Data()
-	if err != nil {
-		return p, err
-	}
-	p.ReaderAt = xio.NewBuffer(data)
-	return p, nil
-}
-
 func Format(f *File, w io.Writer) error {
 	b := bufio.NewWriter(w)
 
 	binary.Write(b, binary.LittleEndian, &f.DOSHeader)
 	b.Write(f.DOSStub)
 
-	size := int(reflect.TypeOf(f.DOSHeader).Size()) + len(f.DOSStub)
-	sizeOfHeaders := size
-
 	peSig := [...]byte{'P', 'E', 0x00, 0x00}
 	binary.Write(b, binary.LittleEndian, peSig)
 	binary.Write(b, binary.LittleEndian, &f.FileHeader)
-	size += len(peSig) + int(reflect.TypeOf(f.FileHeader).Size())
 
 	switch oh := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader32:
 		binary.Write(b, binary.LittleEndian, oh)
-		sizeOfHeaders = int(oh.SizeOfHeaders)
-		size += int(reflect.TypeOf(*oh).Size())
 	case *pe.OptionalHeader64:
 		binary.Write(b, binary.LittleEndian, oh)
-		sizeOfHeaders = int(oh.SizeOfHeaders)
-		size += int(reflect.TypeOf(*oh).Size())
 	}
 
 	for _, s := range f.Sections {
 		sh := f.sectionHeader32(&s.SectionHeader)
 		binary.Write(b, binary.LittleEndian, &sh)
-		size += int(reflect.TypeOf(sh).Size())
 	}
-	if size < sizeOfHeaders {
-		pad := make([]byte, sizeOfHeaders-size)
-		b.Write(pad)
-	}
+	pad := make([]byte, f.SizeOfHeaders-f.RawSizeOfHeaders)
+	b.Write(pad)
 
 	for _, s := range f.Sections {
-		data, err := s.Data()
-		if err != nil {
-			return err
-		}
-		b.Write(data)
+		b.Write(s.Data)
 	}
 
 	return b.Flush()
