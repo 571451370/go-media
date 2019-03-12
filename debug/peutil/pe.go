@@ -151,10 +151,6 @@ const (
 	IMAGE_REL_I386_REL32    = 0x0014
 )
 
-const (
-	IMAGE_DIRECTORY_ENTRY_SIZE = 16
-)
-
 type DOSHeader struct {
 	Magic      uint16 // MZ
 	LastSize   uint16 // image size mod 512, number of bytes on last page
@@ -606,7 +602,7 @@ func (f *File) WriteVirtualAddress(va uint64, v interface{}) error {
 func (f *File) WriteVirtualAddressBound(va uint64, v interface{}) (*Section, error) {
 	s, crossed := f.memoryAccessCrossesSection(va, v)
 	if crossed {
-		return nil, fmt.Errorf("data read of address %#x crosses section", va)
+		return nil, fmt.Errorf("data write of address %#x crosses section", va)
 	}
 	err := f.WriteVirtualAddress(va, v)
 	return s, err
