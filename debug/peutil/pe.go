@@ -10,7 +10,9 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"strings"
+	"sort"
+
+	"github.com/qeedquan/go-media/math/mathutil"
 )
 
 const (
@@ -149,6 +151,10 @@ const (
 	IMAGE_REL_I386_REL32    = 0x0014
 )
 
+const (
+	IMAGE_DIRECTORY_ENTRY_SIZE = 16
+)
+
 type DOSHeader struct {
 	Magic      uint16 // MZ
 	LastSize   uint16 // image size mod 512, number of bytes on last page
@@ -196,7 +202,7 @@ type ExportDirectory struct {
 type Symbol struct {
 	pe.Symbol
 	DllName          string
-	ForwardedAddress uint32
+	ForwardedAddress uint64
 	DllNameOff       uint64
 	NameOff          uint64
 	OriginalThunkOff uint64
@@ -215,6 +221,7 @@ type File struct {
 	RawSizeOfHeaders int
 	SizeOfHeaders    int
 	WordSize         int
+	SectionAlignment int
 	DOSHeader        DOSHeader
 	DOSStub          []byte
 	Sections         []*Section
@@ -320,143 +327,21 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	switch f.Machine {
 	case pe.IMAGE_FILE_MACHINE_AMD64:
 		f.WordSize = 8
-	default:
+	case pe.IMAGE_FILE_MACHINE_I386:
 		f.WordSize = 4
+	default:
+		return nil, fmt.Errorf("unsupported machine type %d", f.Machine)
+	}
+	switch h := f.OptionalHeader.(type) {
+	case *pe.OptionalHeader32:
+		f.SectionAlignment = int(h.SectionAlignment)
+	case *pe.OptionalHeader64:
+		f.SectionAlignment = int(h.SectionAlignment)
+	default:
+		f.SectionAlignment = 512
 	}
 
 	return f, nil
-}
-
-func (f *File) writeOutDLLImport(idd *pe.DataDirectory, dt []ImportDescriptor) error {
-	off := uint64(idd.VirtualAddress)
-	for i := range dt {
-		f.putVA(off, &dt[i])
-		off += uint64(reflect.TypeOf(dt[i]).Size())
-	}
-	f.putVA(off, &ImportDescriptor{})
-	return nil
-}
-
-func (f *File) InsertDLLImport(pos int, dllName string) error {
-	idd, dt, _, err := f.ReadImportTable()
-	if err != nil {
-		return err
-	}
-
-	dllName = strings.ToLower(dllName)
-	var nt []ImportDescriptor
-	var d ImportDescriptor
-	for i := range dt {
-		if strings.ToLower(f.readStrzVA(uint64(dt[i].Name))) == dllName {
-			return fmt.Errorf("dll import %q already exist", dllName)
-		}
-		if i == pos {
-			nt = append(nt, d)
-		}
-		nt = append(nt, dt[i])
-	}
-	if pos < 0 || pos >= 0 {
-		nt = append(nt, d)
-	}
-	return f.writeOutDLLImport(idd, nt)
-}
-
-func (f *File) RemoveDLLImport(dllName string) error {
-	idd, dt, _, err := f.ReadImportTable()
-	if err != nil {
-		return err
-	}
-
-	dllName = strings.ToLower(dllName)
-	var nt []ImportDescriptor
-	for i := range dt {
-		if strings.ToLower(f.readStrzVA(uint64(dt[i].Name))) != dllName {
-			nt = append(nt, dt[i])
-		}
-	}
-	if len(nt) == len(dt) {
-		return fmt.Errorf("dll import %q does not exist", dllName)
-	}
-	return f.writeOutDLLImport(idd, nt)
-}
-
-func (f *File) RemoveImportSymbol(name string) error {
-	_, dt, syms, err := f.ReadImportTable()
-	if err != nil {
-		return err
-	}
-
-	var p *Symbol
-	for _, s := range syms {
-		if s.Name == name {
-			p = &s
-			break
-		}
-	}
-	if p == nil {
-		return fmt.Errorf("import symbol %q does not exist", name)
-	}
-
-	var ds []Symbol
-	for _, s := range syms {
-		if p.IddIdx == s.IddIdx && p.Name != s.Name {
-			ds = append(ds, s)
-		}
-	}
-
-	off := uint64(dt[p.IddIdx].OriginalFirstThunk)
-	for i := range ds {
-		f.putWordVA(off, ds[i].NameOff)
-		off += uint64(f.WordSize)
-	}
-	f.putWordVA(off, 0)
-
-	if len(ds) == 0 {
-		f.RemoveDLLImport(p.DllName)
-	}
-
-	return nil
-}
-
-func (f *File) InsertImportSymbol(pos int, symName, dllName string) (Symbol, error) {
-	f.InsertDLLImport(-1, dllName)
-	return Symbol{}, nil
-}
-
-func (f *File) RedirectImportSymbol(symName, dllName string) (Symbol, error) {
-	err := f.RemoveImportSymbol(symName)
-	if err != nil {
-		return Symbol{}, err
-	}
-	return f.InsertImportSymbol(-1, symName, dllName)
-}
-
-func (f *File) RemoveSection(name string) error {
-	var (
-		found        bool
-		size, offset uint32
-	)
-	for i, s := range f.Sections {
-		if s.Name == name {
-			size = s.Size
-			offset = s.Offset
-			copy(f.Sections[i:], f.Sections[i+1:])
-			f.Sections = f.Sections[:len(f.Sections)-1]
-			f.RawSizeOfHeaders, f.SizeOfHeaders = f.calcSizeOfHeaders()
-			found = true
-			break
-		}
-	}
-	if !found {
-		return fmt.Errorf("section %q does not exist", name)
-	}
-
-	for _, s := range f.Sections {
-		if s.Offset >= offset {
-			s.Offset -= size
-		}
-	}
-	return nil
 }
 
 func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
@@ -466,13 +351,13 @@ func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
 	rawSizeOfHeaders += 4
 	rawSizeOfHeaders += int(reflect.TypeOf(f.FileHeader).Size())
 
-	switch oh := f.OptionalHeader.(type) {
+	switch h := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader32:
-		sizeOfHeaders = int(oh.SizeOfHeaders)
-		rawSizeOfHeaders += int(reflect.TypeOf(*oh).Size())
+		sizeOfHeaders = int(h.SizeOfHeaders)
+		rawSizeOfHeaders += int(reflect.TypeOf(*h).Size())
 	case *pe.OptionalHeader64:
-		sizeOfHeaders = int(oh.SizeOfHeaders)
-		rawSizeOfHeaders += int(reflect.TypeOf(*oh).Size())
+		sizeOfHeaders = int(h.SizeOfHeaders)
+		rawSizeOfHeaders += int(reflect.TypeOf(*h).Size())
 	}
 
 	for _, s := range f.Sections {
@@ -485,110 +370,67 @@ func (f *File) calcSizeOfHeaders() (rawSizeOfHeaders, sizeOfHeaders int) {
 	return
 }
 
-func (f *File) ReadImportTable() (*pe.DataDirectory, []ImportDescriptor, []Symbol, error) {
-	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_IMPORT, nil)
-	if err != nil {
-		return idd, nil, nil, err
-	}
-	if idd == nil {
-		return idd, nil, nil, fmt.Errorf("no import table")
-	}
-
-	_, data := f.sectionVA(uint64(idd.VirtualAddress))
-	if len(data) == 0 {
-		return idd, nil, nil, fmt.Errorf("no import table")
+func (f *File) MapSection(name string, va, size, flags uint64) (*Section, error) {
+	a, _, _ := f.LookupVirtualAddress(va)
+	b, _, _ := f.LookupVirtualAddress(va + size)
+	c := f.Section(name)
+	if a != nil || b != nil || c != nil {
+		return nil, fmt.Errorf("section %s already exist", name)
 	}
 
-	var (
-		dt []ImportDescriptor
-		d  ImportDescriptor
-	)
-	r := bytes.NewReader(data)
-	for {
-		err := binary.Read(r, binary.LittleEndian, &d)
-		if err != nil {
-			break
+	var off uint32
+	var dynva bool
+	if va == 0 {
+		dynva = true
+	}
+	for _, s := range f.Sections {
+		nva := uint64(s.VirtualAddress + s.Size)
+		if dynva && va < nva {
+			va = nva
 		}
-		if d.OriginalFirstThunk == 0 {
-			break
-		}
-		dt = append(dt, d)
-	}
-
-	var s []Symbol
-	for i, d := range dt {
-		dll := f.readStrzVA(uint64(d.Name))
-		_, ft := f.sectionVA(uint64(d.OriginalFirstThunk))
-		ftoff := uint64(d.OriginalFirstThunk)
-		thoff := uint64(d.FirstThunk)
-		for len(ft) > 0 {
-			var (
-				na   uint64
-				mask uint64
-			)
-			switch f.WordSize {
-			case 8:
-				na = binary.LittleEndian.Uint64(ft)
-				mask = 1 << 63
-			default:
-				na = uint64(binary.LittleEndian.Uint32(ft))
-				mask = 1 << 31
-			}
-
-			var name string
-			if uint64(na)&mask > 0 {
-				// dynimport ordinals unimplemented
-				name = fmt.Sprintf("%#x", na)
-			} else {
-				name = f.readStrzVA(na + 2)
-			}
-
-			if na == 0 {
-				break
-			}
-
-			p := Symbol{
-				Symbol: pe.Symbol{
-					Name: name,
-				},
-				DllName:          dll,
-				DllNameOff:       uint64(d.Name),
-				NameOff:          na,
-				OriginalThunkOff: ftoff,
-				ThunkOff:         thoff,
-				IddIdx:           i,
-				Auxillary:        d,
-			}
-			s = append(s, p)
-			ft = ft[f.WordSize:]
-			ftoff += uint64(f.WordSize)
-			thoff += uint64(f.WordSize)
+		if off < s.Offset+s.Size {
+			off = s.Offset + s.Size
 		}
 	}
 
-	return idd, dt, s, nil
+	p := &Section{}
+	p.Name = name
+	p.Data = make([]byte, size)
+	p.Offset = uint32(off)
+	p.Size = uint32(size)
+	p.VirtualAddress = uint32(va)
+	p.VirtualSize = uint32(mathutil.Multiple(int(p.Size), int(f.SectionAlignment)))
+	p.Characteristics = uint32(flags)
+	f.Sections = append(f.Sections, p)
+	sort.Slice(f.Sections, func(i, j int) bool {
+		return f.Sections[i].VirtualAddress < f.Sections[j].VirtualAddress
+	})
+	return p, nil
 }
 
 func (f *File) ExportedSymbols() ([]Symbol, error) {
 	var d ExportDirectory
-	idd, err := f.readDataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT, &d)
-	if err != nil {
-		return nil, err
-	}
+	idd := f.DataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT)
 	if idd == nil {
 		return nil, nil
 	}
+	err := f.ReadVirtualAddress(uint64(idd.VirtualAddress), &d)
+	if err != nil {
+		return nil, err
+	}
 
-	_, fp := f.sectionVA(uint64(d.AddressOfFunctions))
-	_, od := f.sectionVA(uint64(d.AddressOfNameOrdinals))
-	_, na := f.sectionVA(uint64(d.AddressOfNames))
+	_, fp, _ := f.LookupVirtualAddress(uint64(d.AddressOfFunctions))
+	_, od, _ := f.LookupVirtualAddress(uint64(d.AddressOfNameOrdinals))
+	_, na, _ := f.LookupVirtualAddress(uint64(d.AddressOfNames))
 	no := uint32(0)
 	if fp == nil || od == nil {
 		return nil, nil
 	}
 
-	dllName := f.readStrzVA(uint64(d.Name))
-	var s []Symbol
+	var dllName string
+	var syms []Symbol
+
+	f.ReadVirtualAddress(uint64(d.Name), &d.Name)
 	for i := uint32(0); i < d.NumberOfFunctions && len(od) >= 4; i, od = i+1, od[2:] {
 		fn := binary.LittleEndian.Uint16(od) * 2
 		if fn >= uint16(len(fp)) {
@@ -596,21 +438,21 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 		}
 
 		var name string
-		var fwd uint32
+		var fwd uint64
 
 		va := binary.LittleEndian.Uint32(fp[fn:])
 		if idd.VirtualAddress <= va && va < idd.VirtualAddress+idd.Size {
-			fwd = va
+			fwd = uint64(va)
 		}
 
 		nameoff := va
-		if len(na) < 4 {
+		if len(na) < f.WordSize {
 			name = fmt.Sprintf("%s+%#x", dllName, va)
 		} else {
-			name = f.readStrzVA(uint64(binary.LittleEndian.Uint32(na)))
+			f.ReadVirtualAddress(f.readWord(na), &name)
 			nameoff = no
-			na = na[4:]
-			no += 4
+			na = na[f.WordSize:]
+			no += uint32(f.WordSize)
 		}
 		p := Symbol{
 			Symbol: pe.Symbol{
@@ -621,34 +463,119 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 			NameOff:          uint64(nameoff),
 			Auxillary:        idd,
 		}
-		s = append(s, p)
+		syms = append(syms, p)
 	}
-	return s, nil
+	return syms, nil
 }
 
-func (f *File) putByteVA(va uint64, val byte) error {
-	s, d := f.sectionVA(va)
-	if s == nil || len(d) == 0 {
-		return fmt.Errorf("virtual address %#x does not exist", va)
-	}
-	d[0] = val
-	return nil
-}
-
-func (f *File) putWordVA(va uint64, val uint64) error {
+func (f *File) readWord(b []byte) uint64 {
+	var v uint64
 	switch f.WordSize {
 	case 8:
-		return f.putVA(va, uint64(val))
+		v = binary.LittleEndian.Uint64(b)
 	case 4:
-		return f.putVA(va, uint32(val))
+		v = uint64(binary.LittleEndian.Uint32(b))
 	default:
-		panic("unsupported arch size")
+		panic(fmt.Errorf("unsupported word size %d", f.WordSize))
 	}
+	return v
 }
 
-func (f *File) putVA(va uint64, val interface{}) error {
+func (f *File) memoryAccessCrossesSection(va uint64, v interface{}) (*Section, bool) {
+	p := reflect.TypeOf(v).Elem()
+	n := reflect.TypeOf(p).Size()
+
+	var t *Section
+	for i := uint64(0); i < uint64(n); i++ {
+		s, _, _ := f.LookupVirtualAddress(va + i)
+		if t == nil {
+			t = s
+		}
+		if t != s {
+			return t, true
+		}
+	}
+	return t, false
+}
+
+func (f *File) LookupVirtualAddress(va uint64) (*Section, []byte, int) {
+	for _, s := range f.Sections {
+		if uint64(s.VirtualAddress) <= va && va < uint64(s.VirtualAddress+s.VirtualSize) {
+			off := int(va - uint64(s.VirtualAddress))
+			return s, s.Data[off:], off
+		}
+	}
+	return nil, nil, 0
+}
+
+func (f *File) ReadVirtualAddress(va uint64, v interface{}) error {
 	var b []byte
-	switch v := val.(type) {
+	switch v := v.(type) {
+	case nil:
+		return nil
+	case *uint8:
+		b = make([]byte, 1)
+	case *uint16:
+		b = make([]byte, 2)
+	case *uint32:
+		b = make([]byte, 4)
+	case *uint64:
+		b = make([]byte, 8)
+	case *string:
+		*v = ""
+		for i := 0; ; i++ {
+			_, p, _ := f.LookupVirtualAddress(va + uint64(i))
+			if len(p) == 0 {
+				return fmt.Errorf("invalid read of unmapped address %#x", va+uint64(i))
+			}
+			if p[0] == 0 {
+				break
+			}
+			*v += string(p[0])
+		}
+		return nil
+	case []byte:
+		for i := range b {
+			_, p, _ := f.LookupVirtualAddress(va + uint64(i))
+			if len(p) == 0 {
+				return fmt.Errorf("invalid read of unmapped address %#x", va+uint64(i))
+			}
+			b[i] = p[0]
+		}
+		return nil
+	case *ExportDirectory:
+		n := reflect.TypeOf(ExportDirectory{}).Size()
+		b = make([]byte, int(n))
+	default:
+		panic(fmt.Errorf("unsupported type %T", v))
+	}
+
+	for i := range b {
+		_, p, _ := f.LookupVirtualAddress(va + uint64(i))
+		if p == nil {
+			return fmt.Errorf("invalid read of unmapped address %#x", va+uint64(i))
+		}
+		b[i] = p[0]
+	}
+
+	r := bytes.NewReader(b)
+	return binary.Read(r, binary.LittleEndian, v)
+}
+
+func (f *File) ReadVirtualAddressBound(va uint64, v interface{}) (*Section, error) {
+	s, crossed := f.memoryAccessCrossesSection(va, v)
+	if crossed {
+		return nil, fmt.Errorf("data read of address %#x crosses section", va)
+	}
+	err := f.ReadVirtualAddress(va, v)
+	return s, err
+}
+
+func (f *File) WriteVirtualAddress(va uint64, v interface{}) error {
+	var b []byte
+	switch v := v.(type) {
+	case nil:
+		return nil
 	case uint8:
 		b = make([]byte, 1)
 		b[0] = v
@@ -661,69 +588,45 @@ func (f *File) putVA(va uint64, val interface{}) error {
 	case uint64:
 		b = make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, v)
-	case *ImportDescriptor:
-		p := new(bytes.Buffer)
-		binary.Write(p, binary.LittleEndian, v)
-		b = p.Bytes()
+	case []byte:
+		b = v
 	default:
-		panic(fmt.Errorf("unsupported type %T", v))
+		return fmt.Errorf("unsupported type %T", v)
 	}
-
 	for i := range b {
-		err := f.putByteVA(va+uint64(i), b[i])
-		if err != nil {
-			return err
+		_, p, _ := f.LookupVirtualAddress(va + uint64(i))
+		if len(p) == 0 {
+			return fmt.Errorf("invalid read of unmapped address %#x", va+uint64(i))
 		}
+		p[0] = b[i]
 	}
 	return nil
 }
 
-func (f *File) readStrzVA(va uint64) string {
-	_, b := f.sectionVA(va)
-	if b == nil {
-		return ""
+func (f *File) WriteVirtualAddressBound(va uint64, v interface{}) (*Section, error) {
+	s, crossed := f.memoryAccessCrossesSection(va, v)
+	if crossed {
+		return nil, fmt.Errorf("data read of address %#x crosses section", va)
 	}
-	return readStrz(b)
+	err := f.WriteVirtualAddress(va, v)
+	return s, err
 }
 
-func (f *File) sectionVA(va uint64) (*Section, []byte) {
-	for _, s := range f.Sections {
-		if uint64(s.VirtualAddress) <= va && va < uint64(s.VirtualAddress+s.VirtualSize) {
-			return s, s.Data[va-uint64(s.VirtualAddress):]
-		}
-	}
-	return nil, nil
-}
-
-func (f *File) readDataDirectory(index int, v interface{}) (*pe.DataDirectory, error) {
+func (f *File) DataDirectory(index int) *pe.DataDirectory {
 	var dirlen uint32
-	var idd pe.DataDirectory
+	var idd *pe.DataDirectory
 	switch h := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader64:
 		dirlen = h.NumberOfRvaAndSizes
-		idd = h.DataDirectory[index]
+		idd = &h.DataDirectory[index]
 	case *pe.OptionalHeader32:
 		dirlen = h.NumberOfRvaAndSizes
-		idd = h.DataDirectory[index]
+		idd = &h.DataDirectory[index]
 	}
 	if dirlen < uint32(index)+1 {
-		return nil, nil
+		return nil
 	}
-
-	ds, data := f.sectionVA(uint64(idd.VirtualAddress))
-	if ds == nil {
-		return nil, nil
-	}
-
-	if v != nil {
-		r := bytes.NewReader(data)
-		err := binary.Read(r, binary.LittleEndian, v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &idd, nil
+	return idd
 }
 
 func (f *File) sectionHeader32(s *pe.SectionHeader) pe.SectionHeader32 {
@@ -750,15 +653,6 @@ func (f *File) sectionHeader32(s *pe.SectionHeader) pe.SectionHeader32 {
 	return h
 }
 
-func readStrz(b []byte) string {
-	for i := range b {
-		if b[i] == 0 {
-			return string(b[:i])
-		}
-	}
-	return string(b)
-}
-
 func Format(f *File, w io.Writer) error {
 	b := bufio.NewWriter(w)
 
@@ -769,11 +663,11 @@ func Format(f *File, w io.Writer) error {
 	binary.Write(b, binary.LittleEndian, peSig)
 	binary.Write(b, binary.LittleEndian, &f.FileHeader)
 
-	switch oh := f.OptionalHeader.(type) {
+	switch h := f.OptionalHeader.(type) {
 	case *pe.OptionalHeader32:
-		binary.Write(b, binary.LittleEndian, oh)
+		binary.Write(b, binary.LittleEndian, h)
 	case *pe.OptionalHeader64:
-		binary.Write(b, binary.LittleEndian, oh)
+		binary.Write(b, binary.LittleEndian, h)
 	}
 
 	for _, s := range f.Sections {
