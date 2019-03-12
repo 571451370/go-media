@@ -181,6 +181,12 @@ type ImportDescriptor struct {
 	FirstThunk         uint32
 }
 
+type ImportDescription struct {
+	ImportDescriptor
+	DLLName string
+	Symbols []Symbol
+}
+
 type ExportDirectory struct {
 	Characteristics       uint32
 	TimeDateStamp         uint32
@@ -197,12 +203,10 @@ type ExportDirectory struct {
 
 type Symbol struct {
 	pe.Symbol
-	DllName          string
+	DLLName          string
 	ForwardedAddress uint64
-	DllNameOff       uint64
-	NameOff          uint64
-	OriginalThunkOff uint64
-	ThunkOff         uint64
+	DLLNameRVA       uint64
+	NameRVA          uint64
 	IddIdx           int
 	Auxillary        interface{}
 }
@@ -224,6 +228,8 @@ type File struct {
 	Strings          []string
 	r                io.ReaderAt
 }
+
+type Word uint64
 
 // these values are common across many exe files
 var DOSHdr = DOSHeader{
@@ -404,6 +410,67 @@ func (f *File) MapSection(name string, va, size, flags uint64) (*Section, error)
 	return p, nil
 }
 
+func (f *File) ReadImportTable() ([]ImportDescription, error) {
+	idd := f.DataDirectory(pe.IMAGE_DIRECTORY_ENTRY_IMPORT)
+	if idd == nil {
+		return nil, fmt.Errorf("import table does not exist")
+	}
+
+	var dt []ImportDescription
+	var d ImportDescription
+	addr := uint64(idd.VirtualAddress)
+	for {
+		err := f.ReadVirtualAddress(addr, &d.ImportDescriptor)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read import descriptor: %v", err)
+		}
+		if d.OriginalFirstThunk == 0 {
+			break
+		}
+		f.ReadVirtualAddress(uint64(d.Name), &d.DLLName)
+		dt = append(dt, d)
+
+		addr += uint64(reflect.TypeOf(d.ImportDescriptor).Size())
+	}
+
+	for i := range dt {
+		d := &dt[i]
+		addr := uint64(d.OriginalFirstThunk)
+		for {
+			var na Word
+			err := f.ReadVirtualAddress(addr, &na)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read dll %s imports", d.DLLName)
+			}
+			if na == 0 {
+				break
+			}
+			s := Symbol{}
+			s.DLLName = d.DLLName
+			s.DLLNameRVA = uint64(d.Name)
+
+			var mask Word
+			if f.WordSize == 8 {
+				mask = 1 << 63
+			} else {
+				mask = 1 << 31
+			}
+			if na&mask == 0 {
+				s.NameRVA = uint64(na) + 2
+				f.ReadVirtualAddress(s.NameRVA, &s.Name)
+			} else {
+				s.NameRVA = uint64(na)
+				s.Name = fmt.Sprintf("%#x", na)
+			}
+
+			d.Symbols = append(d.Symbols, s)
+			addr += uint64(f.WordSize)
+		}
+	}
+
+	return dt, nil
+}
+
 func (f *File) ExportedSymbols() ([]Symbol, error) {
 	var d ExportDirectory
 	idd := f.DataDirectory(pe.IMAGE_DIRECTORY_ENTRY_EXPORT)
@@ -454,9 +521,10 @@ func (f *File) ExportedSymbols() ([]Symbol, error) {
 			Symbol: pe.Symbol{
 				Name: name,
 			},
-			DllName:          dllName,
+			DLLName:          dllName,
 			ForwardedAddress: fwd,
-			NameOff:          uint64(nameoff),
+			DLLNameRVA:       uint64(d.Name),
+			NameRVA:          uint64(nameoff),
 			Auxillary:        idd,
 		}
 		syms = append(syms, p)
@@ -517,6 +585,21 @@ func (f *File) ReadVirtualAddress(va uint64, v interface{}) error {
 		b = make([]byte, 4)
 	case *uint64:
 		b = make([]byte, 8)
+	case *Word:
+		switch f.WordSize {
+		case 8:
+			var w uint64
+			err := f.ReadVirtualAddress(va, &w)
+			*v = Word(w)
+			return err
+		case 4:
+			var w uint32
+			err := f.ReadVirtualAddress(va, &w)
+			*v = Word(w)
+			return err
+		default:
+			panic(fmt.Errorf("unsupported word size %d", f.WordSize))
+		}
 	case *string:
 		*v = ""
 		for i := 0; ; i++ {
@@ -532,6 +615,9 @@ func (f *File) ReadVirtualAddress(va uint64, v interface{}) error {
 		return nil
 	case *ExportDirectory:
 		n := reflect.TypeOf(ExportDirectory{}).Size()
+		b = make([]byte, int(n))
+	case *ImportDescriptor:
+		n := reflect.TypeOf(ImportDescriptor{}).Size()
 		b = make([]byte, int(n))
 	default:
 		panic(fmt.Errorf("unsupported type %T", v))
@@ -577,6 +663,17 @@ func (f *File) WriteVirtualAddress(va uint64, v interface{}) error {
 		binary.LittleEndian.PutUint64(b, v)
 	case []byte:
 		b = v
+	case Word:
+		switch f.WordSize {
+		case 8:
+			b = make([]byte, 8)
+			binary.LittleEndian.PutUint64(b, uint64(v))
+		case 4:
+			b = make([]byte, 4)
+			binary.LittleEndian.PutUint32(b, uint32(v))
+		default:
+			panic(fmt.Errorf("unsupported word size %d", f.WordSize))
+		}
 	default:
 		return fmt.Errorf("unsupported type %T", v)
 	}
