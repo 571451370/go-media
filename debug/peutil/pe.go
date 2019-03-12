@@ -530,15 +530,6 @@ func (f *File) ReadVirtualAddress(va uint64, v interface{}) error {
 			*v += string(p[0])
 		}
 		return nil
-	case []byte:
-		for i := range b {
-			_, p, _ := f.LookupVirtualAddress(va + uint64(i))
-			if len(p) == 0 {
-				return fmt.Errorf("invalid read of unmapped address %#x", va+uint64(i))
-			}
-			b[i] = p[0]
-		}
-		return nil
 	case *ExportDirectory:
 		n := reflect.TypeOf(ExportDirectory{}).Size()
 		b = make([]byte, int(n))
