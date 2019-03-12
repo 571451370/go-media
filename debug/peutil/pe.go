@@ -334,7 +334,7 @@ func newFile(p *pe.File, r io.ReaderAt) (*File, error) {
 	case *pe.OptionalHeader64:
 		f.SectionAlignment = int(h.SectionAlignment)
 	default:
-		f.SectionAlignment = 512
+		f.SectionAlignment = os.Getpagesize()
 	}
 
 	return f, nil
